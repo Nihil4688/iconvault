@@ -1,0 +1,11 @@
+{
+  "name": "iconvault-cli",
+  "version": "1.0.0",
+  "description": "Command line for IconVault: list projects, upload icons, build sprites, export and import. Signs in with a personal API token.",
+  "type": "module",
+  "bin": { "iconvault": "./bin/iconvault.mjs" },
+  "engines": { "node": ">=18" },
+  "scripts": { "test": "node --test test/*.test.mjs" },
+  "license": "UNLICENSED",
+  "private": true
+}

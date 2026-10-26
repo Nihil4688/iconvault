@@ -1,0 +1,73 @@
+// Auth API client for the /api/auth/* routes (sign-in, sign-out, session lookup).
+import axios from "axios";
+
+const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:5000";
+
+export type ServerUser = {
+  id: string;
+  email: string;
+  displayName: string;
+  picture: string | null;
+  emailVerified: boolean;
+  provider: "google" | "microsoft";
+  // Admins are the emails listed in the server's ADMIN_EMAILS. Older servers do not send it.
+  role?: "admin" | "user";
+  lastLoginAt?: string;
+};
+
+export type LoginResponse = {
+  user: ServerUser;
+  token: string;
+};
+
+export async function loginWithGoogle(credential: string): Promise<LoginResponse> {
+  try {
+    const { data } = await axios.post<LoginResponse>(
+      `${API_BASE}/api/auth/google`,
+      { credential },
+      { headers: { "Content-Type": "application/json" } }
+    );
+    return data;
+  } catch (err) {
+    throw wrapAxiosError(err, "Google sign-in");
+  }
+}
+
+// Microsoft sign-in. The MSAL.js popup returns the id_token directly; the server
+// verifies it against the tenant JWKS and issues a session JWT.
+export async function loginWithMicrosoft(args: {
+  idToken: string;
+}): Promise<LoginResponse> {
+  try {
+    const { data } = await axios.post<LoginResponse>(
+      `${API_BASE}/api/auth/microsoft`,
+      args,
+      { headers: { "Content-Type": "application/json" } }
+    );
+    return data;
+  } catch (err) {
+    throw wrapAxiosError(err, "Microsoft sign-in");
+  }
+}
+
+export async function fetchCurrentUser(token: string): Promise<ServerUser> {
+  try {
+    const { data } = await axios.get<{ user: ServerUser }>(
+      `${API_BASE}/api/auth/me`,
+      { headers: { Authorization: `Bearer ${token}` } }
+    );
+    return data.user;
+  } catch (err) {
+    throw wrapAxiosError(err, "refresh session");
+  }
+}
+
+function wrapAxiosError(err: unknown, action: string): Error {
+  if (axios.isAxiosError(err)) {
+    const message =
+      (err.response?.data as { error?: string } | undefined)?.error ??
+      err.message;
+    return new Error(`Failed to ${action}: ${message}`);
+  }
+  return err instanceof Error ? err : new Error(`Failed to ${action}.`);
+}

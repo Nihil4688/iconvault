@@ -1,0 +1,8 @@
+// Root TypeScript config. Just references the app and node configs (project references pattern).
+{
+  "files": [],
+  "references": [
+    { "path": "./tsconfig.app.json" },
+    { "path": "./tsconfig.node.json" }
+  ]
+}
