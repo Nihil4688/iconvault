@@ -73,7 +73,14 @@ export async function exportProject(project: HydratedDocument<ProjectDoc>): Prom
     for (let n = 2; used.has(file.toLowerCase()); n += 1) file = `${dir}/${safeSegment(icon.slug)}-${n}.svg`;
     used.add(file.toLowerCase());
     files[file] = strToU8(icon.svg);
-    return { file, name: icon.name, folder, tags: [...(icon.tags ?? [])], codepoint: icon.codepoint ?? null };
+    return {
+      file,
+      name: icon.name,
+      folder,
+      tags: [...(icon.tags ?? [])],
+      codepoint: icon.codepoint ?? null,
+      fontCodepoint: icon.fontCodepoint ?? null,
+    };
   });
 
   const manifest = {
