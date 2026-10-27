@@ -3,23 +3,23 @@ import { FolderTree, Layers, Lock, ShieldCheck, type LucideIcon } from "lucide-r
 
 const FEATURES: Array<{ title: string; text: string; Icon: LucideIcon }> = [
   {
-    title: "Organize in projects and folders",
-    text: "Keep every icon in a project, arrange them in nested folders, drag them around, and find them again with search and tags.",
+    title: "Organize projects and folders",
+    text: "Keep icons organized in projects and nested folders. Quickly find assets with search, tags, and a structured library.",
     Icon: FolderTree,
   },
   {
-    title: "Clean, safe and small",
-    text: "Uploads are cleaned of scripts and anything unsafe, then optimized, with the before and after sizes shown. Older versions are kept so you can go back.",
+    title: "Clean, secure and optimized",
+    text: "Uploaded SVGs are sanitized and optimized automatically. Track size reductions and keep version history for easy rollback.",
     Icon: ShieldCheck,
   },
   {
-    title: "Compile to SVG sprites",
-    text: "Turn a project's icons into one sprite file with a live preview, ready-to-paste code snippets and a download.",
+    title: "Compile Icons to Sprites & Fonts",
+    text: "Turn a project's icons into SVG sprites and icon fonts with live previews, generated IDs and CSS classes, integration-ready code snippets, and downloadable packages.",
     Icon: Layers,
   },
   {
-    title: "Private or public",
-    text: "Keep a project to yourself, or make it public so others can look at it and copy icons into their own projects.",
+    title: "Private or public libraries",
+    text: "Keep projects private or share public icon libraries that teams and communities can reuse.",
     Icon: Lock,
   },
 ];
@@ -31,10 +31,10 @@ export default function LandingPage({ onSignIn }: { onSignIn: () => void }) {
         <section aria-labelledby="landing-title" className="bg-linear-to-b from-primary/10 to-transparent">
           <div className="mx-auto max-w-3xl px-4 py-16 text-center sm:py-24">
             <h1 id="landing-title" className="text-3xl font-bold tracking-tight text-foreground sm:text-5xl">
-              Your SVG icons, organized and compiled into sprites
+              Your SVG icons, organized and compiled into sprites & icon fonts
             </h1>
             <p className="mx-auto mt-4 max-w-2xl text-base text-muted-foreground sm:text-lg">
-              Upload icons, keep them in projects and folders, and compile them into production-ready SVG sprites.
+              Centralize your SVG assets, organize them into projects, and export optimized SVG sprites or icon font packages ready for web applications and design systems.
             </p>
             <div className="mt-8 flex flex-col items-center gap-3">
               <button
