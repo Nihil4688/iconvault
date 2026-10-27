@@ -3,7 +3,10 @@
   "builds": [
     {
       "src": "src/api.ts",
-      "use": "@vercel/node"
+      "use": "@vercel/node",
+      "config": {
+        "includeFiles": ["node_modules/ttf2woff2/jssrc/ttf2woff2.wasm"]
+      }
     }
   ],
   "routes": [
