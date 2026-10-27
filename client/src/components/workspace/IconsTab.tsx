@@ -193,7 +193,7 @@ export default function IconsTab() {
             {view === "grid" ? (
               <ul className={`grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5 ${icons.loading ? "opacity-60" : ""}`}>
                 {shown.map((icon) => (
-                  <IconCard key={icon.id} icon={icon} selected={selection.has(icon.id)} surface={surface} appearance={appearance} canDrag={canEdit} dragIds={() => (selection.has(icon.id) ? selection.ids : [icon.id])} onToggle={() => selection.toggle(icon.id)} onOpen={() => setOpenId(icon.id)} />
+                  <IconCard key={icon.id} icon={icon} purpose={project.purpose} idPrefix={project.prefix} selected={selection.has(icon.id)} surface={surface} appearance={appearance} canDrag={canEdit} dragIds={() => (selection.has(icon.id) ? selection.ids : [icon.id])} onToggle={() => selection.toggle(icon.id)} onOpen={() => setOpenId(icon.id)} />
                 ))}
               </ul>
             ) : (
@@ -320,7 +320,7 @@ export default function IconsTab() {
         }}
       />
 
-      <IconDrawer projectId={project.id} iconId={openId} canEdit={canEdit} folders={folderList.folders} idPrefix={project.prefix} onClose={() => setOpenId(null)} onChanged={refreshAll} />
+      <IconDrawer projectId={project.id} iconId={openId} canEdit={canEdit} folders={folderList.folders} idPrefix={project.prefix} purpose={project.purpose} onClose={() => setOpenId(null)} onChanged={refreshAll} />
     </div>
   );
 }
