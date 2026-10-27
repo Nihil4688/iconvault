@@ -33,7 +33,7 @@ export default function ProjectHeader({ project, actionsRef }: { project: Projec
           <li aria-hidden="true" className="hidden shrink-0 text-muted-foreground sm:block">
             /
           </li>
-          <li aria-current="page" title={project.name} className="min-w-0 flex-1 truncate font-semibold">
+          <li aria-current="page" title={project.name} className="min-w-0 max-w-[14vw] flex-1 truncate font-semibold">
             {project.name}
           </li>
         </ol>
