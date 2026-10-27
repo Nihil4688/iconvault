@@ -31,10 +31,10 @@ export default function LandingPage({ onSignIn }: { onSignIn: () => void }) {
         <section aria-labelledby="landing-title" className="bg-linear-to-b from-primary/10 to-transparent">
           <div className="mx-auto max-w-3xl px-4 py-16 text-center sm:py-24">
             <h1 id="landing-title" className="text-3xl font-bold tracking-tight text-foreground sm:text-5xl">
-              Your SVG icons, organized and compiled into sprites & icon fonts
+              All Your Icons. One Centralized Workspace.
             </h1>
             <p className="mx-auto mt-4 max-w-2xl text-base text-muted-foreground sm:text-lg">
-              Centralize your SVG assets, organize them into projects, and export optimized SVG sprites or icon font packages ready for web applications and design systems.
+              Organize, manage, and optimize your SVG icons in one place. Build SVG sprites and icon fonts, and export ready-to-use assets for your applications.
             </p>
             <div className="mt-8 flex flex-col items-center gap-3">
               <button
