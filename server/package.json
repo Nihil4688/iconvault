@@ -45,5 +45,10 @@
     "cross-env": "^10.1.0",
     "tsx": "^4.23.0",
     "typescript": "^6.0.3"
+  },
+  "allowScripts": {
+    "esbuild@0.28.1": true,
+    "es5-ext@0.10.64": false,
+    "ttf2woff2@8.0.1": false
   }
 }
