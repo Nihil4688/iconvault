@@ -35,7 +35,7 @@ export default function AppHeader({ onSignIn, crumbRef, actionsRef }: AppHeaderP
       </div>
 
       {/* Middle of the bar: a screen can place its breadcrumb here. */}
-      <div ref={crumbRef} className="mx-3 flex min-w-0 flex-1 justify-center empty:hidden" />
+      <div ref={crumbRef} className="mx-3 flex min-w-0 max-w-[min(38vw,32rem)] flex-1 justify-center overflow-hidden empty:hidden lg:absolute lg:left-1/2 lg:top-1/2 lg:mx-0 lg:w-[min(38vw,32rem)] lg:-translate-x-1/2 lg:-translate-y-1/2" />
 
       <div className="flex shrink-0 items-center gap-3">
         <div ref={actionsRef} className="flex items-center gap-2 empty:hidden" />

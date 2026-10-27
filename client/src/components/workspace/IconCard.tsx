@@ -1,15 +1,18 @@
 // One icon in the grid: a checkbox to select it, a button that opens it, a preview on the chosen surface, its name, Unicode codepoint and any font-conversion warnings. Editors can drag it (or the whole selection) onto a folder.
 import { setDraggedIcons } from "../../lib/dragIcons";
-import type { IconItem } from "../../api/types";
+import type { IconItem, ProjectPurpose } from "../../api/types";
 import { cn } from "../../lib/cn";
 import type { IconAppearance } from "../../lib/iconAppearance";
 import { iconWarnings } from "../../lib/iconInfo";
+import { symbolId } from "../../lib/spriteBuild";
 import { surfaceClass, surfaceStyle, type Surface } from "../../lib/previewSurface";
 import Badge from "../ui/Badge";
 import SvgPreview from "../ui/SvgPreview";
 
 type IconCardProps = {
   icon: IconItem;
+  purpose?: ProjectPurpose;
+  idPrefix?: string;
   selected: boolean;
   surface: Surface;
   appearance: IconAppearance;
@@ -20,7 +23,7 @@ type IconCardProps = {
   onOpen: () => void;
 };
 
-export default function IconCard({ icon, selected, surface, appearance, canDrag, dragIds, onToggle, onOpen }: IconCardProps) {
+export default function IconCard({ icon, purpose = "font", idPrefix = "", selected, surface, appearance, canDrag, dragIds, onToggle, onOpen }: IconCardProps) {
   const warnings = iconWarnings(icon);
   return (
     <li
@@ -44,7 +47,7 @@ export default function IconCard({ icon, selected, surface, appearance, canDrag,
       </button>
       {/* Outside the button, so its visible text is just the name and matches its accessible name ("Open <name>"). */}
       <div className="flex flex-col items-center gap-2 px-3 pb-3 text-center">
-        <span className="font-mono text-xs text-muted-foreground">{icon.codepoint ? `U+${icon.codepoint}` : "No codepoint"}</span>
+        <span className="font-mono text-xs text-muted-foreground">{purpose === "sprite" ? symbolId(idPrefix, icon.slug) : icon.codepoint ? `U+${icon.codepoint}` : "No codepoint"}</span>
         {warnings.length > 0 && (
           <span className="flex flex-wrap justify-center gap-1" title="These will not convert cleanly to an icon font.">
             {warnings.map((warning) => (

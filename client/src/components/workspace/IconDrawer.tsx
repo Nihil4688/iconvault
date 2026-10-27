@@ -2,7 +2,7 @@
 import { Copy, Download, Sparkles, Trash2 } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { deleteIcon, downloadIcon, getIcon, optimizeIcon, restoreIcon, restoreVersion, updateIcon } from "../../api/icons";
-import type { FolderWithCount, IconDetail } from "../../api/types";
+import type { FolderWithCount, IconDetail, ProjectPurpose } from "../../api/types";
 import { useToast } from "../../context/ToastContext";
 import { useIconAppearance } from "../../hooks/useIconAppearance";
 import { useResource } from "../../hooks/useResource";
@@ -32,6 +32,7 @@ type IconDrawerProps = {
   folders: FolderWithCount[];
   // Used to show the icon's id as it will appear in a sprite or font, for example "feather-arrow-left".
   idPrefix: string;
+  purpose?: ProjectPurpose;
   onClose: () => void;
   // Something changed (edit, optimize, restore, trash): refresh the lists behind the drawer.
   onChanged: () => void;
@@ -72,7 +73,7 @@ function DrawerBody({ iconId, onClose, ...rest }: Omit<IconDrawerProps, "iconId"
 
 type PanelProps = Omit<IconDrawerProps, "iconId"> & { icon: IconDetail; tab: Tab; onTab: (tab: Tab) => void; reload: () => void };
 
-function IconPanel({ projectId, icon, tab, onTab, reload, canEdit, folders, idPrefix, onClose, onChanged }: PanelProps) {
+function IconPanel({ projectId, icon, tab, onTab, reload, canEdit, folders, idPrefix, purpose = "font", onClose, onChanged }: PanelProps) {
   const { showToast } = useToast();
   const [surface] = usePersistentChoice(projectId ?? "unknown", "iconSurface", SURFACES, "theme");
   const [appearance] = useIconAppearance(projectId ?? "unknown");
@@ -182,7 +183,7 @@ function IconPanel({ projectId, icon, tab, onTab, reload, canEdit, folders, idPr
           { value: "versions", label: `Versions (${icon.versions.length})` },
         ]}
       >
-        {tab === "details" && <DetailsTab icon={icon} canEdit={canEdit} folders={folders} saved={saved} onSaved={() => { reload(); onChanged(); }} />}
+        {tab === "details" && <DetailsTab icon={icon} canEdit={canEdit} folders={folders} purpose={purpose} saved={saved} onSaved={() => { reload(); onChanged(); }} />}
         {tab === "code" && <CodeTab icon={icon} canEdit={canEdit} onSaved={() => { reload(); onChanged(); }} />}
         {tab === "versions" && (
           <VersionsTab
@@ -199,7 +200,7 @@ function IconPanel({ projectId, icon, tab, onTab, reload, canEdit, folders, idPr
   );
 }
 
-function DetailsTab({ icon, canEdit, folders, saved, onSaved }: { icon: IconDetail; canEdit: boolean; folders: FolderWithCount[]; saved: number; onSaved: () => void }) {
+function DetailsTab({ icon, canEdit, folders, purpose, saved, onSaved }: { icon: IconDetail; canEdit: boolean; folders: FolderWithCount[]; purpose: ProjectPurpose; saved: number; onSaved: () => void }) {
   const { showToast } = useToast();
   const [name, setName] = useState(icon.name);
   const [folderId, setFolderId] = useState(icon.folderId ?? "");
@@ -208,13 +209,13 @@ function DetailsTab({ icon, canEdit, folders, saved, onSaved }: { icon: IconDeta
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const options = flattenFolderTree(buildFolderTree(folders));
-  const problem = codepointProblem(codepoint);
+  const problem = purpose === "font" ? codepointProblem(codepoint) : null;
 
   const patch = {
     ...(name.trim() !== icon.name ? { name: name.trim() } : {}),
     ...((folderId || null) !== icon.folderId ? { folderId: folderId || null } : {}),
     ...(parseTags(tagText).join(",") !== icon.tags.join(",") ? { tags: parseTags(tagText) } : {}),
-    ...((codepoint.trim().toUpperCase() || null) !== icon.codepoint ? { codepoint: codepoint.trim().toUpperCase() || null } : {}),
+    ...(purpose === "font" && (codepoint.trim().toUpperCase() || null) !== icon.codepoint ? { codepoint: codepoint.trim().toUpperCase() || null } : {}),
   };
   const changed = Object.keys(patch).length > 0;
 
@@ -252,7 +253,7 @@ function DetailsTab({ icon, canEdit, folders, saved, onSaved }: { icon: IconDeta
             ))}
           </SelectField>
           <TextField label="Tags" value={tagText} autoComplete="off" hint="Separated by commas." onChange={(event) => setTagText(event.target.value)} />
-          <TextField label="Font codepoint" value={codepoint} autoComplete="off" spellCheck={false} maxLength={4} className="font-mono" hint="Optional: 4 hex digits from E000 to F8FF, for example E001. Kept the same every time a font is built." error={problem ?? undefined} onChange={(event) => setCodepoint(event.target.value)} />
+          {purpose === "font" && <TextField label="Font codepoint" value={codepoint} autoComplete="off" spellCheck={false} maxLength={4} className="font-mono" hint="Optional: 4 hex digits from E000 to F8FF, for example E001. Kept the same every time a font is built." error={problem ?? undefined} onChange={(event) => setCodepoint(event.target.value)} />}
           {error && (
             <p role="alert" className="text-sm font-medium text-destructive">
               {error}
@@ -268,8 +269,7 @@ function DetailsTab({ icon, canEdit, folders, saved, onSaved }: { icon: IconDeta
           <dd>{folderPath(folders, icon.folderId)}</dd>
           <dt className="text-muted-foreground">Tags</dt>
           <dd>{icon.tags.length > 0 ? icon.tags.join(", ") : "None"}</dd>
-          <dt className="text-muted-foreground">Font codepoint</dt>
-          <dd className="font-mono">{icon.codepoint ?? "Not set"}</dd>
+          {purpose === "font" && <><dt className="text-muted-foreground">Font codepoint</dt><dd className="font-mono">{icon.codepoint ?? "Not set"}</dd></>}
         </dl>
       )}
 

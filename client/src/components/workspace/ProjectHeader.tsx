@@ -23,17 +23,17 @@ export default function ProjectHeader({ project, actionsRef }: { project: Projec
   const crumbSlot = useContext(HeaderSlotContext);
   // The breadcrumb lives in the top bar; without one (no bar around this screen) it is shown here.
   const breadcrumb = (
-      <nav aria-label="Breadcrumb" className="flex min-w-0 justify-center">
-        <ol className="inline-flex max-w-full items-center gap-2 rounded-xl border border-border bg-card px-4 py-1.5 text-sm">
-          <li className="hidden sm:block">
+      <nav aria-label="Breadcrumb" className="flex w-full min-w-0 justify-center">
+        <ol className="flex w-fit max-w-full min-w-0 items-center gap-2 overflow-hidden rounded-xl border border-border bg-card px-4 py-1.5 text-sm">
+          <li className="hidden shrink-0 sm:block">
             <Link to="/" className="rounded-sm text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
               Dashboard
             </Link>
           </li>
-          <li aria-hidden="true" className="hidden text-muted-foreground sm:block">
+          <li aria-hidden="true" className="hidden shrink-0 text-muted-foreground sm:block">
             /
           </li>
-          <li aria-current="page" className="min-w-0 truncate font-semibold">
+          <li aria-current="page" title={project.name} className="min-w-0 flex-1 truncate font-semibold">
             {project.name}
           </li>
         </ol>
@@ -47,7 +47,7 @@ export default function ProjectHeader({ project, actionsRef }: { project: Projec
       <div className="flex flex-wrap items-center gap-x-5 gap-y-3  py-3 px-4 lg:grid lg:grid-cols-[1fr_auto_1fr]">
         <div className="flex min-w-0 items-center gap-3">
           <ProjectAvatar name={project.name} color={project.color} />
-          <h1 title={project.name} className="min-w-0 truncate text-base font-bold leading-6 tracking-tight">{project.name}</h1>
+          <h1 title={project.name} className="max-w-26 truncate text-base font-bold leading-6 tracking-tight">{project.name}</h1>
           <div className="flex shrink-0 flex-nowrap items-center gap-1.5 whitespace-nowrap">
             <VisibilityBadge visibility={project.visibility} />
             <PurposeBadge purpose={project.purpose} long />
@@ -69,13 +69,18 @@ export default function ProjectHeader({ project, actionsRef }: { project: Projec
             <Trash2 aria-hidden="true" className="h-4 w-4" />
             Trash
           </NavLink>
-          <NavLink to={`/projects/${project.id}/settings`} className={pillClass}>
-            <Settings aria-hidden="true" className="h-4 w-4" />
-            Project Settings
-          </NavLink>
         </nav>
 
-        <div ref={actionsRef} className="ml-auto flex flex-wrap items-center justify-end gap-2 empty:hidden lg:ml-0" />
+        <div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-2 lg:ml-0">
+          <NavLink
+            to={`/projects/${project.id}/settings`}
+            aria-label="Project Settings"
+            className={({ isActive }) => cn(pillClass({ isActive }), "h-9 w-9 justify-center border border-border px-0")}
+          >
+            <Settings aria-hidden="true" className="h-5 w-5" />
+          </NavLink>
+          <div ref={actionsRef} className="flex flex-wrap items-center justify-end gap-2 empty:hidden" />
+        </div>
       </div>
 
       {project.isArchived && (
