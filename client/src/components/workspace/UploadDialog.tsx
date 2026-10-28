@@ -1,43 +1,50 @@
-// Add icons to a project: upload SVG files and ZIP archives (large selections are sent in batches, and a ZIP's folders are recreated), or paste SVG code. Options: which folder, what to do when a name is taken, whether to optimize, and tags. After an upload the full result is shown, including every file that could not be added and why.
+// Add icons in one dialog: upload SVGs, sprites, ZIPs, METROP projects, and fonts; paste SVG code or copy from another project.
 import { CheckCircle2, FileUp, X } from "lucide-react";
 import { useRef, useState, type DragEvent, type FormEvent } from "react";
+import { importFont } from "../../api/fonts";
 import { pasteIcon, uploadIcons } from "../../api/icons";
-import type { DuplicateStrategy, FolderWithCount, PasteResult, UploadSummary } from "../../api/types";
+import type { DuplicateStrategy, FolderWithCount, FontImportPreview, FontImportResult, PasteResult, UploadSummary } from "../../api/types";
 import { cn } from "../../lib/cn";
 import { buildFolderTree, flattenFolderTree } from "../../lib/folderTree";
 import { formatBytes, pluralize } from "../../lib/format";
-import { checkFiles, mergeSummaries, parseTags, toBatches } from "../../lib/upload";
+import { metropToFiles } from "../../lib/metrop";
+import { readFileText } from "../../lib/readFile";
+import { spriteToFiles } from "../../lib/spriteBuild";
+import { checkFiles, isIconFont, isMetrop, isSvgOrZip, mergeSummaries, parseTags, toBatches } from "../../lib/upload";
 import { Button, IconButton } from "../ui/Button";
 import Dialog from "../ui/Dialog";
 import DialogFooter from "../ui/DialogFooter";
 import { TextAreaField, TextField, SelectField } from "../ui/Fields";
 import Tabs from "../ui/Tabs";
+import { CopyFromProjectForm } from "./CopyFromProjectDialog";
 
 type UploadDialogProps = {
   open: boolean;
   projectId: string;
+  prefix: string;
   folders: FolderWithCount[];
   // The folder to start with (the one currently open), or null for the project root.
   defaultFolderId: string | null;
   onClose: () => void;
   // Called as soon as something was added, so the lists can refresh behind the dialog.
   onUploaded: (summary: UploadSummary) => void;
+  onCopied?: (summary: UploadSummary) => void;
   onPasted: (result: PasteResult) => void;
   // Which tab to show first.
-  initialTab?: "files" | "paste";
+  initialTab?: "files" | "paste" | "copy";
 };
 
 export default function UploadDialog({ open, onClose, ...rest }: UploadDialogProps) {
   return (
-    <Dialog open={open} onClose={onClose} title="Add icons" description="Upload SVG files or ZIP archives, or paste SVG code." size="lg">
+    <Dialog open={open} onClose={onClose} title="Add icons" description="Upload icons, paste SVG code, or copy icons from another project." size="lg">
       <UploadForm onClose={onClose} {...rest} />
     </Dialog>
   );
 }
 
-type Tab = "files" | "paste";
+type Tab = "files" | "paste" | "copy";
 
-function UploadForm({ projectId, folders, defaultFolderId, onClose, onUploaded, onPasted, initialTab = "files" }: Omit<UploadDialogProps, "open">) {
+function UploadForm({ projectId, prefix, folders, defaultFolderId, onClose, onUploaded, onCopied, onPasted, initialTab = "files" }: Omit<UploadDialogProps, "open">) {
   const [tab, setTab] = useState<Tab>(initialTab);
   const [files, setFiles] = useState<File[]>([]);
   const [problems, setProblems] = useState<{ file: string; message: string }[]>([]);
@@ -69,17 +76,50 @@ function UploadForm({ projectId, folders, defaultFolderId, onClose, onUploaded, 
     addFiles(Array.from(event.dataTransfer.files));
   }
 
-  async function uploadFiles(event: FormEvent) {
-    event.preventDefault();
-    if (files.length === 0) return;
+  function isFontImportResult(result: FontImportPreview | FontImportResult): result is FontImportResult {
+    return "created" in result;
+  }
+
+  async function processFiles(selected: File[]) {
+    if (selected.length === 0) return;
     setBusy(true);
     setError(null);
-    const batches = toBatches(files);
     const results: UploadSummary[] = [];
     try {
+      const prepared: { font: File | null; files: File[] }[] = [];
+      for (const batch of toBatches(selected, 10)) {
+        prepared.push(...await Promise.all(batch.map(async (file) => {
+          if (isIconFont(file)) return { font: file, files: [] };
+          if (isMetrop(file)) return { font: null, files: metropToFiles(await readFileText(file)) };
+          if (isSvgOrZip(file) && /\.svg$/i.test(file.name)) {
+            const text = await readFileText(file);
+            if (!/<symbol(?:\s|>)/i.test(text)) return { font: null, files: [file] };
+            const sprite = spriteToFiles(text, prefix);
+            return { font: null, files: sprite?.files ?? [file] };
+          }
+          return { font: null, files: [file] };
+        })));
+      }
+      const uploadable = prepared.flatMap((item) => item.files);
+      const fonts = prepared.flatMap((item) => item.font ? [item.font] : []);
+
+      const batches = toBatches(uploadable);
       for (const [index, batch] of batches.entries()) {
         setProgress({ done: index, total: batches.length });
         results.push(await uploadIcons(projectId, batch, { folderId: folderId || null, strategy, optimize, tags: parseTags(tagText) }));
+      }
+      for (const font of fonts) {
+        const preview = await importFont(projectId, font, null, { dryRun: true, privateUseOnly: true });
+        if (isFontImportResult(preview)) throw new Error("The font import preview could not be loaded.");
+        const imported = await importFont(projectId, font, null, { folderId: folderId || null, strategy, optimize, privateUseOnly: true });
+        if (!isFontImportResult(imported)) throw new Error("The font import did not return a result.");
+        results.push({
+          created: imported.created,
+          replaced: imported.replaced,
+          skipped: imported.skipped,
+          errors: imported.errors,
+          foldersCreated: 0,
+        });
       }
       const merged = mergeSummaries(results);
       setSummary(merged);
@@ -97,6 +137,11 @@ function UploadForm({ projectId, folders, defaultFolderId, onClose, onUploaded, 
       setBusy(false);
       setProgress(null);
     }
+  }
+
+  async function uploadFiles(event: FormEvent) {
+    event.preventDefault();
+    await processFiles(files);
   }
 
   async function pasteCodeSubmit(event: FormEvent) {
@@ -214,6 +259,7 @@ function UploadForm({ projectId, folders, defaultFolderId, onClose, onUploaded, 
       tabs={[
         { value: "files", label: "Upload files" },
         { value: "paste", label: "Paste SVG code" },
+        { value: "copy", label: "From Another Project" },
       ]}
     >
       {tab === "files" ? (
@@ -228,12 +274,12 @@ function UploadForm({ projectId, folders, defaultFolderId, onClose, onUploaded, 
             className={cn("flex flex-col items-center gap-2 rounded-xl border-2 border-dashed border-input p-6 text-center", dragging && "border-primary bg-primary/5")}
           >
             <FileUp aria-hidden="true" className="h-8 w-8 text-muted-foreground" />
-            <p className="text-sm font-medium">Drag SVG files and ZIP archives here</p>
+            <p className="text-sm font-medium">Drag SVG files, sprites, ZIP archives, METROP projects, or icon fonts here</p>
             <input
               ref={inputRef}
               type="file"
               multiple
-              accept=".svg,.zip,image/svg+xml,application/zip"
+              accept=".svg,.zip,.metrop,.ttf,.otf,.woff,.woff2,image/svg+xml,application/zip,font/*"
               className="sr-only"
               tabIndex={-1}
               aria-label="Choose files"
@@ -246,7 +292,7 @@ function UploadForm({ projectId, folders, defaultFolderId, onClose, onUploaded, 
             <Button size="sm" onClick={() => inputRef.current?.click()}>
               Choose files
             </Button>
-            <p className="text-xs text-muted-foreground">Up to 25 MB per file. A ZIP can hold up to 500 SVGs.</p>
+            <p className="text-xs text-muted-foreground">SVG sprites are extracted automatically. METROP projects are converted to SVG icons. Fonts supported: TTF, OTF, WOFF, WOFF2. Up to 25 MB per file.</p>
           </div>
 
           {problems.length > 0 && (
@@ -289,7 +335,7 @@ function UploadForm({ projectId, folders, defaultFolderId, onClose, onUploaded, 
             </Button>
           </DialogFooter>
         </form>
-      ) : (
+      ) : tab === "paste" ? (
         <form onSubmit={pasteCodeSubmit} noValidate>
           <div className="space-y-3">
             <TextField label="Name" value={pasteName} placeholder="Pasted icon" maxLength={100} autoComplete="off" onChange={(event) => setPasteName(event.target.value)} />
@@ -311,8 +357,15 @@ function UploadForm({ projectId, folders, defaultFolderId, onClose, onUploaded, 
             </Button>
           </DialogFooter>
         </form>
+      ) : (
+        <CopyFromProjectForm
+          targetProjectId={projectId}
+          targetFolders={folders}
+          defaultFolderId={defaultFolderId}
+          onClose={onClose}
+          onCopied={onCopied ?? onUploaded}
+        />
       )}
     </Tabs>
   );
 }
-

@@ -910,6 +910,12 @@ The visible name is now **IconVault**: the header, browser tab title, landing pa
 
 ## Known issues
 - `server/.env` holds the database password and session secret in plain text. `SVG-sprite-react-db-fixed.zip` (in `compiler project/`) contains an older `.env` with the previous credentials; do not share it. (The zip has since been moved to `astro tool/`, together with an extracted copy that also holds that `.env`.)
+
+## 2026-10-28: Unified icon adding flow
+
+- The Icons page now has one Upload icons button that opens a single Add icons dialog. Uploads accept SVGs, ZIPs, SVG sprites, and TTF/OTF/WOFF/WOFF2 fonts; sprites are extracted automatically from uploaded SVGs.
+- Paste SVG code and copy from another project are available as tabs in the same dialog. Sprite files and icon fonts are imported from Upload files.
+- Validation: focused client upload, import, copy, and accessibility tests; client type check.
 - Folder `server/package.json` scripts `backfill:owner`, `backfill:version-updated-at` and `cleanup:orphans` point to files that do not exist; the zip has the corrected names. **Resolved in Phase 0 (`63eb4c8`).**
 - `server/src/config/db.ts` throws at import when `MONGODB_URI` is missing (crashes instead of starting without a DB). The zip has a fix. **Resolved in Phase 0 (`63eb4c8`).**
 - `GET /api/sprites/:name` looks up bundles across all users although names are unique per owner, so a duplicate name can return 403 or another user's bundle (`server/src/routes/spriteRoutes.ts`). **Resolved in Phase 5: the route and the whole old library were removed.**

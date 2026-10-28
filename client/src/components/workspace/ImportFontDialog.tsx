@@ -23,7 +23,7 @@ type ImportFontDialogProps = {
 export default function ImportFontDialog({ open, onClose, ...rest }: ImportFontDialogProps) {
   return (
     <Dialog open={open} onClose={onClose} title="Import a font" description="Turn the glyphs of an existing icon font into icons in this project." size="lg">
-      <ImportForm onClose={onClose} {...rest} />
+      <ImportFontForm onClose={onClose} {...rest} />
     </Dialog>
   );
 }
@@ -32,7 +32,7 @@ function isFinal(result: FontImportPreview | FontImportResult): result is FontIm
   return !result.dryRun;
 }
 
-function ImportForm({ projectId, folders, defaultFolderId, onClose, onImported }: Omit<ImportFontDialogProps, "open">) {
+export function ImportFontForm({ projectId, folders, defaultFolderId, onClose, onImported }: Omit<ImportFontDialogProps, "open">) {
   const [font, setFont] = useState<File | null>(null);
   const [mapping, setMapping] = useState<File | null>(null);
   const [folderId, setFolderId] = useState(defaultFolderId ?? "");

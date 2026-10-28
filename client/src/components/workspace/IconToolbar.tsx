@@ -1,12 +1,11 @@
 // Controls above the icon list: the preview size / colour / style, sort (an icon with a menu), a More menu (preview background) and grid or list view in one row, with search first, the "select all" checkbox  and (for editors) the Upload icons menu, which can be placed into the project header.
-import { ArrowUpDown, Box, Copy, Eye, LayoutGrid, List, Minus, Plus, Search, Square } from "lucide-react";
+import { ArrowUpDown, Box, Eye, LayoutGrid, List, Minus, Plus, Search, Square } from "lucide-react";
 import { createPortal } from "react-dom";
 import { cn } from "../../lib/cn";
 import { ICON_COLORS, ICON_STYLES, ICON_STYLE_HINTS, ICON_STYLE_LABELS, MAX_ICON_SIZE, MIN_ICON_SIZE, clampIconSize, type IconAppearance, type IconStyle } from "../../lib/iconAppearance";
 import type { Surface } from "../../lib/previewSurface";
-import { Button } from "../ui/Button";
 import MoreMenu from "./MoreMenu";
-import UploadMenu, { type UploadKind } from "./UploadMenu";
+import UploadButton from "./UploadButton";
 
 export type IconSort = "newest" | "oldest" | "name" | "name-desc" | "largest";
 export type IconView = "grid" | "list";
@@ -22,10 +21,10 @@ type IconToolbarProps = {
   onSurface: (surface: Surface) => void;
   appearance: IconAppearance;
   onAppearance: (change: Partial<IconAppearance>) => void;
-  // When set, the Upload icons and From Another Project buttons are placed there (the project header) instead of in this toolbar.
+  // When set, the Upload icons button is placed in the project header instead of in this toolbar.
   actionsHost?: HTMLElement | null;
   canAdd: boolean;
-  onUpload: (kind: UploadKind) => void;
+  onUpload: () => void;
 };
 
 const SORT_LABELS: Record<IconSort, string> = { newest: "Newest", oldest: "Oldest", name: "Name A–Z", "name-desc": "Name Z–A", largest: "Largest" };
@@ -36,10 +35,7 @@ export default function IconToolbar({ search, onSearch, sort, onSort, view, onVi
 
   const actions = (
     <div className="flex flex-wrap items-center gap-2">
-      <UploadMenu onSelect={onUpload} />
-      <Button size="sm" className="h-9" icon={<Copy aria-hidden="true" className="h-4 w-4" />} onClick={() => onUpload("copy")}>
-        From Another Project
-      </Button>
+      <UploadButton onClick={onUpload} />
     </div>
   );
   const swatch = "h-5 w-5 rounded-full border border-border focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring";

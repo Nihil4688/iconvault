@@ -1,4 +1,4 @@
-// Rules for adding icons from files: which files are accepted, how a big selection is split into several requests, how the results of those requests are combined, and how a tag list typed by the user is read.
+// Rules for adding icons from files: accepted SVG, ZIP, and font formats; request batching; result merging; and parsing a tag list.
 import type { UploadSummary } from "../api/types";
 
 // The server accepts 200 files and 25 MB per file in one request; batches stay well inside that.
@@ -11,6 +11,14 @@ export function isSvgOrZip(file: { name: string }): boolean {
   return /\.(svg|zip)$/i.test(file.name);
 }
 
+export function isMetrop(file: { name: string }): boolean {
+  return /\.metrop$/i.test(file.name);
+}
+
+export function isIconFont(file: { name: string }): boolean {
+  return /\.(ttf|otf|woff2?)$/i.test(file.name);
+}
+
 // Splits chosen files into the ones to upload and the ones to report back to the user.
 export function checkFiles(files: File[]): { accepted: File[]; problems: FileProblem[] } {
   const accepted: File[] = [];
@@ -20,7 +28,7 @@ export function checkFiles(files: File[]): { accepted: File[]; problems: FilePro
     const key = `${file.name}:${file.size}:${file.lastModified}`;
     if (seen.has(key)) continue; // the same file chosen twice
     seen.add(key);
-    if (!isSvgOrZip(file)) problems.push({ file: file.name, message: "Only .svg and .zip files can be added." });
+    if (!isSvgOrZip(file) && !isMetrop(file) && !isIconFont(file)) problems.push({ file: file.name, message: "Only .svg, .zip, .metrop, .ttf, .otf, .woff, and .woff2 files can be added." });
     else if (file.size > MAX_FILE_BYTES) problems.push({ file: file.name, message: "Larger than 25 MB." });
     else if (file.size === 0) problems.push({ file: file.name, message: "The file is empty." });
     else accepted.push(file);

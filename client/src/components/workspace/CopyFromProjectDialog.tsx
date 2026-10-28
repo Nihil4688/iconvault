@@ -14,7 +14,7 @@ import DialogFooter from "../ui/DialogFooter";
 import { SelectField } from "../ui/Fields";
 import SvgPreview from "../ui/SvgPreview";
 
-type CopyFromProjectDialogProps = {
+export type CopyFromProjectDialogProps = {
   open: boolean;
   targetProjectId: string;
   targetFolders: FolderWithCount[];
@@ -26,12 +26,12 @@ type CopyFromProjectDialogProps = {
 export default function CopyFromProjectDialog({ open, onClose, ...rest }: CopyFromProjectDialogProps) {
   return (
     <Dialog open={open} onClose={onClose} title="Copy from another project" description="Pick icons from one of your projects or a public project." size="lg">
-      <CopyForm onClose={onClose} {...rest} />
+      <CopyFromProjectForm onClose={onClose} {...rest} />
     </Dialog>
   );
 }
 
-function CopyForm({ targetProjectId, targetFolders, defaultFolderId, onClose, onCopied }: Omit<CopyFromProjectDialogProps, "open">) {
+export function CopyFromProjectForm({ targetProjectId, targetFolders, defaultFolderId, onClose, onCopied }: Omit<CopyFromProjectDialogProps, "open">) {
   const projects = useResource("copy-sources", () => listProjects({ scope: "all", status: "active", limit: 100 }));
   const sources = (projects.data?.projects ?? []).filter((p) => p.id !== targetProjectId);
 
@@ -192,4 +192,3 @@ function CopyForm({ targetProjectId, targetFolders, defaultFolderId, onClose, on
     </form>
   );
 }
-

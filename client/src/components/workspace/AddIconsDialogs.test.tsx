@@ -3,18 +3,23 @@ import { fireEvent, render, screen, waitFor, within } from "@testing-library/rea
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "../../api/http";
+import * as fontsApi from "../../api/fonts";
 import * as iconsApi from "../../api/icons";
 import * as projectsApi from "../../api/projects";
-import type { UploadSummary } from "../../api/types";
+import type { FontImportPreview, FontImportResult, UploadSummary } from "../../api/types";
+import { readFileText } from "../../lib/readFile";
+import { buildSprite } from "../../lib/spriteBuild";
 import { READ_ONLY, makeFolder, makeIcon, makeProject } from "../../test/fixtures";
 import CopyFromProjectDialog from "./CopyFromProjectDialog";
 import UploadDialog from "./UploadDialog";
 
 vi.mock("../../api/icons");
+vi.mock("../../api/fonts");
 vi.mock("../../api/projects");
 
 const uploadIcons = vi.mocked(iconsApi.uploadIcons);
 const pasteIcon = vi.mocked(iconsApi.pasteIcon);
+const importFont = vi.mocked(fontsApi.importFont);
 
 const summary = (over: Partial<UploadSummary> = {}): UploadSummary => ({ created: [], replaced: [], skipped: [], errors: [], foldersCreated: 0, ...over });
 const svgFile = (name: string, text = "<svg/>") => new File([text], name, { type: "image/svg+xml", lastModified: Math.random() });
@@ -25,7 +30,7 @@ beforeEach(() => vi.resetAllMocks());
 
 describe("UploadDialog: files", () => {
   function setup(over: Partial<React.ComponentProps<typeof UploadDialog>> = {}) {
-    const props = { open: true, projectId: "p1", folders, defaultFolderId: null, onClose: vi.fn(), onUploaded: vi.fn(), onPasted: vi.fn(), ...over };
+    const props = { open: true, projectId: "p1", prefix: "fth", folders, defaultFolderId: null, onClose: vi.fn(), onUploaded: vi.fn(), onCopied: vi.fn(), onPasted: vi.fn(), ...over };
     render(<UploadDialog {...props} />);
     return props;
   }
@@ -38,13 +43,84 @@ describe("UploadDialog: files", () => {
     expect(screen.getByRole("button", { name: "Add files" })).toBeDisabled();
   });
 
+  it("keeps every add flow in tabs inside the Add icons dialog", async () => {
+    vi.mocked(projectsApi.listProjects).mockResolvedValue({ projects: [makeProject({ id: "p1" }), makeProject({ id: "s1", name: "Feather" })], total: 2, page: 1, limit: 100 });
+    vi.mocked(iconsApi.listIcons).mockResolvedValue({ icons: [makeIcon({ id: "source-icon", name: "Arrow" })], total: 1, page: 1, limit: 200 });
+    setup();
+
+    for (const tab of ["Paste SVG code", "From Another Project"]) {
+      await userEvent.click(screen.getByRole("tab", { name: tab }));
+      expect(screen.getByRole("dialog", { name: "Add icons" })).toBeInTheDocument();
+      expect(screen.queryByRole("dialog", { name: "Import a sprite" })).not.toBeInTheDocument();
+      expect(screen.queryByRole("dialog", { name: "Import a font" })).not.toBeInTheDocument();
+    }
+
+    expect(screen.queryByRole("tab", { name: "Import Icon Font" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: "Import SVG Sprite" })).not.toBeInTheDocument();
+    expect(await screen.findByLabelText("Copy from")).toBeInTheDocument();
+    expect(await screen.findByRole("checkbox", { name: "Arrow" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("tab", { name: "Upload files" }));
+    expect((screen.getByTestId("file-input") as HTMLInputElement).accept).toContain(".ttf");
+  });
+
+  it("copies selected icons through the integrated project tab", async () => {
+    vi.mocked(projectsApi.listProjects).mockResolvedValue({ projects: [makeProject({ id: "p1" }), makeProject({ id: "s1", name: "Feather" })], total: 2, page: 1, limit: 100 });
+    vi.mocked(iconsApi.listIcons).mockResolvedValue({ icons: [makeIcon({ id: "source-icon", name: "Arrow" })], total: 1, page: 1, limit: 200 });
+    vi.mocked(iconsApi.copyIcons).mockResolvedValue(summary({ created: [makeIcon({ name: "Arrow" })] }));
+    const props = setup({ initialTab: "copy" });
+
+    await userEvent.click(await screen.findByRole("checkbox", { name: "Arrow" }));
+    await userEvent.click(screen.getByRole("button", { name: "Copy 1 icon" }));
+
+    expect(iconsApi.copyIcons).toHaveBeenCalledWith("p1", { sourceProjectId: "s1", iconIds: ["source-icon"], folderId: null, strategy: "rename" });
+    await waitFor(() => expect(props.onCopied).toHaveBeenCalledWith(expect.objectContaining({ created: expect.any(Array) })));
+    expect(props.onClose).toHaveBeenCalled();
+  });
+
+  it("accepts SVG sprites and icon fonts in the upload file picker and imports both", async () => {
+    const spriteXml = buildSprite([{ name: "Home", slug: "home", svg: '<svg viewBox="0 0 24 24"><path d="M1 1"/></svg>' }], "fth").xml;
+    const preview: FontImportPreview = { dryRun: true, kind: "truetype", total: 1, importable: 1, truncated: false, limit: 2000, sample: [{ name: "star", codepoint: "E001" }] };
+    const imported: FontImportResult = { ...preview, dryRun: false, created: [makeIcon({ name: "Star" })], replaced: [], skipped: [], errors: [], codepointsKept: 1, codepointsDropped: 0 };
+    importFont.mockResolvedValueOnce(preview).mockResolvedValueOnce(imported);
+    uploadIcons.mockResolvedValue(summary({ created: [makeIcon({ name: "Home" })] }));
+    setup();
+
+    const input = screen.getByTestId("file-input") as HTMLInputElement;
+    expect(input.accept).toContain(".ttf");
+    await userEvent.upload(input, [
+      new File([spriteXml], "icons.svg", { type: "image/svg+xml" }),
+      new File(["font"], "icons.ttf", { type: "font/ttf" }),
+    ]);
+    await userEvent.click(screen.getByRole("button", { name: "Add 2 files" }));
+
+    expect(await screen.findByText("Added 2 icons.")).toBeInTheDocument();
+    expect(uploadIcons).toHaveBeenCalledWith("p1", [expect.objectContaining({ name: "home.svg" })], { folderId: null, strategy: "rename", optimize: true, tags: [] });
+    expect(importFont).toHaveBeenNthCalledWith(1, "p1", expect.objectContaining({ name: "icons.ttf" }), null, { dryRun: true, privateUseOnly: true });
+    expect(importFont).toHaveBeenNthCalledWith(2, "p1", expect.objectContaining({ name: "icons.ttf" }), null, { folderId: null, strategy: "rename", optimize: true, privateUseOnly: true });
+  });
+
+  it("converts uploaded METROP icon projects to SVGs for the normal upload flow", async () => {
+    uploadIcons.mockResolvedValue(summary({ created: [makeIcon(), makeIcon()] }));
+    setup();
+
+    const input = screen.getByTestId("file-input") as HTMLInputElement;
+    expect(input.accept).toContain(".metrop");
+    await userEvent.upload(input, new File(['<IconProject><Icon Name="Arrow Left" Data="M1 2L3 4z" /><Icon Name="Home" Data="M0 0L2 2z" /></IconProject>'], "icons.metrop"));
+    await userEvent.click(screen.getByRole("button", { name: "Add 1 file" }));
+
+    expect(await screen.findByText("Added 2 icons.")).toBeInTheDocument();
+    const uploadedFiles = uploadIcons.mock.calls[0][1] as File[];
+    expect(uploadedFiles.map((file) => file.name)).toEqual(["Arrow Left.svg", "Home.svg"]);
+    expect(await readFileText(uploadedFiles[0])).toContain('<path d="M1 2L3 4z"');
+  });
+
   it("lists chosen files, reports unsupported ones, and lets a file be removed", async () => {
     setup();
     // The picker normally hides other types, but files can also be dragged in, so the code must refuse them itself.
     await userEvent.setup({ applyAccept: false }).upload(input(), [svgFile("a.svg"), svgFile("b.svg"), new File(["x"], "notes.txt")]);
     const list = screen.getByRole("list", { name: "Files to add" });
     expect(within(list).getAllByRole("listitem")).toHaveLength(2);
-    expect(screen.getByRole("list", { name: "Files not accepted" })).toHaveTextContent("notes.txt: Only .svg and .zip files can be added.");
+    expect(screen.getByRole("list", { name: "Files not accepted" })).toHaveTextContent("notes.txt: Only .svg, .zip, .metrop, .ttf, .otf, .woff, and .woff2 files can be added.");
     expect(screen.getByRole("button", { name: "Add 2 files" })).toBeEnabled();
 
     await userEvent.click(screen.getByRole("button", { name: "Remove a.svg" }));
@@ -54,10 +130,19 @@ describe("UploadDialog: files", () => {
 
   it("accepts files dropped on the drop area", () => {
     setup();
-    const zone = screen.getByText("Drag SVG files and ZIP archives here").parentElement as HTMLElement;
+    const zone = screen.getByText("Drag SVG files, sprites, ZIP archives, METROP projects, or icon fonts here").parentElement as HTMLElement;
     fireEvent.dragOver(zone, { dataTransfer: { files: [] } });
     fireEvent.drop(zone, { dataTransfer: { files: [svgFile("dropped.svg")] } });
     expect(screen.getByText("dropped.svg")).toBeInTheDocument();
+  });
+
+  it("accepts dropped sprite and icon-font files", () => {
+    setup();
+    const zone = screen.getByText("Drag SVG files, sprites, ZIP archives, METROP projects, or icon fonts here").parentElement as HTMLElement;
+    fireEvent.drop(zone, { dataTransfer: { files: [svgFile("sprite.svg"), new File(["font"], "icons.woff2")] } });
+    expect(screen.getByText("sprite.svg")).toBeInTheDocument();
+    expect(screen.getByText("icons.woff2")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add 2 files" })).toBeEnabled();
   });
 
   it("uploads with the chosen options and then shows the result", async () => {
@@ -70,6 +155,7 @@ describe("UploadDialog: files", () => {
     await userEvent.type(screen.getByLabelText("Tags"), "UI, Nav");
     await userEvent.click(screen.getByRole("button", { name: "Add 2 files" }));
 
+    expect(await screen.findByText("Added 2 icons.")).toBeInTheDocument();
     expect(uploadIcons).toHaveBeenCalledTimes(1);
     const [projectId, sent, options] = uploadIcons.mock.calls[0] as [string, File[], object];
     expect(projectId).toBe("p1");
@@ -110,7 +196,7 @@ describe("UploadDialog: files", () => {
   it("sends a large selection in batches of 100 and combines the results", async () => {
     uploadIcons.mockImplementation(async (_id, files) => summary({ created: files.map((f) => makeIcon({ name: f.name })), foldersCreated: 1 }));
     const props = setup();
-    await userEvent.upload(input(), Array.from({ length: 250 }, (_, i) => svgFile(`i${i}.svg`)));
+    await userEvent.upload(input(), Array.from({ length: 250 }, (_, i) => new File(["zip"], `pack${i}.zip`)));
     await userEvent.click(screen.getByRole("button", { name: "Add 250 files" }));
     expect(await screen.findByText("Added 250 icons.")).toBeInTheDocument();
     expect(uploadIcons.mock.calls.map((call) => (call[1] as File[]).length)).toEqual([100, 100, 50]);
@@ -121,7 +207,7 @@ describe("UploadDialog: files", () => {
   it("keeps what was uploaded and says what was not when a later batch fails", async () => {
     uploadIcons.mockResolvedValueOnce(summary({ created: Array.from({ length: 100 }, () => makeIcon()) })).mockRejectedValue(new ApiError("The server answered 500.", 500));
     const props = setup();
-    await userEvent.upload(input(), Array.from({ length: 150 }, (_, i) => svgFile(`i${i}.svg`)));
+    await userEvent.upload(input(), Array.from({ length: 150 }, (_, i) => new File(["zip"], `pack${i}.zip`)));
     await userEvent.click(screen.getByRole("button", { name: "Add 150 files" }));
     expect(await screen.findByText("Added 100 icons.")).toBeInTheDocument();
     expect(screen.getByText("The rest of the files")).toBeInTheDocument();
@@ -144,7 +230,7 @@ describe("UploadDialog: files", () => {
 
 describe("UploadDialog: paste", () => {
   async function openPaste(over: Partial<React.ComponentProps<typeof UploadDialog>> = {}) {
-    const props = { open: true, projectId: "p1", folders, defaultFolderId: "ar", onClose: vi.fn(), onUploaded: vi.fn(), onPasted: vi.fn(), ...over };
+    const props = { open: true, projectId: "p1", prefix: "fth", folders, defaultFolderId: "ar", onClose: vi.fn(), onUploaded: vi.fn(), onPasted: vi.fn(), ...over };
     render(<UploadDialog {...props} />);
     await userEvent.click(screen.getByRole("tab", { name: "Paste SVG code" }));
     return props;

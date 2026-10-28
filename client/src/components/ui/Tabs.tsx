@@ -31,7 +31,7 @@ export default function Tabs<T extends string>({ label, value, onChange, tabs, c
 
   return (
     <div>
-      <div role="tablist" aria-label={label} onKeyDown={onKeyDown} className="flex gap-1 border-b border-border">
+      <div role="tablist" aria-label={label} onKeyDown={onKeyDown} className="flex flex-wrap gap-1 border-b border-border">
         {tabs.map((tab) => (
           <button
             key={tab.value}
