@@ -6,6 +6,7 @@ import "dotenv/config";
 import mongoose from "mongoose";
 import { createApp } from "../../src/app.js";
 import { signSession } from "../../src/lib/session.js";
+import ActivityLog from "../../src/models/ActivityLog.js";
 import ApiToken from "../../src/models/ApiToken.js";
 import Folder from "../../src/models/Folder.js";
 import Icon from "../../src/models/Icon.js";
@@ -28,7 +29,7 @@ export async function startHarness() {
   // These suites make thousands of requests from one address; the limiter has its own tests.
   process.env.RATE_LIMIT_DISABLED = "1";
   await mongoose.connect(uri, { dbName, serverSelectionTimeoutMS: 15000 });
-  await Promise.all([User, Project, Folder, Icon, IconVersion, ApiToken].map((model) => model.syncIndexes()));
+  await Promise.all([ActivityLog, User, Project, Folder, Icon, IconVersion, ApiToken].map((model) => model.syncIndexes()));
 
   const server: Server = createApp().listen(0);
   await new Promise((resolve) => server.once("listening", resolve));
