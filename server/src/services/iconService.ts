@@ -381,6 +381,7 @@ export async function batchRestore(projectId: Id, ids: Id[]) {
 
 export async function batchOptimize(projectId: Id, ids: Id[]) {
   const icons = await Icon.find({ projectId, _id: { $in: ids }, deletedAt: null });
+  const optimizedIds: Id[] = [];
   let optimized = 0;
   let before = 0;
   let after = 0;
@@ -390,12 +391,15 @@ export async function batchOptimize(projectId: Id, ids: Id[]) {
       const r = await optimizeIcon(icon);
       before += r.before;
       after += r.after;
-      if (r.changed) optimized += 1;
+      if (r.changed) {
+        optimized += 1;
+        optimizedIds.push(icon._id);
+      }
     } catch (err) {
       failed.push({ id: String(icon._id), message: err instanceof Error ? err.message : "Could not optimize." });
     }
   }
-  return { requested: ids.length, matched: icons.length, optimized, bytesBefore: before, bytesAfter: after, failed };
+  return { requested: ids.length, matched: icons.length, optimized, optimizedIds, bytesBefore: before, bytesAfter: after, failed };
 }
 
 export async function emptyTrash(projectId: Id) {

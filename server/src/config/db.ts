@@ -1,5 +1,6 @@
 // MongoDB connection helper. Loads models and exposes ensureConnected() / connectDb() for the rest of the server.
 import mongoose from "mongoose";
+import ActivityLog from "../models/ActivityLog.js";
 import User from "../models/User.js";
 import ApiToken from "../models/ApiToken.js";
 import Project from "../models/Project.js";
@@ -47,6 +48,7 @@ export async function connectDb(): Promise<typeof mongoose> {
     .then(async (m) => {
       // Reconcile the on-disk collection indexes with the schemas defined in code. Mongoose only creates missing indexes on its own and never drops ones the schema no longer references; syncIndexes does both in one round trip per model.
       try {
+        await ActivityLog.syncIndexes();
         await User.syncIndexes();
         await Project.syncIndexes();
         await Folder.syncIndexes();
