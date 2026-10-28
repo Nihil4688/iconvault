@@ -23,6 +23,8 @@ import { heavyLimit } from "../middleware/rateLimit.js";
 import { requireDb } from "../middleware/requireDb.js";
 import { requireUser } from "../middleware/requireUser.js";
 import Icon from "../models/Icon.js";
+import IconVersion from "../models/IconVersion.js";
+import { recordRequestActivity } from "../services/activityLogService.js";
 import { assertFolderInProject } from "../services/folderService.js";
 import { MAX_GLYPHS, importGlyphs, privateUseOnly, readFontGlyphs } from "../services/fontImport.js";
 import {
@@ -69,6 +71,22 @@ function parseFontImportFields(body: Record<string, unknown> | undefined) {
 
 const toIds = (ids: string[]) => ids.map((id) => new mongoose.Types.ObjectId(id));
 
+function summaryIconIds(summary: { created: { id: string }[]; replaced: { id: string }[] }) {
+  return [...summary.created, ...summary.replaced].map((icon) => new mongoose.Types.ObjectId(icon.id));
+}
+
+async function scopedIconIds(projectId: mongoose.Types.ObjectId, ids?: mongoose.Types.ObjectId[], trashed?: boolean) {
+  return Icon.find({
+    projectId,
+    ...(ids ? { _id: { $in: ids } } : {}),
+    ...(trashed === undefined ? {} : { deletedAt: trashed ? { $ne: null } : null }),
+  })
+    .select({ _id: 1 })
+    .limit(1000)
+    .lean()
+    .then((icons) => icons.map((icon) => icon._id));
+}
+
 async function loadIcon(req: Request, need: "view" | "edit") {
   const actor = actorOf(req);
   const icon = await Icon.findById(parseObjectId(req.params.iconId, "icon id"));
@@ -111,6 +129,27 @@ router.post("/projects/:projectId/icons/upload", heavyLimit, upload.array("files
     files.map((f) => ({ originalname: f.originalname, mimetype: f.mimetype, buffer: f.buffer })),
     { strategy: fields.strategy, optimize, folderId, tags: fields.tags },
   );
+  const affectedEntityIds = summaryIconIds(summary);
+  if (affectedEntityIds.length > 0) {
+    await recordRequestActivity(req, project, {
+      actionDone: "upload",
+      entityType: "icon",
+      entityId: affectedEntityIds.length === 1 ? affectedEntityIds[0] ?? null : null,
+      details: {
+        createdCount: summary.created.length,
+        replacedCount: summary.replaced.length,
+        affectedCount: affectedEntityIds.length,
+        skippedCount: summary.skipped.length,
+        errorCount: summary.errors.length,
+        foldersCreated: summary.foldersCreated,
+        fileNames: files.map((file) => file.originalname),
+        createdNames: summary.created.map((icon) => icon.name),
+        replacedNames: summary.replaced.map((icon) => icon.name),
+      },
+      affectedEntityIds,
+      result: summary.errors.length > 0 ? "partial" : "success",
+    });
+  }
   res.status(summary.created.length > 0 ? 201 : 200).json({ ...summary, limitPerUpload: MAX_ICONS_PER_UPLOAD });
 });
 
@@ -135,6 +174,28 @@ router.post("/projects/:projectId/icons/import-font", heavyLimit, fontFiles, asy
   const folderId = fields.folderId ? parseObjectId(fields.folderId, "folder id") : null;
   await assertFolderInProject(project._id, folderId);
   const summary = await importGlyphs(project._id, wanted, { strategy: fields.strategy, optimize: fields.optimize, folderId });
+  const affectedEntityIds = summaryIconIds(summary);
+  if (affectedEntityIds.length > 0) {
+    await recordRequestActivity(req, project, {
+      actionDone: "upload",
+      entityType: "icon",
+      entityId: affectedEntityIds.length === 1 ? affectedEntityIds[0] ?? null : null,
+      details: {
+        source: "font import",
+        sourceFontName: font.originalname,
+        fontKind: read.kind,
+        createdCount: summary.created.length,
+        replacedCount: summary.replaced.length,
+        affectedCount: affectedEntityIds.length,
+        skippedCount: summary.skipped.length,
+        errorCount: summary.errors.length,
+        codepointsKept: summary.codepointsKept,
+        codepointsDropped: summary.codepointsDropped,
+      },
+      affectedEntityIds,
+      result: summary.errors.length > 0 ? "partial" : "success",
+    });
+  }
   res.status(summary.created.length > 0 ? 201 : 200).json({ dryRun: false, ...preview, ...summary });
 });
 
@@ -152,6 +213,19 @@ router.post("/projects/:projectId/icons/paste", async (req, res) => {
     res.json({ outcome: "skipped", reason: outcome.reason });
     return;
   }
+  await recordRequestActivity(req, project, {
+    actionDone: outcome.status === "created" ? "upload" : "update",
+    entityType: "icon",
+    entityId: outcome.icon._id,
+    entityName: outcome.icon.name,
+    details: {
+      source: "paste",
+      outcome: outcome.status,
+      byteSize: outcome.icon.byteSize,
+      folderId: outcome.icon.folderId ? String(outcome.icon.folderId) : null,
+      tags: outcome.icon.tags,
+    },
+  });
   res.status(outcome.status === "created" ? 201 : 200).json({ outcome: outcome.status, icon: serializeIcon(outcome.icon) });
 });
 
@@ -166,6 +240,27 @@ router.post("/projects/:projectId/icons/copy", heavyLimit, async (req, res) => {
     optimize: input.optimize,
     folderId: input.folderId ? parseObjectId(input.folderId, "folder id") : null,
   });
+  const affectedEntityIds = summaryIconIds(summary);
+  if (affectedEntityIds.length > 0) {
+    await recordRequestActivity(req, target, {
+      actionDone: "copy",
+      entityType: "icon",
+      entityId: affectedEntityIds.length === 1 ? affectedEntityIds[0] ?? null : null,
+      details: {
+        sourceProjectId: String(source._id),
+        sourceProjectName: source.name,
+        createdCount: summary.created.length,
+        replacedCount: summary.replaced.length,
+        affectedCount: affectedEntityIds.length,
+        skippedCount: summary.skipped.length,
+        errorCount: summary.errors.length,
+        createdNames: summary.created.map((icon) => icon.name),
+        replacedNames: summary.replaced.map((icon) => icon.name),
+      },
+      affectedEntityIds,
+      result: summary.errors.length > 0 ? "partial" : "success",
+    });
+  }
   res.status(summary.created.length > 0 ? 201 : 200).json(summary);
 });
 
@@ -180,43 +275,162 @@ router.post("/projects/:projectId/icons/download", heavyLimit, async (req, res) 
 router.post("/projects/:projectId/icons/batch/move", async (req, res) => {
   const project = await loadProject(actorOf(req), req.params.projectId, "edit");
   const input = batchMoveSchema.parse(req.body ?? {});
-  res.json(await batchMove(project._id, toIds(input.iconIds), input.folderId ? parseObjectId(input.folderId, "folder id") : null));
+  const ids = toIds(input.iconIds);
+  const affectedEntityIds = await scopedIconIds(project._id, ids, false);
+  const folderId = input.folderId ? parseObjectId(input.folderId, "folder id") : null;
+  const result = await batchMove(project._id, ids, folderId);
+  if (result.matched > 0) {
+    await recordRequestActivity(req, project, {
+      actionDone: "move",
+      entityType: "icon",
+      entityId: affectedEntityIds.length === 1 ? affectedEntityIds[0] ?? null : null,
+      details: {
+        requestedCount: result.requested,
+        matchedCount: result.matched,
+        destinationFolderId: folderId ? String(folderId) : null,
+        affectedEntityIdsTruncated: result.matched > affectedEntityIds.length,
+      },
+      affectedEntityIds,
+    });
+  }
+  res.json(result);
 });
 
 router.post("/projects/:projectId/icons/batch/tag", async (req, res) => {
   const project = await loadProject(actorOf(req), req.params.projectId, "edit");
   const input = batchTagSchema.parse(req.body ?? {});
-  res.json(await batchTag(project._id, toIds(input.iconIds), input.tags, input.mode));
+  const ids = toIds(input.iconIds);
+  const affectedEntityIds = await scopedIconIds(project._id, ids, false);
+  const result = await batchTag(project._id, ids, input.tags, input.mode);
+  if (result.matched > 0) {
+    await recordRequestActivity(req, project, {
+      actionDone: "tag",
+      entityType: "icon",
+      entityId: affectedEntityIds.length === 1 ? affectedEntityIds[0] ?? null : null,
+      details: {
+        requestedCount: result.requested,
+        matchedCount: result.matched,
+        mode: input.mode,
+        tags: input.tags,
+        affectedEntityIdsTruncated: result.matched > affectedEntityIds.length,
+      },
+      affectedEntityIds,
+    });
+  }
+  res.json(result);
 });
 
 // Moves to the trash; with "permanent": true it deletes icons that are already in the trash for good.
 router.post("/projects/:projectId/icons/batch/delete", async (req, res) => {
   const project = await loadProject(actorOf(req), req.params.projectId, "edit");
   const input = batchDeleteSchema.parse(req.body ?? {});
-  res.json(await batchDelete(project._id, toIds(input.iconIds), input.permanent));
+  const ids = toIds(input.iconIds);
+  const affectedEntityIds = await scopedIconIds(project._id, ids, input.permanent);
+  const result = await batchDelete(project._id, ids, input.permanent);
+  if (result.matched > 0) {
+    await recordRequestActivity(req, project, {
+      actionDone: "delete",
+      entityType: "icon",
+      entityId: affectedEntityIds.length === 1 ? affectedEntityIds[0] ?? null : null,
+      details: {
+        deletionMode: input.permanent ? "permanent" : "trash",
+        requestedCount: result.requested,
+        deletedCount: result.matched,
+        affectedEntityIdsTruncated: result.matched > affectedEntityIds.length,
+      },
+      affectedEntityIds,
+    });
+  }
+  res.json(result);
 });
 
 // The sidebar's Uncategorized menu: send every icon that is in no folder to the trash.
 router.post("/projects/:projectId/icons/uncategorized/trash", async (req, res) => {
   const project = await loadProject(actorOf(req), req.params.projectId, "edit");
-  res.json(await trashUncategorized(project._id));
+  const result = await trashUncategorized(project._id);
+  if (result.matched > 0) {
+    const affectedEntityIds = result.ids.slice(0, 1000).map((id) => new mongoose.Types.ObjectId(id));
+    await recordRequestActivity(req, project, {
+      actionDone: "delete",
+      entityType: "icon",
+      entityId: affectedEntityIds.length === 1 ? affectedEntityIds[0] ?? null : null,
+      details: {
+        deletionMode: "trash",
+        source: "uncategorized",
+        deletedCount: result.matched,
+        affectedEntityIdsTruncated: result.ids.length > affectedEntityIds.length,
+      },
+      affectedEntityIds,
+    });
+  }
+  res.json(result);
 });
 
 router.post("/projects/:projectId/icons/batch/restore", async (req, res) => {
   const project = await loadProject(actorOf(req), req.params.projectId, "edit");
   const input = iconIdsSchema.parse(req.body ?? {});
-  res.json(await batchRestore(project._id, toIds(input.iconIds)));
+  const ids = toIds(input.iconIds);
+  const affectedEntityIds = await scopedIconIds(project._id, ids, true);
+  const result = await batchRestore(project._id, ids);
+  if (result.matched > 0) {
+    await recordRequestActivity(req, project, {
+      actionDone: "restore",
+      entityType: "icon",
+      entityId: affectedEntityIds.length === 1 ? affectedEntityIds[0] ?? null : null,
+      details: {
+        requestedCount: result.requested,
+        restoredCount: result.matched,
+        adjustedCount: result.adjusted.length,
+        affectedEntityIdsTruncated: result.matched > affectedEntityIds.length,
+      },
+      affectedEntityIds,
+    });
+  }
+  res.json(result);
 });
 
 router.post("/projects/:projectId/icons/batch/optimize", heavyLimit, async (req, res) => {
   const project = await loadProject(actorOf(req), req.params.projectId, "edit");
   const input = iconIdsSchema.parse(req.body ?? {});
-  res.json(await batchOptimize(project._id, toIds(input.iconIds)));
+  const ids = toIds(input.iconIds);
+  const result = await batchOptimize(project._id, ids);
+  const affectedEntityIds = result.optimizedIds;
+  if (result.optimized > 0) {
+    await recordRequestActivity(req, project, {
+      actionDone: "optimize",
+      entityType: "icon",
+      entityId: result.optimized === 1 && affectedEntityIds.length === 1 ? affectedEntityIds[0] ?? null : null,
+      details: {
+        requestedCount: result.requested,
+        matchedCount: result.matched,
+        optimizedCount: result.optimized,
+        failedCount: result.failed.length,
+        bytesBefore: result.bytesBefore,
+        bytesAfter: result.bytesAfter,
+      },
+      affectedEntityIds,
+      result: result.failed.length > 0 ? "partial" : "success",
+    });
+  }
+  const { optimizedIds: _optimizedIds, ...response } = result;
+  res.json(response);
 });
 
 router.delete("/projects/:projectId/icons/trash", async (req, res) => {
   const project = await loadProject(actorOf(req), req.params.projectId, "edit");
-  res.json(await emptyTrash(project._id));
+  const affectedEntityIds = await scopedIconIds(project._id, undefined, true);
+  const result = await emptyTrash(project._id);
+  if (result.deleted > 0) {
+    await recordRequestActivity(req, project, {
+      actionDone: "clear",
+      entityType: "project",
+      entityId: project._id,
+      entityName: project.name,
+      details: { deletedCount: result.deleted, affectedEntityIdsTruncated: result.deleted > affectedEntityIds.length },
+      affectedEntityIds,
+    });
+  }
+  res.json(result);
 });
 
 // ---- Single icons and search ----
@@ -240,12 +454,60 @@ router.get("/icons/:iconId/download", async (req, res) => {
 router.patch("/icons/:iconId", async (req, res) => {
   const input = updateIconSchema.parse(req.body ?? {});
   const icon = await loadIcon(req, "edit");
-  res.json({ ...serializeIcon(await updateIcon(icon, input)) });
+  const before = {
+    name: icon.name,
+    slug: icon.slug,
+    folderId: icon.folderId ? String(icon.folderId) : null,
+    tags: [...icon.tags],
+    codepoint: icon.codepoint,
+    byteSize: icon.byteSize,
+    svg: icon.svg,
+  };
+  const updated = await updateIcon(icon, input);
+  const after = {
+    name: updated.name,
+    slug: updated.slug,
+    folderId: updated.folderId ? String(updated.folderId) : null,
+    tags: [...updated.tags],
+    codepoint: updated.codepoint,
+    byteSize: updated.byteSize,
+    svg: updated.svg,
+  };
+  const changes: Record<string, unknown> = Object.fromEntries(
+    Object.keys(before)
+      .filter((key) => key !== "svg" && JSON.stringify(before[key as keyof typeof before]) !== JSON.stringify(after[key as keyof typeof after]))
+      .map((key) => [key, { before: before[key as keyof typeof before], after: after[key as keyof typeof after] }]),
+  );
+  if (input.rawSvg !== undefined && before.svg !== after.svg) {
+    changes.svg = { beforeByteSize: before.byteSize, afterByteSize: after.byteSize };
+  }
+  if (Object.keys(changes).length > 0) {
+    const project = await loadProject(actorOf(req), updated.projectId, "edit");
+    await recordRequestActivity(req, project, {
+      actionDone: "update",
+      entityType: "icon",
+      entityId: updated._id,
+      entityName: updated.name,
+      changes,
+      details: { changedFields: Object.keys(changes) },
+    });
+  }
+  res.json({ ...serializeIcon(updated) });
 });
 
 router.post("/icons/:iconId/optimize", async (req, res) => {
   const icon = await loadIcon(req, "edit");
   const { icon: updated, ...stats } = await optimizeIcon(icon);
+  if (stats.changed) {
+    const project = await loadProject(actorOf(req), updated.projectId, "edit");
+    await recordRequestActivity(req, project, {
+      actionDone: "optimize",
+      entityType: "icon",
+      entityId: updated._id,
+      entityName: updated.name,
+      details: { bytesBefore: stats.before, bytesAfter: stats.after, savingsPercent: stats.savingsPercent },
+    });
+  }
   res.json({ icon: serializeIcon(updated), ...stats });
 });
 
@@ -256,24 +518,67 @@ router.get("/icons/:iconId/versions", async (req, res) => {
 
 router.post("/icons/:iconId/versions/:versionId/restore", async (req, res) => {
   const icon = await loadIcon(req, "edit");
+  const beforeSvg = icon.svg;
+  const beforeByteSize = icon.byteSize;
   const restored = await restoreVersion(icon, parseObjectId(req.params.versionId, "version id"));
+  if (beforeSvg !== restored.svg) {
+    const project = await loadProject(actorOf(req), restored.projectId, "edit");
+    await recordRequestActivity(req, project, {
+      actionDone: "restore",
+      entityType: "icon",
+      entityId: restored._id,
+      entityName: restored.name,
+      details: { versionId: String(req.params.versionId), beforeByteSize, afterByteSize: restored.byteSize, svgRestored: true },
+    });
+  }
   res.json({ ...serializeIcon(restored), versions: await listVersions(restored._id) });
 });
 
 // Moves to the trash; add ?permanent=true to delete an icon that is already in the trash for good.
 router.delete("/icons/:iconId", async (req, res) => {
   const icon = await loadIcon(req, "edit");
+  const project = await loadProject(actorOf(req), icon.projectId, "edit");
+  const wasActive = !icon.deletedAt;
   if (req.query.permanent === "true") {
+    const deletedVersions = await IconVersion.countDocuments({ iconId: icon._id });
     await deletePermanently(icon);
+    await recordRequestActivity(req, project, {
+      actionDone: "delete",
+      entityType: "icon",
+      entityId: icon._id,
+      entityName: icon.name,
+      details: { deletionMode: "permanent", deletedVersions },
+    });
     res.json({ deleted: true });
     return;
   }
-  res.json(serializeIcon(await moveToTrash(icon), false));
+  const trashed = await moveToTrash(icon);
+  if (wasActive) {
+    await recordRequestActivity(req, project, {
+      actionDone: "delete",
+      entityType: "icon",
+      entityId: trashed._id,
+      entityName: trashed.name,
+      details: { deletionMode: "trash", deletedAt: trashed.deletedAt },
+    });
+  }
+  res.json(serializeIcon(trashed, false));
 });
 
 router.post("/icons/:iconId/restore", async (req, res) => {
   const icon = await loadIcon(req, "edit");
+  const wasTrashed = Boolean(icon.deletedAt);
   const { icon: restored, adjusted } = await restoreFromTrash(icon);
+  if (wasTrashed) {
+    const project = await loadProject(actorOf(req), restored.projectId, "edit");
+    await recordRequestActivity(req, project, {
+      actionDone: "restore",
+      entityType: "icon",
+      entityId: restored._id,
+      entityName: restored.name,
+      details: { adjusted },
+    });
+  }
   res.json({ icon: serializeIcon(restored), adjusted });
 });
 
