@@ -1,5 +1,5 @@
-// A responsive tooltip that appears on hover. Automatically adjusts position to avoid overflow.
-// Used for showing contextual help information next to icons or interactive elements.
+// A responsive tooltip that appears on hover with a dark background and white text.
+// Automatically adjusts position to avoid overflow.
 import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { cn } from "../../lib/cn";
 
@@ -10,10 +10,9 @@ type TooltipProps = {
   children: ReactNode;
   position?: TooltipPosition;
   delayMs?: number;
-  className?: string;
 };
 
-export default function Tooltip({ content, children, position = "top", delayMs = 300, className }: TooltipProps) {
+export default function Tooltip({ content, children, position = "top", delayMs = 200 }: TooltipProps) {
   const [isVisible, setIsVisible] = useState(false);
   const [calculatedPosition, setCalculatedPosition] = useState<TooltipPosition>(position);
   const triggerRef = useRef<HTMLDivElement>(null);
@@ -29,25 +28,22 @@ export default function Tooltip({ content, children, position = "top", delayMs =
     const tooltipRect = tooltipRef.current.getBoundingClientRect();
     const viewportHeight = window.innerHeight;
     const viewportWidth = window.innerWidth;
-    const padding = 8;
+    const padding = 12;
 
     let newPosition = position;
 
-    // Check if tooltip would overflow
-    if (position === "top" || position === "bottom") {
-      if (position === "top" && triggerRect.top - tooltipRect.height - padding < 0) {
-        newPosition = "bottom";
-      } else if (position === "bottom" && triggerRect.bottom + tooltipRect.height + padding > viewportHeight) {
-        newPosition = "top";
-      }
+    // Check if tooltip would overflow vertically
+    if (position === "top" && triggerRect.top - tooltipRect.height - padding < 0) {
+      newPosition = "bottom";
+    } else if (position === "bottom" && triggerRect.bottom + tooltipRect.height + padding > viewportHeight) {
+      newPosition = "top";
     }
 
-    if (position === "left" || position === "right") {
-      if (position === "left" && triggerRect.left - tooltipRect.width - padding < 0) {
-        newPosition = "right";
-      } else if (position === "right" && triggerRect.right + tooltipRect.width + padding > viewportWidth) {
-        newPosition = "left";
-      }
+    // Check if tooltip would overflow horizontally
+    if (position === "left" && triggerRect.left - tooltipRect.width - padding < 0) {
+      newPosition = "right";
+    } else if (position === "right" && triggerRect.right + tooltipRect.width + padding > viewportWidth) {
+      newPosition = "left";
     }
 
     if (newPosition !== calculatedPosition) {
@@ -74,17 +70,24 @@ export default function Tooltip({ content, children, position = "top", delayMs =
   }, []);
 
   const positionClasses = {
-    top: "bottom-full mb-2 left-1/2 -translate-x-1/2",
-    bottom: "top-full mt-2 left-1/2 -translate-x-1/2",
-    left: "right-full mr-2 top-1/2 -translate-y-1/2",
-    right: "left-full ml-2 top-1/2 -translate-y-1/2",
+    top: "bottom-full mb-3 left-1/2 -translate-x-1/2",
+    bottom: "top-full mt-3 left-1/2 -translate-x-1/2",
+    left: "right-full mr-3 top-1/2 -translate-y-1/2",
+    right: "left-full ml-3 top-1/2 -translate-y-1/2",
   };
 
   const arrowClasses = {
-    top: "top-full border-l-transparent border-r-transparent border-b-transparent -translate-x-1/2 left-1/2",
-    bottom: "bottom-full border-l-transparent border-r-transparent border-t-transparent -translate-x-1/2 left-1/2",
-    left: "left-full border-t-transparent border-b-transparent border-r-transparent -translate-y-1/2 top-1/2",
-    right: "right-full border-t-transparent border-b-transparent border-l-transparent -translate-y-1/2 top-1/2",
+    top: "bottom-0 translate-y-full border-t-8 border-x-4 border-x-transparent border-b-0",
+    bottom: "top-0 -translate-y-full border-b-8 border-x-4 border-x-transparent border-t-0",
+    left: "right-0 translate-x-full border-l-8 border-y-4 border-y-transparent border-r-0",
+    right: "left-0 -translate-x-full border-r-8 border-y-4 border-y-transparent border-l-0",
+  };
+
+  const arrowAlignment = {
+    top: "left-1/2 -translate-x-1/2",
+    bottom: "left-1/2 -translate-x-1/2",
+    left: "top-1/2 -translate-y-1/2",
+    right: "top-1/2 -translate-y-1/2",
   };
 
   return (
@@ -102,17 +105,18 @@ export default function Tooltip({ content, children, position = "top", delayMs =
           role="tooltip"
           id={tooltipId}
           className={cn(
-            "pointer-events-none absolute z-50 whitespace-nowrap rounded-lg border border-border bg-card px-3 py-2 text-sm text-card-foreground shadow-md",
+            "pointer-events-none absolute z-50 whitespace-nowrap rounded-md bg-black px-2.5 py-1.5 text-xs font-medium text-white shadow-lg",
             positionClasses[calculatedPosition],
-            className,
           )}
         >
           {content}
           {/* Arrow pointer */}
           <div
             className={cn(
-              "absolute h-0 w-0 border-4 border-border",
+              "absolute h-0 w-0",
               arrowClasses[calculatedPosition],
+              arrowAlignment[calculatedPosition],
+              "border-black",
             )}
           />
         </div>
