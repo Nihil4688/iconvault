@@ -6,6 +6,7 @@ import { pluralize } from "../../lib/format";
 import ActionMenu, { type MenuAction } from "../ui/ActionMenu";
 import Badge from "../ui/Badge";
 import SvgPreview from "../ui/SvgPreview";
+import Tooltip from "../ui/Tooltip";
 import ProjectAvatar from "./ProjectAvatar";
 import { PurposeBadge, VisibilityBadge } from "./ProjectBadges";
 
@@ -43,17 +44,28 @@ export default function ProjectCard({ project, currentUserId, onEdit, onDuplicat
 
       <div className="flex items-center gap-2.5">
         <ProjectAvatar name={project.name} color={project.color} className="h-7 w-7 rounded-lg text-xs" />
-        <h3 className="min-w-0 flex-1 truncate text-sm font-semibold">
-          <Link to={`/projects/${project.id}`} className="rounded-sm after:absolute after:inset-0 after:rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
-            {project.name}
-          </Link>
-        </h3>
+        <Tooltip content={project.name} position="bottom">
+          <h3 className="min-w-0 flex-1 truncate text-sm font-semibold">
+            <Link to={`/projects/${project.id}`} className="rounded-sm after:absolute after:inset-0 after:rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
+              {project.name}
+            </Link>
+          </h3>
+        </Tooltip>
         <ActionMenu label={`Actions for ${project.name}`} actions={actions} className="relative z-10 -mr-1" />
       </div>
 
-      <p className="-mt-1 truncate pr-1 text-xs text-muted-foreground" title={project.description || undefined}>
-        {project.description || "No description."}
-      </p>
+      {project.description && (
+        <Tooltip content={project.description} position="bottom">
+          <p className="-mt-1 truncate pr-1 text-xs text-muted-foreground">
+            {project.description}
+          </p>
+        </Tooltip>
+      )}
+      {!project.description && (
+        <p className="-mt-1 truncate pr-1 text-xs text-muted-foreground">
+          No description.
+        </p>
+      )}
 
       {project.sampleIcons.length > 0 && (
         <div className="flex min-h-9 items-center gap-3 overflow-hidden rounded-lg bg-muted px-3 py-2" role="img" aria-label={`${pluralize(project.sampleIcons.length, "sample icon")}`}>
