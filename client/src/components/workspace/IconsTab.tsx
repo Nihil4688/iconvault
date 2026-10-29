@@ -176,7 +176,7 @@ export default function IconsTab() {
             <p className="mt-2 text-base font-semibold">
               {search ? `No icons match “${search}”.` : emptyProject ? "No icons yet." : selectedFolder === "root" ? "No uncategorized icons." : "This folder is empty."}
             </p>
-            <p className="mt-1 text-sm text-muted-foreground">{search ? "Try a different search." : project.access.canAddIcons ? "Add some by uploading SVGs, sprites, icon fonts, or ZIP files, pasting code, or copying from another project." : "The owner has not added any here yet."}</p>
+            <p className="mx-auto mt-1 text-sm text-muted-foreground">{search ? "Try a different search." : project.access.canAddIcons ? "Upload icons to get started." : "The owner has not added any here yet."}</p>
             {!search && project.access.canAddIcons && (
               <Button variant="primary" className="mt-4" onClick={() => setDialog("add")}>
                 Upload icons

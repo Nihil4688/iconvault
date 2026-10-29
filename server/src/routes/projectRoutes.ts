@@ -166,7 +166,7 @@ router.post("/:projectId/font/download", heavyLimit, async (req, res) => {
     buildType: "font",
     details: { fontName: build.fontName, iconCount: build.iconCount, formats: input.formats, storedInHistory: stored },
   });
-  sendDownload(res, { filename: `${build.fontName}-font.zip`, contentType: "application/zip", body: zip });
+  sendDownload(res, { filename: `${project.name} Font Icon.zip`, contentType: "application/zip", body: zip });
 });
 
 // The font build history: packages editors downloaded earlier (newest first, at most 20).

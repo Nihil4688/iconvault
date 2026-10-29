@@ -117,6 +117,9 @@ describe("empty states", () => {
   it("invites adding the first icons", async () => {
     setup();
     expect(await screen.findByText("No icons yet.")).toBeInTheDocument();
+    const instructions = screen.getByText("Click Upload Icons to get started. Upload SVGs, sprite files, icon fonts, or ZIP packages, paste icon code, or import icons from another project.");
+    expect(instructions).toHaveClass("max-w-2xl");
+    expect(instructions.querySelector("br")).toBeInTheDocument();
     await userEvent.click(screen.getAllByRole("button", { name: "Upload icons" })[1] as HTMLElement);
     expect(screen.getByRole("dialog", { name: "Add icons" })).toBeInTheDocument();
   });

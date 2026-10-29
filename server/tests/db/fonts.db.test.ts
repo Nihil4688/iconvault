@@ -268,11 +268,14 @@ describe("icon fonts (HTTP, throwaway database)", { skip: hasDatabase ? false : 
       const r = await h.call(owner.token, "POST", `/api/projects/${p.id}/font/download`, { formats: ["ttf", "woff2"], fontName: "Fnt" });
       assert.equal(r.status, 200);
       assert.match(r.headers.get("content-type") ?? "", /zip/);
-      assert.match(r.headers.get("content-disposition") ?? "", /Fnt-font\.zip/);
+      assert.match(r.headers.get("content-disposition") ?? "", /Fonty Font Icon\.zip/);
       const files = unzipSync(new Uint8Array(await r.raw.arrayBuffer()));
-      assert.deepEqual(Object.keys(files).sort(), ["Fnt.css", "Fnt.html", "Fnt.json", "Fnt.scss", "Fnt.ttf", "Fnt.woff2", "README.md"]);
-      assert.equal(Buffer.from(files["Fnt.woff2"] as Uint8Array).subarray(0, 4).toString("latin1"), "wOF2");
-      assert.deepEqual(JSON.parse(Buffer.from(files["Fnt.json"] as Uint8Array).toString("utf8")), { box: 57345, star: 57346 });
+      assert.deepEqual(Object.keys(files).sort(), ["Embed Font in CSS/demo.html", "Embed Font in CSS/style.css", "Fnt.metrop", "Fonts/Fnt.ttf", "Fonts/Fnt.woff2", "demo.html", "library.json", "style.css"]);
+      assert.equal(Buffer.from(files["Fonts/Fnt.woff2"] as Uint8Array).subarray(0, 4).toString("latin1"), "wOF2");
+      assert.deepEqual(JSON.parse(Buffer.from(files["library.json"] as Uint8Array).toString("utf8")), { box: 57346, star: 57345 });
+      const metrop = Buffer.from(files["Fnt.metrop"] as Uint8Array).toString("utf8");
+      assert.match(metrop, /<IconProject Version="2\.0" PUAEnable="true"/);
+      assert.match(metrop, /<Icon Name="box".*DataFont="[^"]+".*Data="M3 3h18v18H3z">/);
     });
 
     it("leaves woff2 out of the ZIP when it was not requested, though the preview still has it", async () => {

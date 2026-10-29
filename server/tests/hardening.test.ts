@@ -42,7 +42,7 @@ describe("response headers", () => {
 
 describe("CORS", () => {
   it("allows every origin when CORS_ORIGINS is not set", () => {
-    assert.deepEqual(corsOptions({}), {});
+    assert.deepEqual(corsOptions({}), { exposedHeaders: ["Content-Disposition"] });
   });
 
   it("allows only the listed origins when it is set, and never blocks requests without an Origin", async () => {
@@ -50,6 +50,7 @@ describe("CORS", () => {
     const base = await start();
     const allowed = await fetch(`${base}/api/nothing`, { headers: { Origin: "https://app.example.com" } });
     assert.equal(allowed.headers.get("access-control-allow-origin"), "https://app.example.com");
+    assert.equal(allowed.headers.get("access-control-expose-headers"), "Content-Disposition");
     const denied = await fetch(`${base}/api/nothing`, { headers: { Origin: "https://evil.example.net" } });
     assert.equal(denied.headers.get("access-control-allow-origin"), null);
     const noOrigin = await fetch(`${base}/api/nothing`);

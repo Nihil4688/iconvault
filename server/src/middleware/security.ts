@@ -19,10 +19,11 @@ export function corsOptions(env: NodeJS.ProcessEnv = process.env): CorsOptions {
     .split(",")
     .map((origin) => origin.trim().replace(/\/+$/, ""))
     .filter(Boolean);
-  if (allowed.length === 0) return {};
+  if (allowed.length === 0) return { exposedHeaders: ["Content-Disposition"] };
   return {
     origin(origin, callback) {
       callback(null, origin === undefined || allowed.includes(origin.replace(/\/+$/, "")));
     },
+    exposedHeaders: ["Content-Disposition"],
   };
 }

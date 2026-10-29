@@ -52,7 +52,7 @@ export type DownloadFile = { filename: string; contentType: string; body: Buffer
 // Sends a file for download. The restrictive headers matter: an SVG opened directly could otherwise run in the page's origin.
 export function sendDownload(res: Response, file: DownloadFile): void {
   res.setHeader("Content-Type", file.contentType);
-  res.setHeader("Content-Disposition", `attachment; filename="${file.filename.replace(/[^\w.-]/g, "_")}"`);
+  res.setHeader("Content-Disposition", `attachment; filename="${file.filename.replace(/[^\w .-]/g, "_")}"`);
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; sandbox");
   res.send(file.body);
