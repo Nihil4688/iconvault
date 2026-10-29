@@ -1,6 +1,7 @@
 // Tests for the Font section: building with the chosen options, validation before sending, the preview and the character list, warnings, copy, download, permissions and errors.
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useMemo, type ReactNode } from "react";
 import { MemoryRouter } from "react-router-dom";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as fontsApi from "../../api/fonts";
@@ -9,6 +10,7 @@ import { ApiError } from "../../api/http";
 import type { FontBuildResult } from "../../api/types";
 import { ToastProvider } from "../../context/ToastContext";
 import { WorkspaceContext, type WorkspaceContextValue } from "../../context/workspaceContext";
+import { useSelection } from "../../hooks/useSelection";
 import * as clipboard from "../../lib/clipboard";
 import { cacheBuild, clearCachedBuild, peekCachedBuild } from "../../lib/fontBuildCache";
 import { fontAutoBuild } from "../../lib/fontAutoBuild";
@@ -39,26 +41,34 @@ const built = (over: Partial<FontBuildResult> = {}): FontBuildResult => ({
   ...over,
 });
 
+// The wrapper owns the selection so it lives in the same render tree as the tab; updates flow through context.
+function WorkspaceProvider({ base, children }: { base: WorkspaceContextValue; children: ReactNode }) {
+  const selection = useSelection("p1");
+  const value = useMemo<WorkspaceContextValue>(() => ({ ...base, selection }), [base, selection]);
+  return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>;
+}
+
 function setup(over: Partial<WorkspaceContextValue> = {}, state?: unknown) {
   const fns = { selectFolder: vi.fn(), refreshProject: vi.fn(), refreshFolders: vi.fn(), refreshIcons: vi.fn() };
-  const value: WorkspaceContextValue = {
+  const base: WorkspaceContextValue = {
     project: makeDetail({ id: "p1", name: "Feather Icons", prefix: "fth", purpose: "font", iconCount: 2 }),
     folderList: { folders: [makeFolder({ id: "ui", name: "UI", iconCount: 3 })], uncategorizedCount: 0 },
     selectedFolder: "all",
     iconsVersion: 0,
     ...fns,
     ...over,
+    selection: undefined as unknown as WorkspaceContextValue["selection"],
   };
   render(
     <MemoryRouter initialEntries={[{ pathname: "/projects/p1", state }]}>
       <ToastProvider>
-        <WorkspaceContext.Provider value={value}>
+        <WorkspaceProvider base={base}>
           <FontTab />
-        </WorkspaceContext.Provider>
+        </WorkspaceProvider>
       </ToastProvider>
     </MemoryRouter>,
   );
-  return fns;
+  return { ...fns };
 }
 
 // The font builds by itself on this page. Tests wait for that (a short delay), or switch it off to look at the page before any build.

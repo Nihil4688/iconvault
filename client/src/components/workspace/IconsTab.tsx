@@ -11,7 +11,6 @@ import { useIconAppearance } from "../../hooks/useIconAppearance";
 import { useDebounced } from "../../hooks/useDebounced";
 import { usePersistentChoice } from "../../hooks/usePersistentChoice";
 import { useResource } from "../../hooks/useResource";
-import { useSelection } from "../../hooks/useSelection";
 import { cacheBuild } from "../../lib/fontBuildCache";
 import { defaultFontOptions } from "../../lib/fontDefaults";
 import { loadPreviewFont, nextPreviewFamily } from "../../lib/fontPreview";
@@ -22,16 +21,12 @@ import { Button } from "../ui/Button";
 import ConfirmDialog from "../ui/ConfirmDialog";
 import BulkBar from "./BulkBar";
 import { MoveIconsDialog, TagIconsDialog } from "./BulkDialogs";
-import CopyFromProjectDialog from "./CopyFromProjectDialog";
 import IconCard from "./IconCard";
 import IconDrawer from "./IconDrawer";
 import IconList from "./IconList";
 import SelectAllBar from "./SelectAllBar";
 import IconToolbar, { type IconSort, type IconView } from "./IconToolbar";
-import ImportFontDialog from "./ImportFontDialog";
-import ImportSpriteDialog from "./ImportSpriteDialog";
 import UploadDialog from "./UploadDialog";
-import type { UploadKind } from "./UploadMenu";
 
 const SORTS: readonly IconSort[] = ["newest", "oldest", "name", "name-desc", "largest"];
 const VIEWS: readonly IconView[] = ["grid", "list"];
@@ -39,10 +34,10 @@ const PAGE = 200;
 // The server returns at most this many in one request.
 const MAX_SHOWN = 1000;
 
-type Dialog = "add" | "paste" | "copy" | "sprite" | "font" | "move" | "tag" | "delete" | null;
+type Dialog = "add" | "move" | "tag" | "delete" | null;
 
 export default function IconsTab() {
-  const { project, folderList, selectedFolder, refreshProject, refreshFolders, refreshIcons, iconsVersion, actionsSlot } = useWorkspace();
+  const { project, folderList, selectedFolder, refreshProject, refreshFolders, refreshIcons, iconsVersion, actionsSlot, selection } = useWorkspace();
   const { showToast } = useToast();
   const navigate = useNavigate();
   const canEdit = project.access.canEdit;
@@ -72,7 +67,7 @@ export default function IconsTab() {
   const icons = useResource(`icons:${filterKey}:${limit}:${iconsVersion}`, () => listIcons(project.id, params));
   const shown = icons.data?.icons ?? [];
   const total = icons.data?.total ?? 0;
-  const selection = useSelection(`${filterKey}:${iconsVersion}`);
+  // The selection is intentionally not pruned against the loaded list: the user's instruction is that nothing except "Clear selection" empties it. Bulk actions report matched < requested when an icon is gone, and stale ids in the selection are harmless until the user clears them.
   const currentFolderId = selectedFolder === "all" || selectedFolder === "root" ? null : selectedFolder;
 
   const refreshAll = () => {
@@ -92,7 +87,7 @@ export default function IconsTab() {
     }
   }
 
-  // "Build font" / "Build sprite" on the bulk bar. A sprite project just opens the Sprite page with the selection (it builds in the browser). A font project builds the font on the server first, from the selection and the project's default font settings, and opens the Font page with the result already in place; if the build fails the reason is shown here and nothing moves.
+  // "Build font" / "Build sprite" on the bulk bar. A sprite project just opens the Sprite page with the selection (the sprite builds in the browser, and the Sprite tab clears the selection when its build is ready). A font project builds the font on the server first from the selection, then clears the selection and opens the Font page with the result already in place; if the build fails the reason is shown here and the selection is left untouched.
   async function buildSelected() {
     const iconIds = selection.ids;
     if (project.purpose !== "font") {
@@ -105,6 +100,8 @@ export default function IconsTab() {
       const family = nextPreviewFamily();
       const loaded = await loadPreviewFont(family, build.preview.base64);
       cacheBuild({ projectId: project.id, build, family, loaded });
+      // The selection has been consumed by the build: clear it before navigating so the Icons screen does not re-show it.
+      selection.clear();
       // New characters were saved on the icons: the totals and lists elsewhere should show them.
       if (canEdit && build.codepoints.some((glyph) => glyph.isNew)) {
         refreshIcons();
@@ -156,7 +153,7 @@ export default function IconsTab() {
         onAppearance={setAppearance}
         actionsHost={actionsSlot}
         canAdd={project.access.canAddIcons}
-        onUpload={(kind: UploadKind) => setDialog(kind === "files" ? "add" : kind)}
+        onUpload={() => setDialog("add")}
       />
       </div>
 
@@ -180,7 +177,7 @@ export default function IconsTab() {
             <p className="mt-2 text-base font-semibold">
               {search ? `No icons match “${search}”.` : emptyProject ? "No icons yet." : selectedFolder === "root" ? "No uncategorized icons." : "This folder is empty."}
             </p>
-            <p className="mt-1 text-sm text-muted-foreground">{search ? "Try a different search." : project.access.canAddIcons ? "Add some by uploading SVG files, pasting code, or copying from another project." : "The owner has not added any here yet."}</p>
+            <p className="mx-auto mt-1 text-sm text-muted-foreground">{search ? "Try a different search." : project.access.canAddIcons ? "Upload icons to get started." : "The owner has not added any here yet."}</p>
             {!search && project.access.canAddIcons && (
               <Button variant="primary" className="mt-4" onClick={() => setDialog("add")}>
                 Upload icons
@@ -230,50 +227,22 @@ export default function IconsTab() {
       )}
 
       <UploadDialog
-        open={dialog === "add" || dialog === "paste"}
-        initialTab={dialog === "paste" ? "paste" : "files"}
+        open={dialog === "add"}
         projectId={project.id}
+        prefix={project.prefix}
         folders={folderList.folders}
         defaultFolderId={currentFolderId}
         onClose={() => setDialog(null)}
         onUploaded={(summary) => {
           if (summary.created.length + summary.replaced.length > 0) refreshAll();
         }}
-        onPasted={(result) => {
-          refreshAll();
-          if (result.outcome !== "skipped") showToast(`${result.outcome === "created" ? "Added" : "Replaced"} “${result.icon.name}”.`, "success");
-        }}
-      />
-      <ImportSpriteDialog
-        open={dialog === "sprite"}
-        projectId={project.id}
-        prefix={project.prefix}
-        folders={folderList.folders}
-        defaultFolderId={currentFolderId}
-        onClose={() => setDialog(null)}
-        onImported={(summary) => {
-          if (summary.created.length + summary.replaced.length > 0) refreshAll();
-        }}
-      />
-      <ImportFontDialog
-        open={dialog === "font"}
-        projectId={project.id}
-        folders={folderList.folders}
-        defaultFolderId={currentFolderId}
-        onClose={() => setDialog(null)}
-        onImported={(summary) => {
-          if (summary.created.length + summary.replaced.length > 0) refreshAll();
-        }}
-      />
-      <CopyFromProjectDialog
-        open={dialog === "copy"}
-        targetProjectId={project.id}
-        targetFolders={folderList.folders}
-        defaultFolderId={currentFolderId}
-        onClose={() => setDialog(null)}
         onCopied={(summary) => {
           refreshAll();
           showToast(describeAdded(summary), summary.created.length + summary.replaced.length > 0 ? "success" : "warning");
+        }}
+        onPasted={(result) => {
+          refreshAll();
+          if (result.outcome !== "skipped") showToast(`${result.outcome === "created" ? "Added" : "Replaced"} “${result.icon.name}”.`, "success");
         }}
       />
       <MoveIconsDialog

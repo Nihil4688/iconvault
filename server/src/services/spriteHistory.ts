@@ -9,13 +9,17 @@ type Id = Types.ObjectId;
 export type SpriteBuildSummary = { id: string; version: number; mode: SpriteBuildDoc["mode"]; iconCount: number; size: number; createdAt: Date };
 
 // Keeps a downloaded sprite ZIP. The bytes must be a ZIP and fit the size limit.
-export async function recordSpriteBuild(projectId: Id, userId: string, input: { mode: SpriteBuildDoc["mode"]; iconCount: number }, zip: Buffer): Promise<SpriteBuildSummary> {
+export async function recordSpriteBuild(projectId: Id, userId: string, input: { mode: SpriteBuildDoc["mode"]; iconCount: number; fingerprint: string | undefined }, zip: Buffer): Promise<SpriteBuildSummary | null> {
   if (zip.length === 0) throw new BadRequestError("The sprite ZIP is empty.");
   if (zip.length > MAX_STORED_SPRITE_BYTES) throw new BadRequestError("The sprite ZIP is too large to keep (12 MB at most).");
   if (!(zip[0] === 0x50 && zip[1] === 0x4b)) throw new BadRequestError("That file is not a ZIP.");
+  if (input.fingerprint) {
+    const newest = await SpriteBuild.findOne({ projectId }, { fingerprint: 1 }).sort({ createdAt: -1, _id: -1 }).lean();
+    if (newest?.fingerprint === input.fingerprint) return null;
+  }
   const counted = await Project.findOneAndUpdate({ _id: projectId }, { $inc: { spriteBuildCount: 1 } }, { returnDocument: "after", projection: { spriteBuildCount: 1 } });
   if (!counted) throw new NotFoundError("Project not found");
-  const row = await SpriteBuild.create({ projectId, version: counted.spriteBuildCount, mode: input.mode, iconCount: input.iconCount, size: zip.length, createdBy: new mongoose.Types.ObjectId(userId), zip });
+  const row = await SpriteBuild.create({ projectId, version: counted.spriteBuildCount, mode: input.mode, iconCount: input.iconCount, size: zip.length, ...(input.fingerprint ? { fingerprint: input.fingerprint } : {}), createdBy: new mongoose.Types.ObjectId(userId), zip });
   const extra = await SpriteBuild.find({ projectId }, { _id: 1 }).sort({ createdAt: -1, _id: -1 }).skip(MAX_STORED_SPRITE_BUILDS).lean();
   if (extra.length > 0) await SpriteBuild.deleteMany({ _id: { $in: extra.map((item) => item._id) } });
   return { id: String(row._id), version: row.version, mode: row.mode, iconCount: row.iconCount, size: row.size, createdAt: row.createdAt as Date };

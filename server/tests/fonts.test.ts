@@ -6,7 +6,8 @@ import path from "node:path";
 import { after, before, describe, it } from "node:test";
 import { unzipSync } from "fflate";
 import { generateFonts, type FontAssetType } from "fantasticon";
-import { conversionWarnings, planCodepoints, safeFontName, toHex, zipFontBuild } from "../src/services/fontService.js";
+import { JSDOM } from "jsdom";
+import { conversionWarnings, createMetrop, planCodepoints, safeFontName, toHex, zipFontBuild } from "../src/services/fontService.js";
 import { MAX_FONT_BYTES, parseMapping, privateUseOnly, readFontGlyphs } from "../src/services/fontImport.js";
 import { buildFontSchema } from "../src/lib/validation.js";
 
@@ -92,10 +93,30 @@ describe("small helpers", () => {
 });
 
 describe("font ZIP layout", () => {
+  it("creates a Metrop project from the font icons", () => {
+    const metrop = createMetrop([
+      { name: 'Arrow & "One"', slug: "arrow-one", codepoint: "E001", dataFont: "M176,176L848,176", svg: '<svg xmlns="http://www.w3.org/2000/svg"><path d="M0 0L1 1"/><path d="M2 2L3 3"/></svg>' },
+      { name: "Circle", slug: "circle", codepoint: "E002", dataFont: "M176 176L848 176", svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/></svg>' },
+    ]);
+
+    assert.match(metrop, /^<\?xml version="1\.0" encoding="utf-8"\?>\r?\n/);
+    const document = new JSDOM(metrop, { contentType: "text/xml" }).window.document;
+    const root = document.documentElement;
+    assert.equal(root.localName, "IconProject");
+    assert.deepEqual(["Version", "PUAEnable", "BasicLatinEnable"].map((name) => root.getAttribute(name)), ["2.0", "true", "false"]);
+    const icons = Array.from(root.children);
+    assert.equal(icons.length, 2);
+    assert.deepEqual(["Name", "FontName", "ASCIIValue", "DataFont"].map((name) => icons[0]?.getAttribute(name)), ['Arrow & "One"', "arrow-one", "e001", "M176,176L848,176"]);
+    assert.match(icons[0]?.getAttribute("Data") ?? "", /^M0 0L1 1/);
+    assert.equal(icons[0]?.querySelector("Settings")?.getAttribute("FontFamily"), "Webdings");
+    assert.match(icons[1]?.getAttribute("Data") ?? "", /^M12 3A9 9/);
+  });
+
   it("packages font assets in the project folder structure, with an embedded stylesheet", () => {
     const buildFiles = [
       { name: "MetroStudio.ttf", data: Buffer.from("font-data") },
       { name: "MetroStudio.woff", data: Buffer.from("woff-data") },
+      { name: "MetroStudio.metrop", data: Buffer.from(createMetrop([{ name: "One", slug: "one", codepoint: "E001", dataFont: "M0 0", svg: '<svg xmlns="http://www.w3.org/2000/svg"><path d="M0 0"/></svg>' }])) },
       { name: "MetroStudio.css", data: Buffer.from('@font-face { font-family: "MetroStudio"; src: url("MetroStudio.woff2") format("woff2"), url("MetroStudio.ttf") format("truetype"); } i[class^="icon-"]:before, i[class*=" icon-"]:before { font-family: MetroStudio !important; } .icon-one:before { content: "\\e001"; }') },
       { name: "MetroStudio.scss", data: Buffer.from("$font: MetroStudio;") },
       { name: "MetroStudio.json", data: Buffer.from('{"one":57345}') },
@@ -119,12 +140,14 @@ describe("font ZIP layout", () => {
       "Embed Font in CSS/style.css",
       "Fonts/MetroStudio.ttf",
       "Fonts/MetroStudio.woff",
+      "MetroStudio.metrop",
       "demo.html",
       "library.json",
       "style.css",
     ]);
     assert.equal(Object.hasOwn(archive, "MetroStudio.ttf"), false);
     assert.equal(Buffer.from(archive["Fonts/MetroStudio.ttf"] ?? []).toString(), "font-data");
+    assert.match(Buffer.from(archive["MetroStudio.metrop"] ?? []).toString(), /<Icon Name="One" FontName="one".*ASCIIValue="e001".*Data="M0 0">/);
     assert.match(Buffer.from(archive["style.css"] ?? []).toString(), /Fonts\/MetroStudio\.ttf/);
     assert.doesNotMatch(Buffer.from(archive["style.css"] ?? []).toString(), /MetroStudio\.woff2/);
     assert.match(Buffer.from(archive["demo.html"] ?? []).toString(), /href="style\.css"/);

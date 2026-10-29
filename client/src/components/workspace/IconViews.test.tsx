@@ -155,13 +155,11 @@ describe("IconToolbar", () => {
     expect(screen.getByRole("button", { name: "Grid view" })).toHaveAttribute("aria-pressed", "false");
   });
 
-  it("offers uploading and copying only to people who can add", async () => {
+  it("offers one upload button only to people who can add", async () => {
     const props = setup();
     const onUpload = vi.mocked(props.onUpload);
     await userEvent.click(screen.getByRole("button", { name: "Upload icons" }));
-    expect(onUpload).toHaveBeenLastCalledWith("files");
-    await userEvent.click(screen.getByRole("button", { name: "From Another Project" }));
-    expect(onUpload).toHaveBeenLastCalledWith("copy");
+    expect(onUpload).toHaveBeenCalledTimes(1);
   });
 
   it("changes the icon size with the slider and the plus and minus buttons", async () => {
@@ -259,69 +257,27 @@ describe("IconToolbar", () => {
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
   });
 
-  it("puts the add buttons into the header slot when there is one", () => {
+  it("puts the upload button into the header slot when there is one", () => {
     const host = document.createElement("div");
     document.body.appendChild(host);
     setup({ actionsHost: host });
     expect(within(host).getByRole("button", { name: "Upload icons" })).toBeInTheDocument();
-    expect(within(host).getByRole("button", { name: "From Another Project" })).toBeInTheDocument();
+    expect(within(host).queryByRole("button", { name: "From Another Project" })).not.toBeInTheDocument();
     host.remove();
   });
 
-  it("lists every way to add icons in the Upload icons menu", async () => {
+  it("keeps all add options in the Add icons dialog rather than an upload dropdown", async () => {
     const onUpload = vi.mocked(setup().onUpload);
-    const trigger = screen.getByRole("button", { name: "More ways to add icons" });
-    expect(trigger).toHaveAttribute("aria-expanded", "false");
-    await userEvent.click(trigger);
-    const menu = screen.getByRole("menu", { name: "Add icons" });
-    expect(within(menu).getAllByRole("menuitem").map((item) => item.textContent)).toEqual([
-      "Upload Files / ZIPUpload SVGs or drag & drop ZIP files",
-      "From Another ProjectNewSelect and copy icons from other workspaces",
-      "Import SVG SpriteExtract symbols from an SVG sprite file",
-      "Import Icon FontExtract glyphs from TTF, WOFF, WOFF2",
-      "Paste SVG CodePaste raw SVG markup directly",
-    ]);
-    await userEvent.click(within(menu).getByRole("menuitem", { name: /Import Icon Font/ }));
-    expect(onUpload).toHaveBeenCalledWith("font");
-    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
-    expect(trigger).toHaveFocus();
-    await userEvent.click(trigger);
-    await userEvent.click(screen.getByRole("menuitem", { name: /Import SVG Sprite/ }));
-    await userEvent.click(trigger);
-    await userEvent.click(screen.getByRole("menuitem", { name: /Paste SVG Code/ }));
-    await userEvent.click(trigger);
-    await userEvent.click(screen.getByRole("menuitem", { name: /From Another Project/ }));
-    expect(onUpload.mock.calls.map((call) => call[0])).toEqual(["font", "sprite", "paste", "copy"]);
-  });
-
-  it("moves through the menu with the keyboard and closes on Escape", async () => {
-    setup();
-    const trigger = screen.getByRole("button", { name: "More ways to add icons" });
-    trigger.focus();
-    await userEvent.keyboard("{ArrowDown}");
-    await waitFor(() => expect(screen.getByRole("menuitem", { name: /Upload Files/ })).toHaveFocus());
-    await userEvent.keyboard("{ArrowDown}");
-    expect(screen.getByRole("menuitem", { name: /From Another Project/ })).toHaveFocus();
-    await userEvent.keyboard("{End}");
-    expect(screen.getByRole("menuitem", { name: /Paste SVG Code/ })).toHaveFocus();
-    await userEvent.keyboard("{ArrowDown}");
-    expect(screen.getByRole("menuitem", { name: /Upload Files/ })).toHaveFocus();
-    await userEvent.keyboard("{Escape}");
-    expect(screen.queryByRole("menu")).not.toBeInTheDocument();
-    expect(trigger).toHaveFocus();
-  });
-
-  it("closes the menu when clicking elsewhere", async () => {
-    setup();
-    await userEvent.click(screen.getByRole("button", { name: "More ways to add icons" }));
-    await userEvent.click(document.body);
+    const button = screen.getByRole("button", { name: "Upload icons" });
+    expect(button).not.toHaveAttribute("aria-haspopup");
+    await userEvent.click(button);
+    expect(onUpload).toHaveBeenCalledTimes(1);
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
   });
 
   it("hides add and copy for read-only users", () => {
     setup({ canAdd: false });
     expect(screen.queryByRole("button", { name: "Upload icons" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "More ways to add icons" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "From Another Project" })).not.toBeInTheDocument();
   });
   it("has no select all in the toolbar (it sits above the icon list)", () => {

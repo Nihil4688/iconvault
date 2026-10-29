@@ -1,6 +1,7 @@
 // Tests for the Icons section: loading and empty states, what is asked of the server for each folder, search and sort, views, "show more", selection, every bulk action (with undo for trash), read-only behaviour, failures, and opening an icon.
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { MemoryRouter, useLocation } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "../../api/http";
@@ -8,6 +9,7 @@ import * as fontsApi from "../../api/fonts";
 import * as iconsApi from "../../api/icons";
 import { ToastProvider } from "../../context/ToastContext";
 import { WorkspaceContext, type WorkspaceContextValue } from "../../context/workspaceContext";
+import { useSelection } from "../../hooks/useSelection";
 import { DRAG_TYPE } from "../../lib/dragIcons";
 import { clearCachedBuild, peekCachedBuild } from "../../lib/fontBuildCache";
 import * as preview from "../../lib/fontPreview";
@@ -31,36 +33,45 @@ function Where() {
   return <p data-testid="where" data-state={JSON.stringify(location.state)}>{location.pathname}</p>;
 }
 
+// The wrapper owns the selection so its state survives across rerenders, and exposes a setter so the test can swap in a fresh `base` without losing the selection. The latest controller values are written into the ref after each render through an effect that depends on the values it publishes, so React sees a consistent dependency list.
+function StableWrapper({ initialBase, controllerRef, children }: { initialBase: WorkspaceContextValue; controllerRef: { current: { setBase: (next: WorkspaceContextValue) => void; selection: ReturnType<typeof useSelection> | null } | null }; children: ReactNode }) {
+  const [base, setBase] = useState<WorkspaceContextValue>(initialBase);
+  const selection = useSelection("p1");
+  useEffect(() => {
+    controllerRef.current = { setBase, selection };
+  }, [controllerRef, setBase, selection]);
+  const value = useMemo<WorkspaceContextValue>(() => ({ ...base, selection }), [base, selection]);
+  return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>;
+}
+
 function setup(over: Partial<WorkspaceContextValue> = {}) {
   const fns = { selectFolder: vi.fn(), refreshProject: vi.fn(), refreshFolders: vi.fn(), refreshIcons: vi.fn() };
-  const value: WorkspaceContextValue = {
+  const initialBase: WorkspaceContextValue = {
     project: makeDetail({ id: "p1", prefix: "feather", iconCount: 3 }),
     folderList: { folders: [makeFolder({ id: "ui", name: "UI" })], uncategorizedCount: 0 },
     selectedFolder: "all",
     iconsVersion: 0,
     ...fns,
     ...over,
+    selection: undefined as unknown as WorkspaceContextValue["selection"],
   };
-  const view = render(
+  const controllerRef: { current: { setBase: (next: WorkspaceContextValue) => void; selection: ReturnType<typeof useSelection> | null } | null } = { current: null };
+  render(
     <MemoryRouter initialEntries={["/projects/p1"]}>
       <ToastProvider>
-        <WorkspaceContext.Provider value={value}>
+        <StableWrapper initialBase={initialBase} controllerRef={controllerRef}>
           <IconsTab />
-        </WorkspaceContext.Provider>
+        </StableWrapper>
         <Where />
       </ToastProvider>
     </MemoryRouter>,
   );
-  const rerender = (next: Partial<WorkspaceContextValue>) =>
-    view.rerender(
-      <MemoryRouter initialEntries={["/projects/p1"]}>
-        <ToastProvider>
-          <WorkspaceContext.Provider value={{ ...value, ...next }}>
-            <IconsTab />
-          </WorkspaceContext.Provider>
-        </ToastProvider>
-      </MemoryRouter>,
-    );
+  // Re-rendering with the same JSX (same component type and position) keeps the wrapper's state; the test tells the wrapper to swap its `base` instead, which preserves the selection.
+  const rerender = (next: Partial<WorkspaceContextValue>) => {
+    const controller = controllerRef.current;
+    if (!controller) throw new Error("StableWrapper is not mounted");
+    controller.setBase({ ...initialBase, ...next });
+  };
   return { ...fns, rerender };
 }
 
@@ -117,6 +128,9 @@ describe("empty states", () => {
   it("invites adding the first icons", async () => {
     setup();
     expect(await screen.findByText("No icons yet.")).toBeInTheDocument();
+    const instructions = screen.getByText("Click Upload Icons to get started. Upload SVGs, sprite files, icon fonts, or ZIP packages, paste icon code, or import icons from another project.");
+    expect(instructions).toHaveClass("max-w-2xl");
+    expect(instructions.querySelector("br")).toBeInTheDocument();
     await userEvent.click(screen.getAllByRole("button", { name: "Upload icons" })[1] as HTMLElement);
     expect(screen.getByRole("dialog", { name: "Add icons" })).toBeInTheDocument();
   });
@@ -221,13 +235,28 @@ describe("selection", () => {
     expect(screen.queryByText("3 icons selected")).not.toBeInTheDocument();
   });
 
-  it("starts again after the list is refreshed", async () => {
+  it("keeps the selection when the list is refreshed", async () => {
     const { rerender } = setup();
     await screen.findByRole("button", { name: "Open Alpha" });
     await userEvent.click(screen.getByRole("checkbox", { name: "Select Alpha" }));
     expect(screen.getByText("1 icon selected")).toBeInTheDocument();
     rerender({ iconsVersion: 1 });
-    await waitFor(() => expect(screen.queryByText("1 icon selected")).not.toBeInTheDocument());
+    // The selection survives a list refresh: nothing cleared it, so the bulk bar and the checkbox stay the same.
+    expect(screen.getByText("1 icon selected")).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "Select Alpha" })).toBeChecked();
+  });
+
+  it("keeps the selection even when the refreshed list no longer contains the selected icons (only Clear selection empties it)", async () => {
+    const { rerender } = setup();
+    await screen.findByRole("button", { name: "Open Alpha" });
+    await userEvent.click(screen.getByRole("checkbox", { name: "Select Alpha" }));
+    await userEvent.click(screen.getByRole("checkbox", { name: "Select Beta" }));
+    expect(screen.getByText("2 icons selected")).toBeInTheDocument();
+    // After the bulk-trash refresh, only Gamma is left, but the selection is not auto-pruned.
+    listIcons.mockResolvedValue(reply([makeIcon({ id: "c", name: "Gamma", hasStroke: true })]));
+    rerender({ iconsVersion: 1 });
+    await screen.findByRole("button", { name: "Open Gamma" });
+    expect(screen.getByText("2 icons selected")).toBeInTheDocument();
   });
 
   it("offers only Download to a read-only viewer", async () => {

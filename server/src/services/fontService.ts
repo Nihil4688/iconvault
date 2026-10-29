@@ -1,9 +1,12 @@
 // Building an icon font from a project's icons. Font Builder codepoint edits are sent with each build and are never saved to icons. The fonts, CSS, SCSS and glyph map come from `fantasticon`; ZIP packaging uses fflate and builds its own specimen page.
 import { zipSync } from "fflate";
 import { FontAssetType, OtherAssetType, generateFonts } from "fantasticon";
+import { JSDOM } from "jsdom";
 import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import opentype from "opentype.js";
+import { optimize } from "svgo";
 import { isFontCodepoint } from "../lib/codepoint.js";
 import { BadRequestError, ConflictError } from "../lib/errors.js";
 import type { BuildFontInput } from "../lib/validation.js";
@@ -109,7 +112,7 @@ export type FontBuild = {
   baseClass: string;
   codepoints: { id: string; name: string; slug: string; codepoint: string; className: string; isNew: boolean }[];
   css: string;
-  // Everything that goes into the ZIP: the requested font files, css, scss, json, html and a README.
+  // Everything that goes into the ZIP: the requested font files, css, scss, json, html, README and Metrop project.
   files: FontFile[];
   // A small font for the in-browser preview (always present).
   preview: { format: "woff2"; base64: string };
@@ -118,6 +121,24 @@ export type FontBuild = {
 
 export function safeFontName(name: string): string {
   return name.replace(/[^a-zA-Z0-9_-]/g, "") || "IconFont";
+}
+
+export function createMetrop(icons: (Pick<FontIcon, "name" | "slug" | "svg"> & { codepoint: string; dataFont: string })[]): string {
+  const escapeXml = (value: string) => value.replaceAll("&", "&amp;").replaceAll('"', "&quot;").replaceAll("<", "&lt;").replaceAll(">", "&gt;");
+  const entries = icons.flatMap((icon) => {
+    const svg = optimize(icon.svg, { plugins: [{ name: "convertShapeToPath", params: { convertArcs: true } }] }).data;
+    const document = new JSDOM(svg, { contentType: "image/svg+xml" }).window.document;
+    const data = Array.from(document.querySelectorAll("path"))
+      .map((element) => element.getAttribute("d")?.trim())
+      .filter((path): path is string => Boolean(path))
+      .join(" ");
+    if (!data) throw new BadRequestError(`The icon "${icon.name}" does not contain path data for a Metrop file.`);
+    if (!icon.dataFont) throw new BadRequestError(`The icon "${icon.name}" does not contain font path data for a Metrop file.`);
+    return [`  <Icon Name="${escapeXml(icon.name)}" FontName="${escapeXml(icon.slug)}" IsDuplicate="false" ASCIIValue="${icon.codepoint.toLowerCase()}" AlphaNumericValue="" FiValue="" GroupName="Custom" HasCharacterMap="false" IsDirty="false" ExportCommand="MetroGraphicsPackage.IconCommand" DataFont="${escapeXml(icon.dataFont)}" Data="${escapeXml(data)}">
+    <Settings FontFamily="Webdings" Character="&gt;" IconBrush="#FFFFFFFF" FlipCommand="MetroGraphicsPackage.IconCommand" SldierValueChanged="MetroGraphicsPackage.IconCommand" FlipX="1" FlipY="1" IsLinked="false" ContentHeight="48" ContentWidth="48" SizeIndex="4" MainWidth="48" Angle="0" MainHeight="48" CustomSize="48" MaximumPadding="15" BackgroundBrush="#FF000000" IconShape="None" IsBackgroundVisible="true" IsRect="false" CustomWidth="48" CustomHeight="48" Padding="0" />
+  </Icon>`];
+  });
+  return `<?xml version="1.0" encoding="utf-8"?>\n<IconProject Version="2.0" PUAEnable="true" BasicLatinEnable="false">\n${entries.join("\n")}\n</IconProject>`;
 }
 
 // Builds the font in a temporary folder using the uploaded codepoints plus any per-visit overrides.
@@ -177,7 +198,7 @@ export async function buildFont(projectId: Id, icons: FontIcon[], input: BuildFo
         outputDir: outDir,
         name: fontName,
         // woff2 is always built for the preview; it is left out of the ZIP when not requested.
-        fontTypes: [...new Set([...wanted, "woff2"])] as FontAssetType[],
+        fontTypes: [...new Set([...wanted, "woff2", "ttf"])] as FontAssetType[],
         assetTypes: ["css", "scss", "json", "html"] as OtherAssetType[],
         formatOptions: { json: { indent: 2 } },
         codepoints,
@@ -195,16 +216,28 @@ export async function buildFont(projectId: Id, icons: FontIcon[], input: BuildFo
     const files: FontFile[] = [];
     const sizes: Record<string, number> = {};
     let previewBase64 = "";
+    let metropFont: opentype.Font | undefined;
     for (const name of (await readdir(outDir)).sort()) {
       const data = await readFile(path.join(outDir, name));
       const ext = path.extname(name).slice(1).toLowerCase();
       if (ext === "woff2") previewBase64 = data.toString("base64");
+      if (ext === "ttf") metropFont = opentype.parse(data.buffer.slice(data.byteOffset, data.byteOffset + data.byteLength) as ArrayBuffer);
       const isFont = ["ttf", "woff", "woff2", "eot", "svg"].includes(ext);
       if (isFont && !wanted.includes(ext as (typeof wanted)[number])) continue;
       files.push({ name, data });
       if (isFont) sizes[ext] = data.length;
     }
     files.push({ name: "README.md", data: Buffer.from(readme(fontName, prefix, icons, wanted, input.baseClass)) });
+    if (!metropFont) throw new Error("The generated font is missing the TrueType data required for its Metrop file.");
+    files.push({
+      name: `${fontName}.metrop`,
+      data: Buffer.from(createMetrop(icons.map((icon) => {
+        const codepoint = plan.all.get(icon.id) as number;
+        const glyph = metropFont.charToGlyph(String.fromCodePoint(codepoint));
+        const dataFont = glyph.getPath(0, metropFont.ascender, metropFont.unitsPerEm).toPathData(3);
+        return { ...icon, codepoint: toHex(codepoint), dataFont };
+      }))),
+    });
 
     const css = files.find((file) => file.name === `${fontName}.css`)?.data.toString("utf8") ?? "";
     return {
@@ -226,7 +259,7 @@ export async function buildFont(projectId: Id, icons: FontIcon[], input: BuildFo
 
 function readme(fontName: string, prefix: string, icons: FontIcon[], formats: string[], baseClass = ""): string {
   const sample = icons[0]?.slug ?? "icon";
-  return `# ${fontName}\n\nAn icon font with ${icons.length} icons. Formats: ${formats.join(", ")}.\n\n## Use it\n\n1. Link the stylesheet:\n\n   <link rel="stylesheet" href="${fontName}.css">\n\n2. Add an icon:\n\n   <i class="${baseClass ? `${baseClass} ` : ""}${prefix}-${sample}"></i>\n\nOpen ${fontName}.html to see every icon with its class name. ${fontName}.json maps each icon to its character code, and stays the same when the font is rebuilt.\n`;
+  return `# ${fontName}\n\nAn icon font with ${icons.length} icons. Formats: ${formats.join(", ")}.\n\n## Use it\n\n1. Link the stylesheet:\n\n   <link rel="stylesheet" href="${fontName}.css">\n\n2. Add an icon:\n\n   <i class="${baseClass ? `${baseClass} ` : ""}${prefix}-${sample}"></i>\n\nOpen ${fontName}.html to see every icon with its class name. ${fontName}.json maps each icon to its character code, and stays the same when the font is rebuilt. The ZIP also includes ${fontName}.metrop.\n`;
 }
 
 const FONT_FORMATS: Record<string, { mime: string; format: string }> = {
@@ -326,6 +359,8 @@ export function zipFontBuild(build: FontBuild): Buffer {
     "Embed Font in CSS/demo.html": new Uint8Array(Buffer.from(demoHtml)),
     "Embed Font in CSS/style.css": new Uint8Array(Buffer.from(embeddedCss)),
   };
+  const metrop = build.files.find((file) => path.extname(file.name).toLowerCase() === ".metrop");
+  if (metrop) input[metrop.name] = new Uint8Array(metrop.data);
   for (const font of fonts) input[`Fonts/${font.name}`] = new Uint8Array(font.data);
   return Buffer.from(zipSync(input, { level: 6 }));
 }

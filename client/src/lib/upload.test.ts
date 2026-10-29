@@ -1,7 +1,7 @@
 // Tests for upload rules, batching, merging results, and reading tags.
 import { describe, expect, it } from "vitest";
 import type { UploadSummary } from "../api/types";
-import { BATCH_SIZE, MAX_FILE_BYTES, checkFiles, isSvgOrZip, mergeSummaries, parseTags, toBatches } from "./upload";
+import { BATCH_SIZE, MAX_FILE_BYTES, checkFiles, isIconFont, isMetrop, isSvgOrZip, mergeSummaries, parseTags, toBatches } from "./upload";
 
 const file = (name: string, size = 10, lastModified = 1) => {
   const f = new File(["x".repeat(Math.min(size, 50))], name, { lastModified });
@@ -16,11 +16,25 @@ describe("checkFiles", () => {
     expect(problems).toEqual([]);
   });
 
+  it("accepts supported icon font files alongside SVG and ZIP files", () => {
+    const { accepted, problems } = checkFiles([file("icons.ttf"), file("icons.OTF"), file("icons.woff"), file("icons.WOFF2"), file("icons.eot")]);
+    expect(accepted.map((f) => f.name)).toEqual(["icons.ttf", "icons.OTF", "icons.woff", "icons.WOFF2"]);
+    expect(problems).toEqual([{ file: "icons.eot", message: "Only .svg, .zip, .metrop, .ttf, .otf, .woff, and .woff2 files can be added." }]);
+  });
+
+  it("accepts METROP icon project files", () => {
+    const { accepted, problems } = checkFiles([file("icons.metrop"), file("icons.METROP"), file("icons.metrop.txt")]);
+    expect(accepted.map((f) => f.name)).toEqual(["icons.metrop", "icons.METROP"]);
+    expect(problems).toEqual([{ file: "icons.metrop.txt", message: "Only .svg, .zip, .metrop, .ttf, .otf, .woff, and .woff2 files can be added." }]);
+    expect(isMetrop({ name: "icons.METROP" })).toBe(true);
+    expect(isMetrop({ name: "icons.metrop.txt" })).toBe(false);
+  });
+
   it("reports other types, empty files and files that are too large", () => {
     const { accepted, problems } = checkFiles([file("notes.txt"), file("empty.svg", 0), file("huge.svg", MAX_FILE_BYTES + 1), file("ok.svg")]);
     expect(accepted.map((f) => f.name)).toEqual(["ok.svg"]);
     expect(problems).toEqual([
-      { file: "notes.txt", message: "Only .svg and .zip files can be added." },
+      { file: "notes.txt", message: "Only .svg, .zip, .metrop, .ttf, .otf, .woff, and .woff2 files can be added." },
       { file: "empty.svg", message: "The file is empty." },
       { file: "huge.svg", message: "Larger than 25 MB." },
     ]);
@@ -35,6 +49,9 @@ describe("checkFiles", () => {
     expect(isSvgOrZip({ name: "x.svg" })).toBe(true);
     expect(isSvgOrZip({ name: "x.svg.txt" })).toBe(false);
     expect(isSvgOrZip({ name: "svg" })).toBe(false);
+    expect(isIconFont({ name: "icons.ttf" })).toBe(true);
+    expect(isIconFont({ name: "icons.woff2" })).toBe(true);
+    expect(isIconFont({ name: "icons.ttf.txt" })).toBe(false);
   });
 });
 

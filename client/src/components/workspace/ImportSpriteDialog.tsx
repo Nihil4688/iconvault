@@ -27,12 +27,12 @@ type ImportSpriteDialogProps = {
 export default function ImportSpriteDialog({ open, onClose, ...rest }: ImportSpriteDialogProps) {
   return (
     <Dialog open={open} onClose={onClose} title="Import a sprite" description="Turn the symbols of an existing sprite file into icons in this project." size="lg">
-      <ImportForm onClose={onClose} {...rest} />
+      <ImportSpriteForm onClose={onClose} {...rest} />
     </Dialog>
   );
 }
 
-function ImportForm({ projectId, prefix, folders, defaultFolderId, onClose, onImported }: Omit<ImportSpriteDialogProps, "open">) {
+export function ImportSpriteForm({ projectId, prefix, folders, defaultFolderId, onClose, onImported }: Omit<ImportSpriteDialogProps, "open">) {
   const [fileName, setFileName] = useState<string | null>(null);
   const [parsed, setParsed] = useState<SpriteImport | null>(null);
   const [folderId, setFolderId] = useState(defaultFolderId ?? "");

@@ -1,4 +1,4 @@
-// Top of a project, in one bar: where you are (a Dashboard / project breadcrumb, placed in the top bar), the project's name with its type and visibility (each in its own colour), the sections as a pill menu (Icons, Icon Font or Sprite, Settings, Trash), and a slot on the right where the Icons screen places Upload icons and From Another Project. Under the bar: an Archived badge when it is archived, and a note when it is read-only for you.
+// Top of a project, in one bar: where you are (a Dashboard / project breadcrumb, placed in the top bar), the project's name with its type and visibility (each in its own colour), the sections as a pill menu (Icons, Icon Font or Sprite, Settings, Trash), and a slot on the right where the Icons screen places Upload icons. Under the bar: an Archived badge when it is archived, and a note when it is read-only for you.
 import { Archive, Settings, Trash2, Type, Layers, Shapes } from "lucide-react";
 import { useContext } from "react";
 import { createPortal } from "react-dom";

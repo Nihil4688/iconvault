@@ -191,17 +191,17 @@ describe("project workspace", () => {
     await clean();
   });
 
-  it("the Upload icons menu and the import dialogs it opens", async () => {
+  it("the Add icons dialog keeps paste and project-copy paths in tabs without separate import tabs", async () => {
     project("/projects/p1");
-    await userEvent.click(await screen.findByRole("button", { name: "More ways to add icons" }));
+    await userEvent.click((await screen.findAllByRole("button", { name: "Upload icons" }))[0] as HTMLElement);
     await clean();
-    await userEvent.click(screen.getByRole("menuitem", { name: /Import SVG Sprite/ }));
-    await screen.findByRole("dialog", { name: "Import a sprite" });
+    expect(screen.getByRole("dialog", { name: "Add icons" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("tab", { name: "Paste SVG code" }));
     await clean();
-    await userEvent.keyboard("{Escape}");
-    await userEvent.click(screen.getByRole("button", { name: "More ways to add icons" }));
-    await userEvent.click(screen.getByRole("menuitem", { name: /Import Icon Font/ }));
-    await screen.findByRole("dialog", { name: "Import a font" });
+    expect(screen.queryByRole("dialog", { name: "Import a sprite" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: "Import a font" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: "Import SVG Sprite" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("tab", { name: "Import Icon Font" })).not.toBeInTheDocument();
     await clean();
   });
 
@@ -209,7 +209,7 @@ describe("project workspace", () => {
     project("/projects/p1");
     await userEvent.click((await screen.findAllByRole("button", { name: "Upload icons" }))[0] as HTMLElement);
     await clean();
-    await userEvent.click(screen.getByRole("tab", { name: /paste/i }));
+    await userEvent.click(screen.getByRole("tab", { name: "Paste SVG code" }));
     await clean();
   });
 

@@ -51,6 +51,45 @@ describe("font build history (HTTP, throwaway database)", { skip: hasDatabase ? 
     assert.ok("First.ttf" in files);
   });
 
+  it("keeps private selected-icon downloads but excludes public selected-icon downloads", async () => {
+    const privateProject = await makeProject("private");
+    const privateIconId = (await h.call(owner.token, "GET", `/api/projects/${privateProject.id}/icons`)).body.icons[0].id;
+    await download(owner.token, privateProject.id, { scope: "selected", iconIds: [privateIconId] });
+
+    const privateList = await builds(owner.token, privateProject.id);
+    assert.equal(privateList.body.builds.length, 1);
+
+    const publicProject = await makeProject("public");
+    const publicIconId = (await h.call(owner.token, "GET", `/api/projects/${publicProject.id}/icons`)).body.icons[0].id;
+    await download(owner.token, publicProject.id, { scope: "selected", iconIds: [publicIconId] });
+    assert.equal((await builds(owner.token, publicProject.id)).body.builds.length, 0);
+  });
+
+  it("does not create another history entry when an identical private package is downloaded twice", async () => {
+    const p = await makeProject("private");
+    await download(owner.token, p.id, { fontName: "Same" });
+    await download(owner.token, p.id, { fontName: "Same" });
+    assert.equal((await builds(owner.token, p.id)).body.builds.length, 1);
+  });
+
+  it("does not create another history entry when the same icons are built through a different scope", async () => {
+    const p = await makeProject("private");
+    const ids = (await h.call(owner.token, "GET", `/api/projects/${p.id}/icons`)).body.icons.map((icon: { id: string }) => icon.id);
+    await download(owner.token, p.id, { fontName: "Same" });
+    await download(owner.token, p.id, { fontName: "Same", scope: "selected", iconIds: ids });
+    assert.equal((await builds(owner.token, p.id)).body.builds.length, 1);
+  });
+
+  it("creates a new history entry when an icon's SVG changes", async () => {
+    const p = await makeProject("private");
+    const ids = (await h.call(owner.token, "GET", `/api/projects/${p.id}/icons`)).body.icons.map((icon: { id: string }) => icon.id);
+    await download(owner.token, p.id, { fontName: "Same" });
+    const changedSvg = SVG('<path d="M2 2h20v20H2z"/>');
+    assert.equal((await h.call(owner.token, "PATCH", `/api/icons/${ids[0]}`, { rawSvg: changedSvg })).status, 200);
+    await download(owner.token, p.id, { fontName: "Same" });
+    assert.deepEqual((await builds(owner.token, p.id)).body.builds.map((build: { version: number }) => build.version), [2, 1]);
+  });
+
   it("does not keep a viewer's download, but lets a viewer of a public project list and download kept builds", async () => {
     const p = await makeProject("public");
     await download(owner.token, p.id, { fontName: "Mine" });

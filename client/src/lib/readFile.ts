@@ -1,5 +1,6 @@
 // Reads a chosen file as text. Uses FileReader because it works everywhere, including the test environment.
 export function readFileText(file: Blob): Promise<string> {
+  if (typeof file.text === "function") return file.text();
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result ?? ""));
