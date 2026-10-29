@@ -1,5 +1,5 @@
 // Tests for the Sprite section: building from the project's icons, scopes, preview, copy and downloads, the symbol id list, read-only behaviour and errors.
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -358,10 +358,39 @@ describe("the page layout and options", () => {
 });
 
 describe("the sprite build history", () => {
+  it("does not make another version when the same icons are built after changing from selected to whole-project scope", async () => {
+    setup({}, { iconIds: ["home", "star"] });
+    await userEvent.click(await screen.findByRole("button", { name: "Download sprite ZIP" }));
+    await waitFor(() => expect(spritesApi.uploadSpriteBuild).toHaveBeenCalledTimes(1));
+    const firstFingerprint = vi.mocked(spritesApi.uploadSpriteBuild).mock.calls[0]![2].fingerprint;
+
+    await userEvent.click(screen.getByRole("radio", { name: /^Whole project/ }));
+    await userEvent.click(screen.getByRole("button", { name: "Download sprite ZIP" }));
+    await waitFor(() => expect(spritesApi.uploadSpriteBuild).toHaveBeenCalledTimes(2));
+
+    expect(vi.mocked(spritesApi.uploadSpriteBuild).mock.calls[1]![2].fingerprint).toBe(firstFingerprint);
+  });
+
+  it("uses a new fingerprint when the sprite content changes", async () => {
+    listIcons.mockResolvedValue(reply([icon("home")]));
+    setup();
+    await userEvent.click(await screen.findByRole("button", { name: "Download sprite ZIP" }));
+    await waitFor(() => expect(spritesApi.uploadSpriteBuild).toHaveBeenCalledTimes(1));
+    const originalFingerprint = vi.mocked(spritesApi.uploadSpriteBuild).mock.calls[0]![2].fingerprint;
+
+    cleanup();
+    listIcons.mockResolvedValue(reply([{ ...icon("home"), svg: SVG('<path d="M2 2h3"/>') }]));
+    setup();
+    await userEvent.click(await screen.findByRole("button", { name: "Download sprite ZIP" }));
+    await waitFor(() => expect(spritesApi.uploadSpriteBuild).toHaveBeenCalledTimes(2));
+
+    expect(vi.mocked(spritesApi.uploadSpriteBuild).mock.calls[1]![2].fingerprint).not.toBe(originalFingerprint);
+  });
+
   it("keeps an editor's download in the history and shows it again", async () => {
     setup();
     await userEvent.click(await screen.findByRole("button", { name: "Download sprite ZIP" }));
-    await waitFor(() => expect(spritesApi.uploadSpriteBuild).toHaveBeenCalledWith("p1", expect.any(Blob), { mode: "symbol", iconCount: 2 }));
+    await waitFor(() => expect(spritesApi.uploadSpriteBuild).toHaveBeenCalledWith("p1", expect.any(Blob), expect.objectContaining({ mode: "symbol", iconCount: 2 })));
     await waitFor(() => expect(spritesApi.listSpriteBuilds).toHaveBeenCalledTimes(2));
     expect(screen.getByRole("heading", { name: "Sprite build history" })).toBeInTheDocument();
   });

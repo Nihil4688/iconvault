@@ -104,7 +104,7 @@ export default function SpriteTab() {
       // An editor's download is kept in the history (best effort: it must not turn the download into a failure).
       if (canEdit) {
         try {
-          const fingerprint = spriteFingerprint(JSON.stringify({ xml: built.xml, css: built.css, mode: built.mode, ids: built.ids, idPattern, stripColors, namespaceIds, scope: scopeKind, folderId: scopeKind === "folder" ? folderChoice : undefined }));
+          const fingerprint = spriteFingerprint(JSON.stringify({ fileName, xml: built.xml, css: built.css, mode: built.mode, ids: built.ids }));
           await uploadSpriteBuild(project.id, zip, { mode: built.mode, iconCount: built.ids.length, scope: scopeKind, fingerprint });
           setHistoryVersion((value) => value + 1);
         } catch {

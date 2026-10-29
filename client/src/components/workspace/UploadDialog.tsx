@@ -271,10 +271,11 @@ function UploadForm({ projectId, prefix, folders, defaultFolderId, onClose, onUp
             }}
             onDragLeave={() => setDragging(false)}
             onDrop={onDrop}
-            className={cn("flex flex-col items-center gap-2 rounded-xl border-2 border-dashed border-input p-6 text-center", dragging && "border-primary bg-primary/5")}
+            className={cn("flex flex-col items-center rounded-xl border-2 border-dashed border-input p-6 text-center", dragging && "border-primary bg-primary/5")}
           >
             <FileUp aria-hidden="true" className="h-8 w-8 text-muted-foreground" />
-            <p className="text-sm font-medium">Drag SVG files, sprites, ZIP archives, METROP projects, or icon fonts here</p>
+            <p className="text-sm font-medium pt-4 pb-1">Choose files or drag & drop them here</p>
+            <p className="text-xs text-muted-foreground pb-4">Supports SVGs, sprites, icon fonts, METROP and ZIP archives, up to 25MB per file</p>
             <input
               ref={inputRef}
               type="file"
@@ -292,7 +293,6 @@ function UploadForm({ projectId, prefix, folders, defaultFolderId, onClose, onUp
             <Button size="sm" onClick={() => inputRef.current?.click()}>
               Choose files
             </Button>
-            <p className="text-xs text-muted-foreground">SVG sprites are extracted automatically. METROP projects are converted to SVG icons. Fonts supported: TTF, OTF, WOFF, WOFF2. Up to 25 MB per file.</p>
           </div>
 
           {problems.length > 0 && (

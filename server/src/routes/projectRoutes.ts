@@ -159,7 +159,8 @@ router.post("/:projectId/font/download", heavyLimit, async (req, res) => {
   const zip = zipFontBuild(build);
   // Selected-icon downloads are kept only for private projects. Public and private packages
   // are otherwise recorded once per package fingerprint; rebuilding without package changes adds nothing.
-  const fingerprint = createHash("sha256").update(JSON.stringify({ input, css: build.css, codepoints: build.codepoints })).digest("hex");
+  const outputOptions = (({ scope: _scope, folderId: _folderId, iconIds: _iconIds, ...options }: typeof input) => options)(input);
+  const fingerprint = createHash("sha256").update(JSON.stringify({ input: outputOptions, icons, css: build.css, codepoints: build.codepoints })).digest("hex");
   const keep = canEdit(actor, project) && !(project.visibility === "public" && input.scope === "selected");
   // Editors' downloads are kept in the build history (best effort: a failure here must not lose the download).
   const stored = keep ? await recordFontBuild(project._id, actor.id, build, input.formats, zip, fingerprint).catch(() => false) : false;

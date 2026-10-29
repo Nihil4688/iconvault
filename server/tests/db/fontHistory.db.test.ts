@@ -72,6 +72,24 @@ describe("font build history (HTTP, throwaway database)", { skip: hasDatabase ? 
     assert.equal((await builds(owner.token, p.id)).body.builds.length, 1);
   });
 
+  it("does not create another history entry when the same icons are built through a different scope", async () => {
+    const p = await makeProject("private");
+    const ids = (await h.call(owner.token, "GET", `/api/projects/${p.id}/icons`)).body.icons.map((icon: { id: string }) => icon.id);
+    await download(owner.token, p.id, { fontName: "Same" });
+    await download(owner.token, p.id, { fontName: "Same", scope: "selected", iconIds: ids });
+    assert.equal((await builds(owner.token, p.id)).body.builds.length, 1);
+  });
+
+  it("creates a new history entry when an icon's SVG changes", async () => {
+    const p = await makeProject("private");
+    const ids = (await h.call(owner.token, "GET", `/api/projects/${p.id}/icons`)).body.icons.map((icon: { id: string }) => icon.id);
+    await download(owner.token, p.id, { fontName: "Same" });
+    const changedSvg = SVG('<path d="M2 2h20v20H2z"/>');
+    assert.equal((await h.call(owner.token, "PATCH", `/api/icons/${ids[0]}`, { rawSvg: changedSvg })).status, 200);
+    await download(owner.token, p.id, { fontName: "Same" });
+    assert.deepEqual((await builds(owner.token, p.id)).body.builds.map((build: { version: number }) => build.version), [2, 1]);
+  });
+
   it("does not keep a viewer's download, but lets a viewer of a public project list and download kept builds", async () => {
     const p = await makeProject("public");
     await download(owner.token, p.id, { fontName: "Mine" });
