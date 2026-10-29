@@ -1,4 +1,4 @@
-// Tests for the selection hook.
+// Tests for the selection hook: the selection survives a `resetKey` change (it is no longer reset by it); toggling, select-all, set and clear all work.
 import { act, renderHook } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { useSelection } from "./useSelection";
@@ -23,14 +23,21 @@ describe("useSelection", () => {
     expect(result.current.ids).toEqual([]);
   });
 
-  it("starts empty again when the reset key changes", () => {
+  it("keeps the selection when the reset key changes", () => {
     const { result, rerender } = renderHook(({ k }) => useSelection(k), { initialProps: { k: "a" } });
     act(() => result.current.selectAll(["1", "2"]));
     expect(result.current.size).toBe(2);
     rerender({ k: "b" });
-    expect(result.current.ids).toEqual([]);
-    expect(result.current.has("1")).toBe(false);
+    expect(result.current.ids).toEqual(["1", "2"]);
+    expect(result.current.has("1")).toBe(true);
     act(() => result.current.toggle("9"));
-    expect(result.current.ids).toEqual(["9"]);
+    expect(result.current.ids).toEqual(["1", "2", "9"]);
+  });
+
+  it("replaces the selection exactly with set", () => {
+    const { result } = renderHook(() => useSelection("a"));
+    act(() => result.current.selectAll(["1", "2", "3"]));
+    act(() => result.current.set(["4", "5"]));
+    expect(result.current.ids).toEqual(["4", "5"]);
   });
 });

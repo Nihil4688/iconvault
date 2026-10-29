@@ -8,7 +8,7 @@ import { ApiError } from "../api/http";
 import * as iconsApi from "../api/icons";
 import * as projectsApi from "../api/projects";
 import { ToastProvider } from "../context/ToastContext";
-import { READ_ONLY, makeDetail, makeFolder } from "../test/fixtures";
+import { READ_ONLY, makeDetail, makeFolder, makeIcon } from "../test/fixtures";
 import ProjectPage from "./ProjectPage";
 
 vi.mock("../context/AuthContext", () => ({ useAuth: () => ({ currentUser: { id: "u1", displayName: "Ada", email: "ada@example.com", role: "user" } }) }));
@@ -207,6 +207,83 @@ describe("sections", () => {
     await screen.findByRole("heading", { level: 1 });
     await waitFor(() => expect(screen.getByTestId("where")).toHaveTextContent(/^\/projects\/p1$/));
     expect(await screen.findByText("No icons yet.")).toBeInTheDocument();
+  });
+});
+
+describe("icon selection across tabs", () => {
+  const threeIcons = () => [
+    makeIcon({ id: "a", name: "Alpha", projectId: "p1" }),
+    makeIcon({ id: "b", name: "Beta", projectId: "p1" }),
+    makeIcon({ id: "c", name: "Gamma", projectId: "p1" }),
+  ];
+
+  beforeEach(() => {
+    vi.mocked(iconsApi.listIcons).mockImplementation((_id, params = {}) => {
+      if (params.trash) return Promise.resolve({ icons: [], total: 0, page: 1, limit: 1000 });
+      return Promise.resolve({ icons: threeIcons(), total: 3, page: 1, limit: 200 });
+    });
+    vi.mocked(iconsApi.batchOptimizeIcons).mockResolvedValue({ requested: 0, matched: 0, optimized: 0, bytesBefore: 0, bytesAfter: 0, failed: [] });
+  });
+
+  it("keeps the selection when moving from the Icons tab to the Sprite Builder and back", async () => {
+    // Sprite project so the Sprite Builder tab is shown.
+    getProject.mockResolvedValue(makeDetail({ id: "p1", name: "Feather", purpose: "sprite" }));
+    renderPage();
+    await screen.findByRole("button", { name: "Open Alpha" });
+    await userEvent.click(screen.getByRole("checkbox", { name: "Select Alpha" }));
+    await userEvent.click(screen.getByRole("checkbox", { name: "Select Beta" }));
+    expect(screen.getByText("2 icons selected")).toBeInTheDocument();
+
+    // Move to the Sprite Builder: the "Selected icons" scope reflects the Icons selection.
+    await userEvent.click(screen.getByRole("link", { name: "Sprite Builder" }));
+    await screen.findByRole("region", { name: "1. Scope selection" });
+    expect(screen.getByRole("radio", { name: "Selected icons (2)" })).toBeChecked();
+
+    // Move to Trash: the selection is still there in the context (no checkbox to confirm, but nothing else changes it).
+    await userEvent.click(screen.getByRole("link", { name: /Trash/ }));
+    expect(await screen.findByText("The trash is empty.")).toBeInTheDocument();
+
+    // Back to Project Settings…
+    await userEvent.click(screen.getByRole("link", { name: "Project Settings" }));
+    expect(await screen.findByRole("heading", { name: "Danger zone" })).toBeInTheDocument();
+
+    // …and back to Icons: the same two icons are still selected.
+    await userEvent.click(screen.getByRole("link", { name: /Icons/ }));
+    await screen.findByRole("button", { name: "Open Alpha" });
+    expect(screen.getByText("2 icons selected")).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "Select Alpha" })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Select Beta" })).toBeChecked();
+
+    // Clear selection removes the bulk bar and unticks the checkboxes.
+    await userEvent.click(screen.getByRole("button", { name: "Clear selection" }));
+    expect(screen.queryByText("2 icons selected")).not.toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "Select Alpha" })).not.toBeChecked();
+  });
+
+  it("keeps the selection when moving from the Icons tab to the Font Builder and back", async () => {
+    // Font project so the Font Builder tab is shown.
+    getProject.mockResolvedValue(makeDetail({ id: "p1", name: "Feather", purpose: "font" }));
+    renderPage();
+    await screen.findByRole("button", { name: "Open Alpha" });
+    await userEvent.click(screen.getByRole("checkbox", { name: "Select Alpha" }));
+    await userEvent.click(screen.getByRole("checkbox", { name: "Select Beta" }));
+    expect(screen.getByText("2 icons selected")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("link", { name: "Font Builder" }));
+    await screen.findByRole("region", { name: "1. Scope selection" });
+    expect(screen.getByRole("radio", { name: "Selected icons (2)" })).toBeChecked();
+
+    await userEvent.click(screen.getByRole("link", { name: /Trash/ }));
+    expect(await screen.findByText("The trash is empty.")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("link", { name: "Project Settings" }));
+    expect(await screen.findByRole("heading", { name: "Danger zone" })).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("link", { name: /Icons/ }));
+    await screen.findByRole("button", { name: "Open Alpha" });
+    expect(screen.getByText("2 icons selected")).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "Select Alpha" })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Select Beta" })).toBeChecked();
   });
 });
 

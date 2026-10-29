@@ -30,15 +30,15 @@ const MODES: { value: SpriteMode; label: string; hint: string }[] = [
 ];
 
 export default function SpriteTab() {
-  const { project, folderList, iconsVersion, actionsSlot } = useWorkspace();
+  const { project, folderList, iconsVersion, actionsSlot, selection } = useWorkspace();
   const { showToast } = useToast();
   const canEdit = project.access.canEdit;
-  // Icons handed over by the bulk bar ("Build sprite") arrive as the chosen icons.
+  // The selection is shared with the Icons screen: whatever the user ticked there is the starting "Chosen" set on this page. The router state handed over by "Build sprite" still wins when present, so the navigation never silently changes the selection.
   const handed = readBuildSelection(useLocation().state);
-  const [chosen, setChosen] = useState<string[] | null>(handed?.iconIds ?? null);
-  const [choiceVersion, setChoiceVersion] = useState(0);
+  const handedIds = handed?.iconIds ?? null;
+  const [chosen, setChosen] = useState<string[] | null>(handedIds ?? (selection.size > 0 ? selection.ids : null));
   const [choosing, setChoosing] = useState(false);
-  const [scopeKind, setScopeKind] = useState<"all" | "folder" | "selected">(handed ? "selected" : "all");
+  const [scopeKind, setScopeKind] = useState<"all" | "folder" | "selected">(handedIds || selection.size > 0 ? "selected" : "all");
   const [folderChoice, setFolderChoice] = useState("");
   const scope = scopeKind === "folder" ? folderChoice : scopeKind;
   const [mode, setMode] = useState<SpriteMode>(DEFAULT_SPRITE_OPTIONS.mode);
@@ -53,7 +53,7 @@ export default function SpriteTab() {
   const waitingForFolder = scopeKind === "folder" && !folderChoice;
   const patternProblem = idPatternProblem(idPattern);
 
-  const loaded = useResource(waitingForFolder ? null : `sprite:${project.id}:${scope}:${choiceVersion}:${iconsVersion}`, async () => {
+  const loaded = useResource(waitingForFolder ? null : `sprite:${project.id}:${scope}:${iconsVersion}:${chosen?.join(",") ?? ""}`, async () => {
     if (scope !== "selected") return loadAllIcons(project.id, scope);
     const wanted = new Set(chosen ?? []);
     return (await loadAllIcons(project.id)).filter((icon) => wanted.has(icon.id));
@@ -283,7 +283,8 @@ export default function SpriteTab() {
         onConfirm={(iconIds) => {
           setChoosing(false);
           setChosen(iconIds);
-          setChoiceVersion((value) => value + 1);
+          // Sync the Icons screen's selection so it shows the same chosen icons (and survives a return to the Icons tab).
+          selection.set(iconIds);
           setScopeKind("selected");
         }}
       />

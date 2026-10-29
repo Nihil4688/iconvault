@@ -36,16 +36,17 @@ const FORMATS: { value: FontFormat; label: string; hint: string }[] = [
 const columnHeading = "text-xs font-semibold uppercase tracking-wide text-muted-foreground";
 
 export default function FontTab() {
-  const { project, folderList, actionsSlot } = useWorkspace();
+  const { project, folderList, actionsSlot, selection } = useWorkspace();
   const { showToast } = useToast();
   const canEdit = project.access.canEdit;
   const folderOptions = flattenFolderTree(buildFolderTree(folderList.folders));
 
-  // Icons handed over by the bulk bar ("Generate font") arrive as the chosen icons; nothing is built until Build font.
+  // The selection is shared with the Icons screen: whatever the user ticked there is the starting "Chosen" set on this page. The router state handed over by "Build font" still wins when present, so the navigation never silently changes the selection.
   const handed = readBuildSelection(useLocation().state);
-  const [chosen, setChosen] = useState<string[] | null>(handed?.iconIds ?? null);
+  const handedIds = handed?.iconIds ?? null;
+  const [chosen, setChosen] = useState<string[] | null>(handedIds ?? (selection.size > 0 ? selection.ids : null));
   const [choosing, setChoosing] = useState(false);
-  const [scopeKind, setScopeKind] = useState<"all" | "folder" | "selected">(handed ? "selected" : "all");
+  const [scopeKind, setScopeKind] = useState<"all" | "folder" | "selected">(handedIds || selection.size > 0 ? "selected" : "all");
   const [folderChoice, setFolderChoice] = useState("");
   // The scope the server is asked for: "all", "selected" or a folder id.
   const scope = scopeKind === "folder" ? folderChoice : scopeKind;
@@ -436,6 +437,8 @@ export default function FontTab() {
         onClose={() => setChoosing(false)}
         onConfirm={(iconIds) => {
           setChosen(iconIds);
+          // Sync the Icons screen's selection so it shows the same chosen icons (and survives a return to the Icons tab).
+          selection.set(iconIds);
           setScopeKind("selected");
           setChoosing(false);
         }}

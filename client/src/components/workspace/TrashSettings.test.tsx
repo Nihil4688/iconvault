@@ -1,5 +1,5 @@
 // Tests for the Trash and Settings sections: listing, restoring (with notes about changes), deleting for good, emptying, editing, archiving and deleting a project, and the read-only views.
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { render, renderHook, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -8,6 +8,7 @@ import * as iconsApi from "../../api/icons";
 import * as projectsApi from "../../api/projects";
 import { ToastProvider } from "../../context/ToastContext";
 import { WorkspaceContext, type WorkspaceContextValue } from "../../context/workspaceContext";
+import { useSelection } from "../../hooks/useSelection";
 import { READ_ONLY, makeDetail, makeIcon } from "../../test/fixtures";
 import * as clipboard from "../../lib/clipboard";
 import * as zip from "../../utils/zipBundle";
@@ -27,7 +28,10 @@ const trashed = (id: string, name: string) => makeIcon({ id, name, deletedAt: "2
 
 function setup(node: React.ReactNode, over: Partial<WorkspaceContextValue> = {}) {
   const fns = { selectFolder: vi.fn(), refreshProject: vi.fn(), refreshFolders: vi.fn(), refreshIcons: vi.fn() };
-  const value: WorkspaceContextValue = { project: makeDetail({ id: "p1", name: "Feather", iconCount: 3 }), folderList: { folders: [], uncategorizedCount: 0 }, selectedFolder: "all", iconsVersion: 0, ...fns, ...over };
+  // The selection is part of the workspace context; every test gets a fresh, empty one.
+  const { result } = renderHook(() => useSelection("p1"));
+  const selection = result.current;
+  const value: WorkspaceContextValue = { project: makeDetail({ id: "p1", name: "Feather", iconCount: 3 }), folderList: { folders: [], uncategorizedCount: 0 }, selectedFolder: "all", iconsVersion: 0, selection, ...fns, ...over };
   render(
     <MemoryRouter initialEntries={["/projects/p1/x"]}>
       <ToastProvider>
@@ -40,7 +44,7 @@ function setup(node: React.ReactNode, over: Partial<WorkspaceContextValue> = {})
       </ToastProvider>
     </MemoryRouter>,
   );
-  return fns;
+  return { ...fns, selection };
 }
 
 beforeEach(() => {

@@ -11,7 +11,6 @@ import { useIconAppearance } from "../../hooks/useIconAppearance";
 import { useDebounced } from "../../hooks/useDebounced";
 import { usePersistentChoice } from "../../hooks/usePersistentChoice";
 import { useResource } from "../../hooks/useResource";
-import { useSelection } from "../../hooks/useSelection";
 import { cacheBuild } from "../../lib/fontBuildCache";
 import { defaultFontOptions } from "../../lib/fontDefaults";
 import { loadPreviewFont, nextPreviewFamily } from "../../lib/fontPreview";
@@ -42,7 +41,7 @@ const MAX_SHOWN = 1000;
 type Dialog = "add" | "paste" | "copy" | "sprite" | "font" | "move" | "tag" | "delete" | null;
 
 export default function IconsTab() {
-  const { project, folderList, selectedFolder, refreshProject, refreshFolders, refreshIcons, iconsVersion, actionsSlot } = useWorkspace();
+  const { project, folderList, selectedFolder, refreshProject, refreshFolders, refreshIcons, iconsVersion, actionsSlot, selection } = useWorkspace();
   const { showToast } = useToast();
   const navigate = useNavigate();
   const canEdit = project.access.canEdit;
@@ -72,7 +71,7 @@ export default function IconsTab() {
   const icons = useResource(`icons:${filterKey}:${limit}:${iconsVersion}`, () => listIcons(project.id, params));
   const shown = icons.data?.icons ?? [];
   const total = icons.data?.total ?? 0;
-  const selection = useSelection(`${filterKey}:${iconsVersion}`);
+  // The selection is intentionally not pruned against the loaded list: the user's instruction is that nothing except "Clear selection" empties it. Bulk actions report matched < requested when an icon is gone, and stale ids in the selection are harmless until the user clears them.
   const currentFolderId = selectedFolder === "all" || selectedFolder === "root" ? null : selectedFolder;
 
   const refreshAll = () => {

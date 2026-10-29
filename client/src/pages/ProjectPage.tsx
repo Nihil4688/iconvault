@@ -1,6 +1,6 @@
-// A project's workspace: header with section links, then the Icons, Trash or Settings section. On the Icons section the folder tree sits beside the content (collapsible on small screens). Loads the project and its folders and shares them, with the selected folder and refresh functions, through the workspace context.
+// A project's workspace: header with section links, then the Icons, Trash or Settings section. On the Icons section the folder tree sits beside the content (collapsible on small screens). Loads the project and its folders and shares them, with the selected folder, refresh functions and the shared icon selection, through the workspace context.
 import { ChevronDown, ChevronUp } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, Navigate, Route, Routes, useLocation, useParams, useSearchParams } from "react-router-dom";
 import { ApiError } from "../api/http";
 import { createFolder, deleteFolder, listFolders, moveFolder, renameFolder } from "../api/folders";
@@ -18,6 +18,7 @@ import TrashTab from "../components/workspace/TrashTab";
 import { WorkspaceContext, type FolderSelection, type WorkspaceContextValue } from "../context/workspaceContext";
 import { useToast } from "../context/ToastContext";
 import { useResource } from "../hooks/useResource";
+import { useSelection } from "../hooks/useSelection";
 import { folderPath } from "../lib/folderTree";
 import { pluralize } from "../lib/format";
 
@@ -37,6 +38,14 @@ export default function ProjectPage() {
   const [iconsVersion, setIconsVersion] = useState(0);
   const [foldersOpen, setFoldersOpen] = useState(false);
   const [actionsSlot, setActionsSlot] = useState<HTMLElement | null>(null);
+  // The selection lives here, not inside any tab, so it survives navigating between Icons, Sprite/Font Builder, Trash and Project Settings. It is cleared only when the user clicks "Clear selection" or moves to a different project.
+  const selection = useSelection(projectId);
+  // Switching to another project starts with no selection; ids from the previous project are not relevant any more.
+  useEffect(() => {
+    selection.clear();
+    // selection is stable for the lifetime of ProjectPage, so depending on it would only fire on project changes anyway.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [projectId]);
 
   const folderList = folders.data ?? NO_FOLDERS;
   const requested = params.get("folder");
@@ -96,6 +105,7 @@ export default function ProjectPage() {
     iconsVersion,
     refreshIcons: () => setIconsVersion((value) => value + 1),
     actionsSlot,
+    selection,
   };
 
   return (
