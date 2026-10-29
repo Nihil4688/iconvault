@@ -5,6 +5,25 @@ import Icon from "../models/Icon.js";
 import Project from "../models/Project.js";
 import { ConflictError } from "./errors.js";
 
+const iconWriteQueues = new Map<string, Promise<void>>();
+
+export async function withProjectIconWriteLock<T>(projectId: Types.ObjectId, operation: () => Promise<T>): Promise<T> {
+  const key = String(projectId);
+  const previous = iconWriteQueues.get(key) ?? Promise.resolve();
+  let release!: () => void;
+  const current = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  iconWriteQueues.set(key, current);
+  await previous;
+  try {
+    return await operation();
+  } finally {
+    release();
+    if (iconWriteQueues.get(key) === current) iconWriteQueues.delete(key);
+  }
+}
+
 function limit(name: string, fallback: number): number {
   const value = Number(process.env[name]);
   return Number.isInteger(value) && value > 0 ? value : fallback;

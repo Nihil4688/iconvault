@@ -75,6 +75,13 @@ describe("prepareSvg", () => {
     assert.match(r.svg, /Page-1/, "markup is only cleaned, not rewritten");
   });
 
+  it("can optimize in one pass for faster bulk uploads", () => {
+    const r = prepareSvg(messy, { multipass: false });
+    assert.ok(r.byteSize < r.originalByteSize);
+    assert.match(r.svg, /viewBox="0 0 24 24"/);
+    assert.match(r.svg, /<path/);
+  });
+
   it("still rejects unsafe or invalid input", () => {
     assert.throws(() => prepareSvg("not svg"), /not an SVG/);
     const r = prepareSvg('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 8 8"><script>x()</script><path d="M0 0h8v8z"/></svg>');

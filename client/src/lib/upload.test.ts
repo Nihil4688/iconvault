@@ -61,9 +61,9 @@ describe("toBatches", () => {
     expect(toBatches([], 2)).toEqual([]);
   });
 
-  it("defaults to a batch size well under the server limit", () => {
-    expect(BATCH_SIZE).toBeLessThanOrEqual(200);
-    expect(toBatches(Array.from({ length: 250 }, (_, i) => i)).map((b) => b.length)).toEqual([100, 100, 50]);
+  it("uses the server's maximum batch size", () => {
+    expect(BATCH_SIZE).toBe(200);
+    expect(toBatches(Array.from({ length: 250 }, (_, i) => i)).map((b) => b.length)).toEqual([200, 50]);
   });
 });
 

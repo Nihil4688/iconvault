@@ -7,8 +7,9 @@ import Project from "../models/Project.js";
 const FIRST_CODEPOINT = 0xe000;
 const LAST_CODEPOINT = 0xf8ff;
 
-// Atomically reserves the next upload codepoint. Manual edits never advance this counter.
-export async function allocateNextCodepoint(projectId: Types.ObjectId): Promise<string> {
+// Atomically reserves a range of upload codepoints. Manual edits never advance this counter.
+export async function allocateCodepointRange(projectId: Types.ObjectId, count: number): Promise<string[] | null> {
+  if (!Number.isInteger(count) || count < 1) throw new RangeError("Codepoint count must be a positive integer.");
   const project = await Project.findById(projectId).select({ uploadCodepointHighWatermark: 1 }).lean();
   if (!project) throw new ConflictError("The project is no longer available.");
 
@@ -21,11 +22,18 @@ export async function allocateNextCodepoint(projectId: Types.ObjectId): Promise<
   }
 
   const updated = await Project.findOneAndUpdate(
-    { _id: projectId, uploadCodepointHighWatermark: { $lt: LAST_CODEPOINT } },
-    { $inc: { uploadCodepointHighWatermark: 1 } },
+    { _id: projectId, uploadCodepointHighWatermark: { $lte: LAST_CODEPOINT - count } },
+    { $inc: { uploadCodepointHighWatermark: count } },
     { returnDocument: "after" },
   ).select({ uploadCodepointHighWatermark: 1 }).lean();
   const reserved = updated?.uploadCodepointHighWatermark;
-  if (reserved == null) throw new ConflictError("The Private Use Area has no new characters left. Manually edit an icon codepoint to reuse a character.");
-  return reserved.toString(16).toUpperCase().padStart(4, "0");
+  if (reserved == null) return null;
+  return Array.from({ length: count }, (_, index) => (reserved - count + index + 1).toString(16).toUpperCase().padStart(4, "0"));
+}
+
+// Atomically reserves the next upload codepoint.
+export async function allocateNextCodepoint(projectId: Types.ObjectId): Promise<string> {
+  const [codepoint] = await allocateCodepointRange(projectId, 1) ?? [];
+  if (!codepoint) throw new ConflictError("The Private Use Area has no new characters left. Manually edit an icon codepoint to reuse a character.");
+  return codepoint;
 }

@@ -58,6 +58,22 @@ describe("limits, sign out everywhere, token scopes (HTTP, throwaway database)",
       delete process.env.MAX_ICONS_PER_PROJECT;
     });
 
+    it("keeps concurrent bulk uploads within the icon limit", async () => {
+      process.env.MAX_ICONS_PER_PROJECT = "3";
+      const project = (await newProject(ada, "Concurrent icons")).body;
+      const upload = (names: string[]) => {
+        const data = new FormData();
+        for (const name of names) data.append("files", new File([SVG()], `${name}.svg`, { type: "image/svg+xml" }));
+        return h.call(ada.token, "POST", `/api/projects/${project.id}/icons/upload`, data);
+      };
+
+      const results = await Promise.all([upload(["one", "two"]), upload(["three", "four"])]);
+      assert.ok(results.every((result) => result.status === 201), JSON.stringify(results.map((result) => result.body)));
+      assert.equal(results.reduce((total, result) => total + result.body.created.length, 0), 3);
+      assert.equal(results.reduce((total, result) => total + result.body.errors.length, 0), 1);
+      delete process.env.MAX_ICONS_PER_PROJECT;
+    });
+
     it("stops a project at the folder limit", async () => {
       process.env.MAX_FOLDERS_PER_PROJECT = "2";
       const project = (await newProject(ada, "Folders")).body;
