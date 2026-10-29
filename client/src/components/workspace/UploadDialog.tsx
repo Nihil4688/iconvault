@@ -109,8 +109,6 @@ function UploadForm({ projectId, prefix, folders, defaultFolderId, onClose, onUp
         results.push(await uploadIcons(projectId, batch, { folderId: folderId || null, strategy, optimize, tags: parseTags(tagText) }));
       }
       for (const font of fonts) {
-        const preview = await importFont(projectId, font, null, { dryRun: true, privateUseOnly: true });
-        if (isFontImportResult(preview)) throw new Error("The font import preview could not be loaded.");
         const imported = await importFont(projectId, font, null, { folderId: folderId || null, strategy, optimize, privateUseOnly: true });
         if (!isFontImportResult(imported)) throw new Error("The font import did not return a result.");
         results.push({

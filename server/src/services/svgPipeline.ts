@@ -12,6 +12,7 @@ export type PreparedSvg = SvgInfo & {
 export type PrepareOptions = {
   optimize?: boolean;
   removeDimensions?: boolean;
+  multipass?: boolean;
 };
 
 export function prepareSvg(raw: string | Buffer, options: PrepareOptions = {}): PreparedSvg {
@@ -22,7 +23,10 @@ export function prepareSvg(raw: string | Buffer, options: PrepareOptions = {}): 
     return { ...clean, byteSize: originalByteSize, originalByteSize };
   }
 
-  const optimized = optimizeSvg(clean.svg, { removeDimensions: options.removeDimensions ?? true });
+  const optimized = optimizeSvg(clean.svg, {
+    removeDimensions: options.removeDimensions ?? true,
+    ...(options.multipass === undefined ? {} : { multipass: options.multipass }),
+  });
   if (optimized.svg === clean.svg) {
     return { ...clean, byteSize: originalByteSize, originalByteSize };
   }

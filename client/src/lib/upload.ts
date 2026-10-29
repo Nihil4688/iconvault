@@ -3,7 +3,7 @@ import type { UploadSummary } from "../api/types";
 
 // The server accepts 200 files and 25 MB per file in one request; batches stay well inside that.
 export const MAX_FILE_BYTES = 25 * 1024 * 1024;
-export const BATCH_SIZE = 100;
+export const BATCH_SIZE = 200;
 
 export type FileProblem = { file: string; message: string };
 

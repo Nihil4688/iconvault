@@ -164,7 +164,11 @@ export async function importGlyphs(projectId: Types.ObjectId, glyphs: Glyph[], o
   const summary: GlyphImportSummary = { created: [], replaced: [], skipped: [], errors: [], codepointsKept: 0, codepointsDropped: 0 };
   for (const glyph of glyphs) {
     try {
-      const outcome = await importSvg(projectId, { name: glyph.name, raw: glyph.svg, folderId: options.folderId, tags: [] }, { strategy: options.strategy, optimize: options.optimize });
+      const outcome = await importSvg(
+        projectId,
+        { name: glyph.name, raw: glyph.svg, folderId: options.folderId, tags: [] },
+        { strategy: options.strategy, optimize: options.optimize, multipass: false },
+      );
       if (outcome.status === "skipped") {
         summary.skipped.push({ name: outcome.name, reason: outcome.reason });
         continue;

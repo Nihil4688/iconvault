@@ -198,6 +198,37 @@ describe("icons (HTTP, throwaway database)", { skip: hasDatabase ? false : "MONG
       assert.equal((await list(owner.token, p.id)).body.total, 2);
     });
 
+    it("keeps duplicate filenames in input order during bulk uploads", async () => {
+      const p = await newProject("Duplicate upload names");
+      const r = await h.call(
+        owner.token,
+        "POST",
+        `/api/projects/${p.id}/icons/upload`,
+        form([file("Same.svg", SVG('<path d="M1 1h2v2z"/>')), file("Same.svg", SVG('<path d="M3 3h2v2z"/>'))]),
+      );
+
+      assert.equal(r.status, 201, JSON.stringify(r.body));
+      assert.deepEqual(r.body.created.map((icon: any) => icon.name), ["Same", "Same (1)"]);
+      assert.deepEqual(r.body.created.map((icon: any) => icon.slug), ["same", "same-1"]);
+    });
+
+    it("uploads a 500-icon selection across server-sized batches", async () => {
+      const p = await newProject("Bulk upload");
+      const files = Array.from({ length: 500 }, (_, index) => file(`icon-${index}.svg`, SVG('<path d="M1 1h2v2z"/>')));
+      const created: any[] = [];
+
+      for (let index = 0; index < files.length; index += 200) {
+        const r = await h.call(owner.token, "POST", `/api/projects/${p.id}/icons/upload`, form(files.slice(index, index + 200)));
+        assert.equal(r.status, 201, JSON.stringify(r.body));
+        created.push(...r.body.created);
+      }
+
+      assert.equal(created.length, 500);
+      assert.equal(new Set(created.map((icon) => icon.slug)).size, 500);
+      assert.equal(new Set(created.map((icon) => icon.codepoint)).size, 500);
+      assert.ok(created.every((icon) => Number.isFinite(Date.parse(icon.createdAt))));
+    });
+
     it("accepts options as text fields: JSON tags, empty folder, optimize=false", async () => {
       const p = await newProject("Fields");
       const r = await h.call(owner.token, "POST", `/api/projects/${p.id}/icons/upload`, form([file("Raw.svg", MESSY)], { tags: '["A","b"]', folderId: "", optimize: "false" }));

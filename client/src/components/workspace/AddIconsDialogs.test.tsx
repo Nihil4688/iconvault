@@ -6,7 +6,7 @@ import { ApiError } from "../../api/http";
 import * as fontsApi from "../../api/fonts";
 import * as iconsApi from "../../api/icons";
 import * as projectsApi from "../../api/projects";
-import type { FontImportPreview, FontImportResult, UploadSummary } from "../../api/types";
+import type { FontImportResult, UploadSummary } from "../../api/types";
 import { readFileText } from "../../lib/readFile";
 import { buildSprite } from "../../lib/spriteBuild";
 import { READ_ONLY, makeFolder, makeIcon, makeProject } from "../../test/fixtures";
@@ -79,9 +79,8 @@ describe("UploadDialog: files", () => {
 
   it("accepts SVG sprites and icon fonts in the upload file picker and imports both", async () => {
     const spriteXml = buildSprite([{ name: "Home", slug: "home", svg: '<svg viewBox="0 0 24 24"><path d="M1 1"/></svg>' }], "fth").xml;
-    const preview: FontImportPreview = { dryRun: true, kind: "truetype", total: 1, importable: 1, truncated: false, limit: 2000, sample: [{ name: "star", codepoint: "E001" }] };
-    const imported: FontImportResult = { ...preview, dryRun: false, created: [makeIcon({ name: "Star" })], replaced: [], skipped: [], errors: [], codepointsKept: 1, codepointsDropped: 0 };
-    importFont.mockResolvedValueOnce(preview).mockResolvedValueOnce(imported);
+    const imported: FontImportResult = { dryRun: false, kind: "truetype", total: 1, importable: 1, truncated: false, limit: 2000, sample: [{ name: "star", codepoint: "E001" }], created: [makeIcon({ name: "Star" })], replaced: [], skipped: [], errors: [], codepointsKept: 1, codepointsDropped: 0 };
+    importFont.mockResolvedValueOnce(imported);
     uploadIcons.mockResolvedValue(summary({ created: [makeIcon({ name: "Home" })] }));
     setup();
 
@@ -95,8 +94,8 @@ describe("UploadDialog: files", () => {
 
     expect(await screen.findByText("Added 2 icons.")).toBeInTheDocument();
     expect(uploadIcons).toHaveBeenCalledWith("p1", [expect.objectContaining({ name: "home.svg" })], { folderId: null, strategy: "rename", optimize: true, tags: [] });
-    expect(importFont).toHaveBeenNthCalledWith(1, "p1", expect.objectContaining({ name: "icons.ttf" }), null, { dryRun: true, privateUseOnly: true });
-    expect(importFont).toHaveBeenNthCalledWith(2, "p1", expect.objectContaining({ name: "icons.ttf" }), null, { folderId: null, strategy: "rename", optimize: true, privateUseOnly: true });
+    expect(importFont).toHaveBeenCalledTimes(1);
+    expect(importFont).toHaveBeenCalledWith("p1", expect.objectContaining({ name: "icons.ttf" }), null, { folderId: null, strategy: "rename", optimize: true, privateUseOnly: true });
   });
 
   it("converts uploaded METROP icon projects to SVGs for the normal upload flow", async () => {
@@ -130,7 +129,7 @@ describe("UploadDialog: files", () => {
 
   it("accepts files dropped on the drop area", () => {
     setup();
-    const zone = screen.getByText("Drag SVG files, sprites, ZIP archives, METROP projects, or icon fonts here").parentElement as HTMLElement;
+    const zone = screen.getByText("Choose files or drag & drop them here").parentElement as HTMLElement;
     fireEvent.dragOver(zone, { dataTransfer: { files: [] } });
     fireEvent.drop(zone, { dataTransfer: { files: [svgFile("dropped.svg")] } });
     expect(screen.getByText("dropped.svg")).toBeInTheDocument();
@@ -138,7 +137,7 @@ describe("UploadDialog: files", () => {
 
   it("accepts dropped sprite and icon-font files", () => {
     setup();
-    const zone = screen.getByText("Drag SVG files, sprites, ZIP archives, METROP projects, or icon fonts here").parentElement as HTMLElement;
+    const zone = screen.getByText("Choose files or drag & drop them here").parentElement as HTMLElement;
     fireEvent.drop(zone, { dataTransfer: { files: [svgFile("sprite.svg"), new File(["font"], "icons.woff2")] } });
     expect(screen.getByText("sprite.svg")).toBeInTheDocument();
     expect(screen.getByText("icons.woff2")).toBeInTheDocument();
@@ -193,23 +192,23 @@ describe("UploadDialog: files", () => {
     expect(await screen.findByText("Nothing new was added.")).toBeInTheDocument();
   });
 
-  it("sends a large selection in batches of 100 and combines the results", async () => {
+  it("sends a large selection in server-sized batches and combines the results", async () => {
     uploadIcons.mockImplementation(async (_id, files) => summary({ created: files.map((f) => makeIcon({ name: f.name })), foldersCreated: 1 }));
     const props = setup();
     await userEvent.upload(input(), Array.from({ length: 250 }, (_, i) => new File(["zip"], `pack${i}.zip`)));
     await userEvent.click(screen.getByRole("button", { name: "Add 250 files" }));
     expect(await screen.findByText("Added 250 icons.")).toBeInTheDocument();
-    expect(uploadIcons.mock.calls.map((call) => (call[1] as File[]).length)).toEqual([100, 100, 50]);
-    expect(screen.getByRole("status")).toHaveTextContent("3 folders created");
-    expect(props.onUploaded).toHaveBeenCalledWith(expect.objectContaining({ foldersCreated: 3 }));
+    expect(uploadIcons.mock.calls.map((call) => (call[1] as File[]).length)).toEqual([200, 50]);
+    expect(screen.getByRole("status")).toHaveTextContent("2 folders created");
+    expect(props.onUploaded).toHaveBeenCalledWith(expect.objectContaining({ foldersCreated: 2 }));
   });
 
   it("keeps what was uploaded and says what was not when a later batch fails", async () => {
-    uploadIcons.mockResolvedValueOnce(summary({ created: Array.from({ length: 100 }, () => makeIcon()) })).mockRejectedValue(new ApiError("The server answered 500.", 500));
+    uploadIcons.mockResolvedValueOnce(summary({ created: Array.from({ length: 200 }, () => makeIcon()) })).mockRejectedValue(new ApiError("The server answered 500.", 500));
     const props = setup();
-    await userEvent.upload(input(), Array.from({ length: 150 }, (_, i) => new File(["zip"], `pack${i}.zip`)));
-    await userEvent.click(screen.getByRole("button", { name: "Add 150 files" }));
-    expect(await screen.findByText("Added 100 icons.")).toBeInTheDocument();
+    await userEvent.upload(input(), Array.from({ length: 250 }, (_, i) => new File(["zip"], `pack${i}.zip`)));
+    await userEvent.click(screen.getByRole("button", { name: "Add 250 files" }));
+    expect(await screen.findByText("Added 200 icons.")).toBeInTheDocument();
     expect(screen.getByText("The rest of the files")).toBeInTheDocument();
     expect(screen.getByText("The server answered 500.")).toBeInTheDocument();
     expect(props.onUploaded).toHaveBeenCalledWith(expect.objectContaining({ created: expect.any(Array) }));

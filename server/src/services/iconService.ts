@@ -1,5 +1,6 @@
 // Everything that happens to icons: importing (with rename/replace/skip), editing, saved versions, trash, batch actions that stay inside one project, copying between projects, listing, search and download.
 import mongoose, { type HydratedDocument, type QueryFilter, type Types } from "mongoose";
+import { MongoBulkWriteError } from "mongodb";
 import { ConflictError, NotFoundError } from "../lib/errors.js";
 import { escapeRegExp, type SignedInActor } from "../lib/http.js";
 import { nameFromFileName, slugify } from "../lib/slug.js";
@@ -8,11 +9,12 @@ import Icon, { type IconDoc } from "../models/Icon.js";
 import IconVersion from "../models/IconVersion.js";
 import Project from "../models/Project.js";
 import { deleteIconsAndVersions } from "./cascade.js";
-import { assertIconRoom } from "../lib/quotas.js";
+import { assertIconRoom, quotas, withProjectIconWriteLock } from "../lib/quotas.js";
 import { assertFolderInProject, descendantIds, ensureFolderPath } from "./folderService.js";
 import { prepareSvg, type PreparedSvg } from "./svgPipeline.js";
 import { buildZip, readSvgsFromZip } from "./zipService.js";
-import { allocateNextCodepoint } from "./codepointService.js";
+import { allocateCodepointRange, allocateNextCodepoint } from "./codepointService.js";
+import { mapWithConcurrency } from "../lib/concurrency.js";
 
 type Id = Types.ObjectId;
 export type IconDocument = HydratedDocument<IconDoc>;
@@ -22,6 +24,7 @@ export type Strategy = "rename" | "replace" | "skip";
 export const MAX_VERSIONS_PER_ICON = 20;
 // Most SVG files processed in one upload request (across all ZIPs).
 export const MAX_ICONS_PER_UPLOAD = 1000;
+const UPLOAD_CONCURRENCY = 8;
 
 type IconLike = Pick<
   IconDocument,
@@ -96,11 +99,14 @@ export type ImportOutcome =
   | { status: "skipped"; name: string; reason: string };
 
 export type ImportInput = { name: string; raw: string | Buffer; folderId: Id | null; tags: string[] };
-export type ImportOptions = { strategy: Strategy; optimize: boolean };
+export type ImportOptions = { strategy: Strategy; optimize: boolean; multipass?: boolean };
 
 // Adds one SVG to a project. Throws BadRequestError when the markup is unusable. What happens when an active icon already has the same slug depends on the strategy.
 export async function importSvg(projectId: Id, input: ImportInput, options: ImportOptions): Promise<ImportOutcome> {
-  const prepared = prepareSvg(input.raw, { optimize: options.optimize });
+  const prepared = prepareSvg(input.raw, {
+    optimize: options.optimize,
+    ...(options.multipass === undefined ? {} : { multipass: options.multipass }),
+  });
   const name = input.name.trim().slice(0, 100).trim() || "Icon";
   const baseSlug = slugify(name);
   const tags = normalizeTags(input.tags);
@@ -130,25 +136,27 @@ export async function importSvg(projectId: Id, input: ImportInput, options: Impo
       finalName = `${name.slice(0, 100 - ` (${free.n})`.length)} (${free.n})`;
     }
 
-    await assertIconRoom(projectId);
     try {
-      const codepoint = await allocateNextCodepoint(projectId);
-      const icon = await Icon.create({
-        projectId,
-        folderId: input.folderId,
-        name: finalName,
-        slug,
-        tags,
-        codepoint,
-        svg: prepared.svg,
-        byteSize: prepared.byteSize,
-        originalByteSize: prepared.originalByteSize,
-        width: prepared.width,
-        height: prepared.height,
-        viewBox: prepared.viewBox,
-        hasStroke: prepared.hasStroke,
-        hasGradient: prepared.hasGradient,
-        hasText: prepared.hasText,
+      const icon = await withProjectIconWriteLock(projectId, async () => {
+        await assertIconRoom(projectId);
+        const codepoint = await allocateNextCodepoint(projectId);
+        return Icon.create({
+          projectId,
+          folderId: input.folderId,
+          name: finalName,
+          slug,
+          tags,
+          codepoint,
+          svg: prepared.svg,
+          byteSize: prepared.byteSize,
+          originalByteSize: prepared.originalByteSize,
+          width: prepared.width,
+          height: prepared.height,
+          viewBox: prepared.viewBox,
+          hasStroke: prepared.hasStroke,
+          hasGradient: prepared.hasGradient,
+          hasText: prepared.hasText,
+        });
       });
       return { status: "created", icon };
     } catch (err) {
@@ -169,7 +177,133 @@ export type UploadSummary = {
   foldersCreated: number;
 };
 
-// Imports SVG files and ZIP archives. A ZIP's folder structure is recreated under `folderId` (existing folders are reused). Problems with one file are reported and do not stop the others.
+type UploadEntry = { index: number; displayName: string; data: Buffer; folderId: Id | null };
+type UploadEntryResult = ImportOutcome | { status: "error"; file: string; message: string };
+type PreparedUploadEntry = UploadEntry & { name: string; slug: string; prepared: PreparedSvg };
+
+async function tryBulkImportUpload(
+  projectId: Id,
+  entries: UploadEntry[],
+  options: ImportOptions & { folderId: Id | null; tags: string[] },
+): Promise<UploadSummary | null> {
+  const summary: UploadSummary = { created: [], replaced: [], skipped: [], errors: [], foldersCreated: 0 };
+  const preparedEntries: PreparedUploadEntry[] = [];
+  const outcomes: (UploadEntryResult | undefined)[] = new Array(entries.length);
+
+  for (const entry of entries) {
+    try {
+      const name = nameFromFileName(entry.displayName);
+      preparedEntries.push({
+        ...entry,
+        name,
+        slug: slugify(name),
+        prepared: prepareSvg(entry.data, { optimize: options.optimize, multipass: false }),
+      });
+    } catch (err) {
+      outcomes[entry.index] = {
+        status: "error",
+        file: entry.displayName,
+        message: err instanceof Error ? err.message : "Could not add this file.",
+      };
+    }
+  }
+
+  if (preparedEntries.length === 0) {
+    for (const outcome of outcomes) {
+      if (outcome?.status === "error") summary.errors.push({ file: outcome.file, message: outcome.message });
+    }
+    return summary;
+  }
+
+  const slugs = preparedEntries.map((entry) => entry.slug);
+  if (new Set(slugs).size !== slugs.length) return null;
+  const failedIndexes = await withProjectIconWriteLock(projectId, async () => {
+    const currentIconCount = await Icon.countDocuments({ projectId });
+    if (currentIconCount + preparedEntries.length > quotas.iconsPerProject()) return null;
+
+    const existing = await Icon.find({ projectId, slug: { $in: slugs }, deletedAt: null }).select({ _id: 1 }).lean();
+    if (existing.length > 0) return null;
+
+    const codepoints = await allocateCodepointRange(projectId, preparedEntries.length);
+    if (!codepoints) return null;
+
+    const tags = normalizeTags(options.tags);
+    const documents = preparedEntries.map((entry, index) => ({
+      _id: new mongoose.Types.ObjectId(),
+      projectId,
+      folderId: entry.folderId,
+      name: entry.name,
+      slug: entry.slug,
+      tags,
+      codepoint: codepoints[index]!,
+      svg: entry.prepared.svg,
+      byteSize: entry.prepared.byteSize,
+      originalByteSize: entry.prepared.originalByteSize,
+      width: entry.prepared.width,
+      height: entry.prepared.height,
+      viewBox: entry.prepared.viewBox,
+      hasStroke: entry.prepared.hasStroke,
+      hasGradient: entry.prepared.hasGradient,
+      hasText: entry.prepared.hasText,
+      deletedAt: null,
+    }));
+    const failed = new Set<number>();
+    try {
+      await Icon.bulkWrite(documents.map((document) => ({ insertOne: { document } })), { ordered: false });
+    } catch (err) {
+      if (!(err instanceof MongoBulkWriteError)) throw err;
+      const writeErrors = Array.isArray(err.writeErrors) ? err.writeErrors : [err.writeErrors];
+      if (writeErrors.length === 0 || writeErrors.some((writeError) => writeError.code !== 11000)) throw err;
+      for (const writeError of writeErrors) failed.add(writeError.index);
+    }
+
+    const successfulIds = documents.filter((_, index) => !failed.has(index)).map((document) => document._id);
+    if (successfulIds.length > 0) {
+      const inserted = await Icon.find({ _id: { $in: successfulIds } });
+      const iconsById = new Map(inserted.map((icon) => [String(icon._id), icon]));
+      for (let index = 0; index < preparedEntries.length; index += 1) {
+        if (failed.has(index)) continue;
+        const entry = preparedEntries[index]!;
+        const icon = iconsById.get(String(documents[index]!._id));
+        if (!icon) throw new Error(`The uploaded icon "${entry.displayName}" was not found after insertion.`);
+        outcomes[entry.index] = { status: "created", icon };
+      }
+    }
+    return failed;
+  });
+  if (failedIndexes === null) return null;
+
+  const failedEntries = preparedEntries.filter((_, index) => failedIndexes.has(index));
+  const failedOutcomes = await mapWithConcurrency(failedEntries, UPLOAD_CONCURRENCY, async (entry) => {
+    try {
+      return await importSvg(
+        projectId,
+        { name: entry.name, raw: entry.data, folderId: entry.folderId, tags: options.tags },
+        { ...options, multipass: false },
+      );
+    } catch (err) {
+      return {
+        status: "error" as const,
+        file: entry.displayName,
+        message: err instanceof Error ? err.message : "Could not add this file.",
+      };
+    }
+  });
+  failedEntries.forEach((entry, index) => {
+    outcomes[entry.index] = failedOutcomes[index];
+  });
+
+  for (const outcome of outcomes) {
+    if (!outcome) continue;
+    if (outcome.status === "created") summary.created.push(serializeIcon(outcome.icon, false));
+    else if (outcome.status === "replaced") summary.replaced.push(serializeIcon(outcome.icon, false));
+    else if (outcome.status === "skipped") summary.skipped.push({ name: outcome.name, reason: outcome.reason });
+    else summary.errors.push({ file: outcome.file, message: outcome.message });
+  }
+  return summary;
+}
+
+// Imports SVG files and ZIP archives with bounded parallelism; entries with the same slug stay ordered. A ZIP's folder structure is recreated under `folderId` (existing folders are reused).
 export async function importUpload(
   projectId: Id,
   files: UploadFile[],
@@ -178,22 +312,19 @@ export async function importUpload(
   await assertFolderInProject(projectId, options.folderId);
   const summary: UploadSummary = { created: [], replaced: [], skipped: [], errors: [], foldersCreated: 0 };
   const folderState = { created: 0, cache: new Map<string, Id>() };
-  let processed = 0;
-
-  const addOne = async (displayName: string, data: Buffer, folderId: Id | null) => {
-    if (processed >= MAX_ICONS_PER_UPLOAD) {
+  const entries: UploadEntry[] = [];
+  const groups = new Map<string, UploadEntry[]>();
+  const addEntry = (displayName: string, data: Buffer, folderId: Id | null) => {
+    if (entries.length >= MAX_ICONS_PER_UPLOAD) {
       summary.errors.push({ file: displayName, message: `Only ${MAX_ICONS_PER_UPLOAD} icons can be added per upload.` });
       return;
     }
-    processed += 1;
-    try {
-      const outcome = await importSvg(projectId, { name: nameFromFileName(displayName), raw: data, folderId, tags: options.tags }, options);
-      if (outcome.status === "created") summary.created.push(serializeIcon(outcome.icon, false));
-      else if (outcome.status === "replaced") summary.replaced.push(serializeIcon(outcome.icon, false));
-      else summary.skipped.push({ name: outcome.name, reason: outcome.reason });
-    } catch (err) {
-      summary.errors.push({ file: displayName, message: err instanceof Error ? err.message : "Could not add this file." });
-    }
+    const entry = { index: entries.length, displayName, data, folderId };
+    entries.push(entry);
+    const key = slugify(nameFromFileName(displayName));
+    const group = groups.get(key) ?? [];
+    group.push(entry);
+    groups.set(key, group);
   };
 
   for (const file of files) {
@@ -204,15 +335,56 @@ export async function importUpload(
         for (const skipped of zip.skipped) summary.errors.push({ file: skipped.path, message: skipped.reason });
         for (const entry of zip.entries) {
           const folderId = await ensureFolderPath(projectId, options.folderId, entry.folders, folderState);
-          await addOne([...entry.folders, entry.fileName].join("/"), entry.data, folderId);
+          addEntry([...entry.folders, entry.fileName].join("/"), entry.data, folderId);
         }
       } catch (err) {
         summary.errors.push({ file: file.originalname, message: err instanceof Error ? err.message : "Could not read this ZIP." });
       }
     } else if (lower.endsWith(".svg")) {
-      await addOne(file.originalname, file.buffer, options.folderId);
+      addEntry(file.originalname, file.buffer, options.folderId);
     } else {
       summary.errors.push({ file: file.originalname, message: "Only .svg and .zip files can be uploaded." });
+    }
+  }
+
+  if (entries.length > 0) {
+    const bulkSummary = await tryBulkImportUpload(projectId, entries, options);
+    if (bulkSummary) {
+      summary.created.push(...bulkSummary.created);
+      summary.replaced.push(...bulkSummary.replaced);
+      summary.skipped.push(...bulkSummary.skipped);
+      summary.errors.push(...bulkSummary.errors);
+      summary.foldersCreated = folderState.created;
+      return summary;
+    }
+    const currentIconCount = await Icon.countDocuments({ projectId });
+    const quotaLimited = currentIconCount + entries.length > quotas.iconsPerProject();
+    const uploadGroups = quotaLimited ? entries.map((entry) => [entry]) : [...groups.values()];
+    const outcomes = await mapWithConcurrency(uploadGroups, quotaLimited ? 1 : UPLOAD_CONCURRENCY, async (group) => {
+      const groupOutcomes: { index: number; outcome: ImportOutcome | { status: "error"; file: string; message: string } }[] = [];
+      for (const entry of group) {
+        try {
+          const outcome = await importSvg(
+            projectId,
+            { name: nameFromFileName(entry.displayName), raw: entry.data, folderId: entry.folderId, tags: options.tags },
+            { ...options, multipass: false },
+          );
+          groupOutcomes.push({ index: entry.index, outcome });
+        } catch (err) {
+          groupOutcomes.push({
+            index: entry.index,
+            outcome: { status: "error", file: entry.displayName, message: err instanceof Error ? err.message : "Could not add this file." },
+          });
+        }
+      }
+      return groupOutcomes;
+    });
+
+    for (const { outcome } of outcomes.flat().sort((a, b) => a.index - b.index)) {
+      if (outcome.status === "created") summary.created.push(serializeIcon(outcome.icon, false));
+      else if (outcome.status === "replaced") summary.replaced.push(serializeIcon(outcome.icon, false));
+      else if (outcome.status === "skipped") summary.skipped.push({ name: outcome.name, reason: outcome.reason });
+      else summary.errors.push({ file: outcome.file, message: outcome.message });
     }
   }
 
