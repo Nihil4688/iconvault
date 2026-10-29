@@ -1,5 +1,5 @@
 // The signed-in home screen: every project the user can see, with filters (kept in the address, so Back works and links can be shared), create, edit, duplicate, archive and delete, plus a search that also finds icons across projects and can copy them into one of the user's projects.
-import { ChevronDown, Filter, Globe, Layers, Lock, Plus, Search, Shapes, Type } from "lucide-react";
+import { ChevronDown, Globe, Layers, Lock, Plus, Search, Shapes, Type, ArrowUpDown } from "lucide-react";
 import { useContext, useState, type ChangeEvent } from "react";
 import { createPortal } from "react-dom";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
@@ -179,9 +179,9 @@ export default function DashboardPage() {
           </select>
           <ChevronDown aria-hidden="true" className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         </div>
-        {/* The sort choice is a filter icon; the list of choices opens from it. */}
+        {/* The sort choice is a sort icon; the list of choices opens from it. */}
         <label className="relative inline-flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-input bg-background text-muted-foreground transition-colors hover:bg-accent hover:text-foreground has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-1 has-[:focus-visible]:outline-ring" title={`Sort: ${SORT_LABELS[sort]}`}>
-          <Filter aria-hidden="true" className="h-4 w-4" />
+          <ArrowUpDown aria-hidden="true" className="h-4 w-4" />
           <select aria-label="Sort by" value={sort} onChange={(event) => setFilter("sort", event.target.value, "updated")} className="absolute inset-0 h-full w-full cursor-pointer opacity-0">
             {(Object.keys(SORT_LABELS) as Array<keyof typeof SORT_LABELS>).map((value) => (
               <option key={value} value={value}>
