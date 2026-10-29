@@ -140,10 +140,13 @@ export default function FontTab() {
   const builtSignature = useRef<string | null>(null);
   const [displayedBuildSignature, setDisplayedBuildSignature] = useState<string | null>(null);
   const buildCount = useRef(0);
+  // The Icons tab's selection drives this page's "Selected icons" scope. The first successful build made from that selection consumes it: the Icons screen empties its bulk bar and checkboxes so the user does not have to clear manually. Later option tweaks rebuild the same chosen set without touching the selection again; entering the page with a fresh selection arms it again.
+  const selectionConsumed = useRef(false);
 
   async function runBuild(override?: string[], codepointOverrides = fontCodepointOverrides) {
     const input = options(override, codepointOverrides);
     if (typeof input === "string") return setError(input);
+    const builtFromSelection = typeof input !== "string" && input.scope === "selected";
     const mine = ++buildCount.current;
     setBuilding(true);
     setError(null);
@@ -160,6 +163,11 @@ export default function FontTab() {
       setResult({ build: built, family, loaded });
       setFilter("");
       showToast("Font generated successfully.", "success");
+      // The build that just succeeded is the one the Icons selection was used for: clear the selection once.
+      if (builtFromSelection && !selectionConsumed.current) {
+        selectionConsumed.current = true;
+        selection.clear();
+      }
       if (input.reassignCodepoints || built.codepoints.some((glyph) => glyph.isNew)) {
         const nextOverrides = { ...codepointOverrides, ...Object.fromEntries(built.codepoints.map((glyph) => [glyph.id, glyph.codepoint])) };
         setFontCodepointOverrides(nextOverrides);
@@ -235,7 +243,6 @@ export default function FontTab() {
     const timer = window.setTimeout(buildAutomatically, fontAutoBuild.delayMs);
     return () => window.clearTimeout(timer);
   }, [signature, inScope]);
-
   // The three actions sit in the project bar (like Upload icons on the Icons screen); without a bar they show above the settings.
   const actions = (
     <div role="group" aria-label="Font actions" className="flex flex-wrap items-center gap-2">

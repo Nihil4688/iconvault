@@ -2,20 +2,38 @@
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { Link, MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as foldersApi from "../api/folders";
+import * as fontsApi from "../api/fonts";
 import { ApiError } from "../api/http";
 import * as iconsApi from "../api/icons";
 import * as projectsApi from "../api/projects";
+import * as spritesApi from "../api/sprites";
 import { ToastProvider } from "../context/ToastContext";
+import { fontAutoBuild } from "../lib/fontAutoBuild";
 import { READ_ONLY, makeDetail, makeFolder, makeIcon } from "../test/fixtures";
 import ProjectPage from "./ProjectPage";
-
 vi.mock("../context/AuthContext", () => ({ useAuth: () => ({ currentUser: { id: "u1", displayName: "Ada", email: "ada@example.com", role: "user" } }) }));
 vi.mock("../api/projects");
 vi.mock("../api/folders");
 vi.mock("../api/icons");
-
+vi.mock("../api/fonts", () => ({
+  buildFont: vi.fn().mockResolvedValue({
+    fontName: "Feather",
+    prefix: "feather",
+    iconCount: 0,
+    warnings: [],
+    css: "@font-face { font-family: Feather; src: url('Feather.woff2') format('woff2'); }",
+    preview: { format: "woff2", base64: "" },
+    sizes: { woff2: 1, ttf: 1 },
+    codepoints: [],
+  }),
+  downloadFont: vi.fn(),
+  listFontBuilds: vi.fn().mockResolvedValue([]),
+}));
+vi.mock("../api/sprites", () => ({ listSpriteBuilds: vi.fn().mockResolvedValue([]), uploadSpriteBuild: vi.fn() }));
+vi.mock("../lib/fontPreview", () => ({ loadPreviewFont: vi.fn().mockResolvedValue(true), unloadPreviewFont: vi.fn(), nextPreviewFamily: vi.fn(() => "iconfont-preview-test") }));
+vi.mock("../lib/fontBuildCache", () => ({ cacheBuild: vi.fn(), peekCachedBuild: vi.fn().mockReturnValue(null), clearCachedBuild: vi.fn() }));
 const getProject = vi.mocked(projectsApi.getProject);
 const listFolders = vi.mocked(foldersApi.listFolders);
 
@@ -46,6 +64,24 @@ beforeEach(() => {
   getProject.mockResolvedValue(makeDetail({ id: "p1", name: "Feather", description: "Line icons", iconCount: 7, trashCount: 2, purpose: "font", visibility: "public", owner: { id: "u1", displayName: "Ada Lovelace" } }));
   listFolders.mockResolvedValue({ folders: [ui, arrows], uncategorizedCount: 4 });
   vi.mocked(iconsApi.listIcons).mockResolvedValue({ icons: [], total: 0, page: 1, limit: 200 });
+  // The Sprite and Font tabs read these on mount so the automatic build / history load does not blow up.
+  vi.mocked(fontsApi.listFontBuilds).mockResolvedValue([]);
+  vi.mocked(spritesApi.listSpriteBuilds).mockResolvedValue([]);
+  vi.mocked(fontsApi.buildFont).mockResolvedValue({
+    fontName: "Feather",
+    prefix: "feather",
+    iconCount: 0,
+    warnings: [],
+    css: "@font-face { font-family: Feather; src: url('Feather.woff2') format('woff2'); }",
+    preview: { format: "woff2", base64: "" },
+    sizes: { woff2: 1, ttf: 1 },
+    codepoints: [],
+  });
+});
+
+afterEach(() => {
+  // Restore the global default set by src/test/setup.ts so the automatic font build does not leak across files.
+  fontAutoBuild.enabled = false;
 });
 
 describe("loading and failure", () => {
@@ -223,10 +259,31 @@ describe("icon selection across tabs", () => {
       return Promise.resolve({ icons: threeIcons(), total: 3, page: 1, limit: 200 });
     });
     vi.mocked(iconsApi.batchOptimizeIcons).mockResolvedValue({ requested: 0, matched: 0, optimized: 0, bytesBefore: 0, bytesAfter: 0, failed: [] });
+    vi.mocked(fontsApi.buildFont).mockResolvedValue({
+      fontName: "Feather",
+      prefix: "feather",
+      iconCount: 2,
+      warnings: [],
+      css: '@font-face { font-family: Feather; src: url("Feather.woff2") format("woff2"); }',
+      preview: { format: "woff2", base64: "" },
+      sizes: { woff2: 1, ttf: 1 },
+      codepoints: [
+        { id: "a", name: "Alpha", slug: "alpha", codepoint: "E001", className: "feather-alpha", isNew: false },
+        { id: "b", name: "Beta", slug: "beta", codepoint: "E002", className: "feather-beta", isNew: false },
+      ],
+    });
+    vi.mocked(fontsApi.listFontBuilds).mockResolvedValue([]);
+    vi.mocked(spritesApi.listSpriteBuilds).mockResolvedValue([]);
+    // The Font tab builds automatically once it has the icons and valid settings; turn it on for these tests so the build that consumes the selection actually happens.
+    fontAutoBuild.enabled = true;
+    fontAutoBuild.delayMs = 30;
   });
 
-  it("keeps the selection when moving from the Icons tab to the Sprite Builder and back", async () => {
-    // Sprite project so the Sprite Builder tab is shown.
+  afterEach(() => {
+    fontAutoBuild.enabled = false;
+  });
+
+  it("keeps the selection when the user moves between Trash, Project Settings and the Icons tab without building anything", async () => {
     getProject.mockResolvedValue(makeDetail({ id: "p1", name: "Feather", purpose: "sprite" }));
     renderPage();
     await screen.findByRole("button", { name: "Open Alpha" });
@@ -234,20 +291,12 @@ describe("icon selection across tabs", () => {
     await userEvent.click(screen.getByRole("checkbox", { name: "Select Beta" }));
     expect(screen.getByText("2 icons selected")).toBeInTheDocument();
 
-    // Move to the Sprite Builder: the "Selected icons" scope reflects the Icons selection.
-    await userEvent.click(screen.getByRole("link", { name: "Sprite Builder" }));
-    await screen.findByRole("region", { name: "1. Scope selection" });
-    expect(screen.getByRole("radio", { name: "Selected icons (2)" })).toBeChecked();
-
-    // Move to Trash: the selection is still there in the context (no checkbox to confirm, but nothing else changes it).
     await userEvent.click(screen.getByRole("link", { name: /Trash/ }));
     expect(await screen.findByText("The trash is empty.")).toBeInTheDocument();
 
-    // Back to Project Settings…
     await userEvent.click(screen.getByRole("link", { name: "Project Settings" }));
     expect(await screen.findByRole("heading", { name: "Danger zone" })).toBeInTheDocument();
 
-    // …and back to Icons: the same two icons are still selected.
     await userEvent.click(screen.getByRole("link", { name: /Icons/ }));
     await screen.findByRole("button", { name: "Open Alpha" });
     expect(screen.getByText("2 icons selected")).toBeInTheDocument();
@@ -260,30 +309,85 @@ describe("icon selection across tabs", () => {
     expect(screen.getByRole("checkbox", { name: "Select Alpha" })).not.toBeChecked();
   });
 
-  it("keeps the selection when moving from the Icons tab to the Font Builder and back", async () => {
-    // Font project so the Font Builder tab is shown.
+  it("shows the Icons selection as the Sprite Builder's 'Selected icons' scope", async () => {
+    // Sprite project so the Sprite Builder tab is shown.
+    getProject.mockResolvedValue(makeDetail({ id: "p1", name: "Feather", purpose: "sprite" }));
+    renderPage();
+    await screen.findByRole("button", { name: "Open Alpha" });
+    await userEvent.click(screen.getByRole("checkbox", { name: "Select Alpha" }));
+    await userEvent.click(screen.getByRole("checkbox", { name: "Select Beta" }));
+
+    await userEvent.click(screen.getByRole("link", { name: "Sprite Builder" }));
+    await screen.findByRole("region", { name: "1. Scope selection" });
+    // The sprite builds itself in the browser as soon as it has the icons; the Icons selection drives the "Chosen" set, so the radio and the symbols match.
+    expect(screen.getByRole("radio", { name: "Selected icons (2)" })).toBeChecked();
+    expect(await screen.findByText("2 symbols")).toBeInTheDocument();
+  });
+
+  it("clears the Icons selection once the Sprite Builder finishes its first build from it", async () => {
+    getProject.mockResolvedValue(makeDetail({ id: "p1", name: "Feather", purpose: "sprite" }));
+    renderPage();
+    await screen.findByRole("button", { name: "Open Alpha" });
+    await userEvent.click(screen.getByRole("checkbox", { name: "Select Alpha" }));
+    await userEvent.click(screen.getByRole("checkbox", { name: "Select Beta" }));
+
+    await userEvent.click(screen.getByRole("link", { name: "Sprite Builder" }));
+    await screen.findByRole("region", { name: "1. Scope selection" });
+    // Wait for the sprite to build with the selection, then come back to Icons.
+    await screen.findByText("2 symbols");
+    await userEvent.click(screen.getByRole("link", { name: /Icons/ }));
+    await screen.findByRole("button", { name: "Open Alpha" });
+    // The selection has been consumed by the build: bulk bar gone, checkboxes empty.
+    expect(screen.queryByText("2 icons selected")).not.toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "Select Alpha" })).not.toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Select Beta" })).not.toBeChecked();
+  });
+
+  it("shows the Icons selection as the Font Builder's 'Selected icons' scope", async () => {
     getProject.mockResolvedValue(makeDetail({ id: "p1", name: "Feather", purpose: "font" }));
     renderPage();
     await screen.findByRole("button", { name: "Open Alpha" });
     await userEvent.click(screen.getByRole("checkbox", { name: "Select Alpha" }));
     await userEvent.click(screen.getByRole("checkbox", { name: "Select Beta" }));
-    expect(screen.getByText("2 icons selected")).toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("link", { name: "Font Builder" }));
     await screen.findByRole("region", { name: "1. Scope selection" });
     expect(screen.getByRole("radio", { name: "Selected icons (2)" })).toBeChecked();
+  });
 
-    await userEvent.click(screen.getByRole("link", { name: /Trash/ }));
-    expect(await screen.findByText("The trash is empty.")).toBeInTheDocument();
+  it("clears the Icons selection once the Font Builder finishes its first build from it", async () => {
+    getProject.mockResolvedValue(makeDetail({ id: "p1", name: "Feather", purpose: "font" }));
+    renderPage();
+    await screen.findByRole("button", { name: "Open Alpha" });
+    await userEvent.click(screen.getByRole("checkbox", { name: "Select Alpha" }));
+    await userEvent.click(screen.getByRole("checkbox", { name: "Select Beta" }));
 
-    await userEvent.click(screen.getByRole("link", { name: "Project Settings" }));
-    expect(await screen.findByRole("heading", { name: "Danger zone" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("link", { name: "Font Builder" }));
+    await screen.findByRole("region", { name: "1. Scope selection" });
+    // The Font tab builds the font automatically once it has the icons and valid settings. Wait for the server build call, then come back to Icons.
+    await waitFor(() => expect(fontsApi.buildFont).toHaveBeenCalled());
+    await userEvent.click(screen.getByRole("link", { name: /Icons/ }));
+    await screen.findByRole("button", { name: "Open Alpha" });
+    expect(screen.queryByText("2 icons selected")).not.toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "Select Alpha" })).not.toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Select Beta" })).not.toBeChecked();
+  });
+
+  it("clears the Icons selection once Build font is clicked on the bulk bar and the build finishes", async () => {
+    getProject.mockResolvedValue(makeDetail({ id: "p1", name: "Feather", purpose: "font" }));
+    renderPage();
+    await screen.findByRole("button", { name: "Open Alpha" });
+    await userEvent.click(screen.getByRole("checkbox", { name: "Select Alpha" }));
+    await userEvent.click(screen.getByRole("checkbox", { name: "Select Beta" }));
+
+    await userEvent.click(screen.getByRole("button", { name: "Build font" }));
+    await waitFor(() => expect(fontsApi.buildFont).toHaveBeenCalled());
+    await screen.findByRole("region", { name: "1. Scope selection" });
 
     await userEvent.click(screen.getByRole("link", { name: /Icons/ }));
     await screen.findByRole("button", { name: "Open Alpha" });
-    expect(screen.getByText("2 icons selected")).toBeInTheDocument();
-    expect(screen.getByRole("checkbox", { name: "Select Alpha" })).toBeChecked();
-    expect(screen.getByRole("checkbox", { name: "Select Beta" })).toBeChecked();
+    expect(screen.queryByText("2 icons selected")).not.toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "Select Alpha" })).not.toBeChecked();
   });
 });
 
