@@ -78,7 +78,11 @@ function serialize(
     owner: owner ?? { id: String(project.ownerId), displayName: "Unknown user" },
     iconCount,
     sampleIcons,
-    access: describeAccess(actor, { ownerId: project.ownerId, visibility: project.visibility ?? "private" }),
+    access: describeAccess(actor, {
+      ownerId: project.ownerId,
+      visibility: project.visibility ?? "private",
+      isArchived: project.isArchived ?? false,
+    }),
   };
 }
 
@@ -103,8 +107,8 @@ export async function listProjects(actor: SignedInActor, query: ListProjectsQuer
   const filter: Record<string, unknown> = {};
   const and: Record<string, unknown>[] = [];
 
-  // Non-admins see their own projects and public ones; admins see everything.
-  if (!actor.isAdmin) and.push({ $or: [{ ownerId: mine }, { visibility: "public" }] });
+  // Non-admins see their own projects and active public ones; admins see everything.
+  if (!actor.isAdmin) and.push({ $or: [{ ownerId: mine }, { visibility: "public", isArchived: { $ne: true } }] });
   if (query.scope === "mine") and.push({ ownerId: mine });
   if (query.scope === "public") and.push({ visibility: "public" });
   if (query.status !== "all") and.push({ isArchived: query.status === "archived" });

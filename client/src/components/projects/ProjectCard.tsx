@@ -35,10 +35,13 @@ export default function ProjectCard({ project, currentUserId, onEdit, onDuplicat
 
   return (
     <li className="relative flex flex-col gap-2.5 rounded-xl border border-border bg-card p-3.5 text-card-foreground shadow-sm transition-shadow focus-within:shadow-md hover:shadow-md">
-      <div className="flex flex-wrap items-center gap-1.5">
-        <VisibilityBadge visibility={project.visibility} />
-        <PurposeBadge purpose={project.purpose} />
-        {project.isArchived && <Badge icon={<Archive aria-hidden="true" className="h-3 w-3" />}>Draft</Badge>}
+      <div className="flex justify-between">
+        <div className="flex flex-wrap items-center gap-1.5">
+          <VisibilityBadge visibility={project.visibility} />
+          <PurposeBadge purpose={project.purpose} />
+          {project.isArchived && <Badge icon={<Archive aria-hidden="true" className="h-3 w-3" />}>Draft</Badge>}
+        </div>
+        <ActionMenu label={`Actions for ${project.name}`} actions={actions} className="relative z-10 -mr-1" />
       </div>
 
       <div className="flex items-center gap-2.5">
@@ -48,7 +51,7 @@ export default function ProjectCard({ project, currentUserId, onEdit, onDuplicat
             {project.name}
           </Link>
         </h3>
-        <ActionMenu label={`Actions for ${project.name}`} actions={actions} className="relative z-10 -mr-1" />
+
       </div>
 
       <p className="-mt-1 truncate pr-1 text-xs text-muted-foreground" title={project.description || undefined}>

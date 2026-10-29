@@ -91,6 +91,15 @@ describe("projects and folders (HTTP, throwaway database)", { skip: hasDatabase 
       assert.equal((await h.call(other.token, "PATCH", `/api/projects/${priv.id}`, { name: "x" })).status, 404);
     });
 
+    it("hides a public draft from other users but keeps it visible to its owner and admins", async () => {
+      const draft = await makeProject(owner.token, { name: "Public draft", visibility: "public" });
+      assert.equal((await h.call(owner.token, "PATCH", `/api/projects/${draft.id}`, { isArchived: true })).status, 200);
+
+      assert.equal((await h.call(other.token, "GET", `/api/projects/${draft.id}`)).status, 404);
+      assert.equal((await h.call(owner.token, "GET", `/api/projects/${draft.id}`)).status, 200);
+      assert.equal((await h.call(admin.token, "GET", `/api/projects/${draft.id}`)).status, 200);
+    });
+
     it("lets an admin see and manage everything and see owner emails", async () => {
       const r = await h.call(admin.token, "GET", `/api/projects/${priv.id}`);
       assert.equal(r.status, 200);
@@ -121,13 +130,15 @@ describe("projects and folders (HTTP, throwaway database)", { skip: hasDatabase 
   });
 
   describe("listing", () => {
-    let mineP: any, minePriv: any, theirsPub: any, theirsPriv: any;
+    let mineP: any, minePriv: any, theirsPub: any, theirsPriv: any, theirsDraft: any;
     before(async () => {
       const lister = await h.makeUser("lister");
       mineP = await makeProject(lister.token, { name: "Zeta mine public", visibility: "public", prefix: "zeta" });
       minePriv = await makeProject(lister.token, { name: "Alpha mine private", purpose: "font" });
       theirsPub = await makeProject(owner.token, { name: "Theirs public", visibility: "public" });
       theirsPriv = await makeProject(owner.token, { name: "Theirs private" });
+      theirsDraft = await makeProject(owner.token, { name: "Theirs draft", visibility: "public" });
+      await h.call(owner.token, "PATCH", `/api/projects/${theirsDraft.id}`, { isArchived: true });
       (globalThis as any).__lister = lister;
     });
     const lister = () => (globalThis as any).__lister as TestUser;
@@ -138,7 +149,13 @@ describe("projects and folders (HTTP, throwaway database)", { skip: hasDatabase 
       assert.equal(r.status, 200);
       const n = names(r);
       assert.ok(n.includes("Zeta mine public") && n.includes("Alpha mine private") && n.includes("Theirs public"));
-      assert.ok(!n.includes("Theirs private"));
+      assert.ok(!n.includes("Theirs private") && !n.includes("Theirs draft"));
+    });
+
+    it("keeps a public draft visible in archived listings only to its owner and admins", async () => {
+      assert.ok(!names(await h.call(lister().token, "GET", "/api/projects?status=all&limit=100")).includes("Theirs draft"));
+      assert.ok(names(await h.call(owner.token, "GET", "/api/projects?scope=mine&status=archived&limit=100")).includes("Theirs draft"));
+      assert.ok(names(await h.call(admin.token, "GET", "/api/projects?status=archived&limit=100")).includes("Theirs draft"));
     });
 
     it("shows an admin everything", async () => {

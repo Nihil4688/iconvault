@@ -3,7 +3,7 @@
 // Rules (public bundles stay read-only for others, as in the original Compiler):
 //   admin            everything, on every project
 //   owner            everything, on their own projects
-//   other user       public project: view it and copy icons out of it; private project: nothing
+//   other user       active public project: view it and copy icons out of it; private or draft project: nothing
 //   not signed in    nothing
 
 export type Actor = { id: string; isAdmin: boolean } | null | undefined;
@@ -11,6 +11,7 @@ export type Actor = { id: string; isAdmin: boolean } | null | undefined;
 export type ProjectAccessInfo = {
   ownerId: unknown;
   visibility: "public" | "private";
+  isArchived?: boolean;
 };
 
 export type AccessFlags = {
@@ -29,7 +30,7 @@ function isOwner(actor: NonNullable<Actor>, project: ProjectAccessInfo): boolean
 export function canView(actor: Actor, project: ProjectAccessInfo | null | undefined): boolean {
   if (!actor || !project) return false;
   if (actor.isAdmin || isOwner(actor, project)) return true;
-  return project.visibility === "public";
+  return project.visibility === "public" && project.isArchived !== true;
 }
 
 // Copy icons from this project into another one the actor can write to.
