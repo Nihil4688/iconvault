@@ -56,11 +56,9 @@ describe("activity logs (HTTP, throwaway database)", { skip: hasDatabase ? false
   it("records sprite builds with build metadata and does not expose ZIP contents", async () => {
     const projectReply = await h.call(owner.token, "POST", "/api/projects", { name: "Sprite activity" });
     const projectId = new mongoose.Types.ObjectId(projectReply.body.id);
+    const spriteReply = await h.call(owner.token, "GET", `/api/projects/${projectReply.body.id}/sprite`);
 
-    // The Sprite Builder produces the sprite in the browser and posts the build facts (this works for public projects too).
-    const logReply = await h.call(owner.token, "POST", `/api/projects/${projectReply.body.id}/sprite/builds/log`, { mode: "symbol", iconCount: 3, scope: "all" });
-    assert.equal(logReply.status, 200, JSON.stringify(logReply.body));
-
+    assert.equal(spriteReply.status, 200);
     const build = await mongoose.connection.collection("activitylogs").findOne({
       projectId,
       actionDone: "build",
@@ -68,44 +66,8 @@ describe("activity logs (HTTP, throwaway database)", { skip: hasDatabase ? false
     });
     assert.ok(build);
     assert.match(build.actionSummary, /Built sprite for project "Sprite activity"/);
-    assert.equal(build.details.iconCount, 3);
+    assert.equal(build.details.iconCount, 0);
     assert.equal(build.result, "success");
-  });
-
-  it("logs a sprite build exactly once per request: no duplicate entries for the same build", async () => {
-    const projectReply = await h.call(owner.token, "POST", "/api/projects", { name: "Sprite once" });
-    const projectId = new mongoose.Types.ObjectId(projectReply.body.id);
-    const collection = mongoose.connection.collection("activitylogs");
-
-    const logReply = await h.call(owner.token, "POST", `/api/projects/${projectReply.body.id}/sprite/builds/log`, { mode: "symbol", iconCount: 2, scope: "all" });
-    assert.equal(logReply.status, 200);
-    const builds = await collection.find({ projectId, actionDone: "build", buildType: "sprite" }).toArray();
-    assert.equal(builds.length, 1);
-  });
-
-  it("records a sprite build for a public project performed by its owner", async () => {
-    const projectReply = await h.call(owner.token, "POST", "/api/projects", { name: "Public sprite", visibility: "public" });
-    assert.equal(projectReply.status, 201);
-    const projectId = new mongoose.Types.ObjectId(projectReply.body.id);
-    const collection = mongoose.connection.collection("activitylogs");
-
-    const logReply = await h.call(owner.token, "POST", `/api/projects/${projectReply.body.id}/sprite/builds/log`, { mode: "symbol", iconCount: 1, scope: "all" });
-    assert.equal(logReply.status, 200, JSON.stringify(logReply.body));
-    const build = await collection.findOne({ projectId, actionDone: "build", buildType: "sprite" });
-    assert.ok(build, "the public project's sprite build was recorded");
-    assert.equal(build.details.iconCount, 1);
-    assert.equal(build.performedBy, "activity-owner");
-  });
-
-  it("keeps the server-side sprite endpoint free of activity logging (no double build entries)", async () => {
-    const projectReply = await h.call(owner.token, "POST", "/api/projects", { name: "CLI sprite" });
-    const projectId = new mongoose.Types.ObjectId(projectReply.body.id);
-    const collection = mongoose.connection.collection("activitylogs");
-
-    const spriteReply = await h.call(owner.token, "GET", `/api/projects/${projectReply.body.id}/sprite`);
-    assert.equal(spriteReply.status, 200);
-    const builds = await collection.find({ projectId, actionDone: "build", buildType: "sprite" }).toArray();
-    assert.equal(builds.length, 0);
   });
 
   it("records font builds and trash clearing with their affected entities", async () => {

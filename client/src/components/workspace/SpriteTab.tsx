@@ -3,7 +3,7 @@ import { CheckSquare, Copy, FileArchive } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useLocation } from "react-router-dom";
-import { logSpriteBuild, uploadSpriteBuild } from "../../api/sprites";
+import { uploadSpriteBuild } from "../../api/sprites";
 import { useToast } from "../../context/ToastContext";
 import { useWorkspace } from "../../context/workspaceContext";
 import { useResource } from "../../hooks/useResource";
@@ -74,8 +74,6 @@ export default function SpriteTab() {
 
   // The Icons tab's selection drives this page's "Selected icons" scope. Once the sprite is built from that selection (not a manual choice in the checklist), the selection has been consumed and the Icons screen empties its bulk bar and checkboxes. Subsequent option tweaks rebuild the same chosen set without touching the selection again. The router-state hand-over path from the bulk bar's "Build sprite" also consumes the selection so coming back to the Icons tab does not leave stale ids behind.
   const selectionConsumed = useRef(false);
-  // The sprite built here lives in the browser; the server only hears about it through this build log (one per visit, for the activity history), then separately when the editor keeps a ZIP.
-  const buildLogged = useRef(false);
   useEffect(() => {
     if (selectionConsumed.current) return;
     if (!ready) return;
@@ -85,16 +83,6 @@ export default function SpriteTab() {
     selection.clear();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [ready, scopeKind, chosen]);
-  useEffect(() => {
-    if (!ready || !built || built.ids.length === 0) return;
-    if (buildLogged.current) return;
-    buildLogged.current = true;
-    logSpriteBuild(project.id, { mode: built.mode, iconCount: built.ids.length, scope: scopeKind, folderId: scopeKind === "folder" ? folderChoice : null }).catch(() => {
-      // The sprite is still usable; only the activity log entry is missing.
-      buildLogged.current = false;
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, built, scopeKind, folderChoice]);
 
   async function copyAndToast(text: string, what: string) {
     const ok = await copyText(text);
