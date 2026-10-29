@@ -1,4 +1,5 @@
 // Project routes: list, create, read, update, delete and duplicate. Every route needs a signed-in user. Mounted at /api/projects.
+import { createHash } from "node:crypto";
 import { Router } from "express";
 import multer from "multer";
 import { BadRequestError } from "../lib/errors.js";
@@ -156,8 +157,12 @@ router.post("/:projectId/font/download", heavyLimit, async (req, res) => {
   const icons = await iconsForFont(project._id, input);
   const build = await buildFont(project._id, icons, input);
   const zip = zipFontBuild(build);
+  // Selected-icon downloads are kept only for private projects. Public and private packages
+  // are otherwise recorded once per package fingerprint; rebuilding without package changes adds nothing.
+  const fingerprint = createHash("sha256").update(JSON.stringify({ input, css: build.css, codepoints: build.codepoints })).digest("hex");
+  const keep = canEdit(actor, project) && !(project.visibility === "public" && input.scope === "selected");
   // Editors' downloads are kept in the build history (best effort: a failure here must not lose the download).
-  const stored = canEdit(actor, project) ? await recordFontBuild(project._id, actor.id, build, input.formats, zip).catch(() => false) : false;
+  const stored = keep ? await recordFontBuild(project._id, actor.id, build, input.formats, zip, fingerprint).catch(() => false) : false;
   await recordRequestActivity(req, project, {
     actionDone: "build",
     entityType: "project",
@@ -204,16 +209,22 @@ router.post("/:projectId/sprite/builds", heavyLimit, spriteUpload.single("bundle
   const project = await loadProject(actor, req.params.projectId, "edit");
   if (!req.file) throw new BadRequestError("Send the sprite ZIP in the bundle field.");
   const fields = spriteBuildFieldsSchema.parse(req.body ?? {});
-  const build = await recordSpriteBuild(project._id, actor.id, fields, req.file.buffer);
-  await recordRequestActivity(req, project, {
-    actionDone: "build",
-    entityType: "project",
-    entityId: project._id,
-    entityName: project.name,
-    buildType: "sprite",
-    details: { version: build.version, iconCount: build.iconCount, mode: build.mode, size: build.size },
-  });
-  res.status(201).json(build);
+  if (project.visibility === "public" && fields.scope === "selected") {
+    res.status(201).json({ kept: false });
+    return;
+  }
+  const build = await recordSpriteBuild(project._id, actor.id, { mode: fields.mode, iconCount: fields.iconCount, fingerprint: fields.fingerprint }, req.file.buffer);
+  if (build) {
+    await recordRequestActivity(req, project, {
+      actionDone: "build",
+      entityType: "project",
+      entityId: project._id,
+      entityName: project.name,
+      buildType: "sprite",
+      details: { version: build.version, iconCount: build.iconCount, mode: build.mode, size: build.size },
+    });
+  }
+  res.status(201).json(build ? { ...build, kept: true } : { kept: false });
 });
 
 router.get("/:projectId/sprite/builds", async (req, res) => {

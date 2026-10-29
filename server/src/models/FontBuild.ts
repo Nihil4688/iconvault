@@ -14,6 +14,7 @@ export const fontBuildSchema = new Schema(
     fontName: { type: String, required: true, maxlength: 50 },
     iconCount: { type: Number, required: true, min: 0 },
     formats: { type: [String], default: [] },
+    fingerprint: { type: String, maxlength: 128 },
     // Size of the ZIP in bytes.
     size: { type: Number, required: true, min: 0 },
     zip: { type: Buffer, required: true },

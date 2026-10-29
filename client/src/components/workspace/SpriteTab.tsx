@@ -15,6 +15,15 @@ import { DEFAULT_SPRITE_OPTIONS, buildSprite, idPatternProblem, snippetFor, type
 import { buildDemoHtml, buildGridSpriteXml } from "../../utils/buildDemo";
 import { renderSpritePreviewPng } from "../../utils/previewPng";
 import { createZip, triggerBrowserDownload } from "../../utils/zipBundle";
+
+function spriteFingerprint(value: string): string {
+  let hash = 2166136261;
+  for (let index = 0; index < value.length; index += 1) {
+    hash ^= value.charCodeAt(index);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(16).padStart(8, "0");
+}
 import { Button } from "../ui/Button";
 import { SelectField, TextField } from "../ui/Fields";
 import IconChecklistDialog from "./IconChecklistDialog";
@@ -95,7 +104,8 @@ export default function SpriteTab() {
       // An editor's download is kept in the history (best effort: it must not turn the download into a failure).
       if (canEdit) {
         try {
-          await uploadSpriteBuild(project.id, zip, { mode: built.mode, iconCount: built.ids.length });
+          const fingerprint = spriteFingerprint(JSON.stringify({ xml: built.xml, css: built.css, mode: built.mode, ids: built.ids, idPattern, stripColors, namespaceIds, scope: scopeKind, folderId: scopeKind === "folder" ? folderChoice : undefined }));
+          await uploadSpriteBuild(project.id, zip, { mode: built.mode, iconCount: built.ids.length, scope: scopeKind, fingerprint });
           setHistoryVersion((value) => value + 1);
         } catch {
           // The file was downloaded; only the history entry is missing.

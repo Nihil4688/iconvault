@@ -14,6 +14,7 @@ export const spriteBuildSchema = new Schema(
     version: { type: Number, required: true, min: 1 },
     mode: { type: String, enum: SPRITE_MODES, required: true },
     iconCount: { type: Number, required: true, min: 0 },
+    fingerprint: { type: String, maxlength: 128 },
     // Size of the ZIP in bytes.
     size: { type: Number, required: true, min: 0 },
     zip: { type: Buffer, required: true },

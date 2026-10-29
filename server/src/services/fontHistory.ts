@@ -22,13 +22,17 @@ async function ensureVersions(projectId: Id): Promise<void> {
 }
 
 // Keeps a downloaded package. Skips ones too large to store; the download itself is not affected.
-export async function recordFontBuild(projectId: Id, userId: string, build: { fontName: string; iconCount: number }, formats: string[], zip: Buffer): Promise<boolean> {
+export async function recordFontBuild(projectId: Id, userId: string, build: { fontName: string; iconCount: number }, formats: string[], zip: Buffer, fingerprint?: string): Promise<boolean> {
   if (zip.length > MAX_STORED_BUILD_BYTES) return false;
   await ensureVersions(projectId);
+  if (fingerprint) {
+    const newest = await FontBuild.findOne({ projectId }, { fingerprint: 1 }).sort({ createdAt: -1, _id: -1 }).lean();
+    if (newest?.fingerprint === fingerprint) return false;
+  }
   // The next version number for this project, taken atomically so two downloads at once cannot share one.
   const counted = await Project.findOneAndUpdate({ _id: projectId }, { $inc: { fontBuildCount: 1 } }, { returnDocument: "after", projection: { fontBuildCount: 1 } });
   if (!counted) return false;
-  await FontBuild.create({ projectId, version: counted.fontBuildCount, createdBy: new mongoose.Types.ObjectId(userId), fontName: build.fontName, iconCount: build.iconCount, formats, size: zip.length, zip });
+  await FontBuild.create({ projectId, version: counted.fontBuildCount, createdBy: new mongoose.Types.ObjectId(userId), fontName: build.fontName, iconCount: build.iconCount, formats, size: zip.length, ...(fingerprint ? { fingerprint } : {}), zip });
   const extra = await FontBuild.find({ projectId }, { _id: 1 }).sort({ createdAt: -1, _id: -1 }).skip(MAX_STORED_BUILDS).lean();
   if (extra.length > 0) await FontBuild.deleteMany({ _id: { $in: extra.map((row) => row._id) } });
   return true;
