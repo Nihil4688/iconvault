@@ -8,11 +8,11 @@ import Icon, { type IconDoc } from "../models/Icon.js";
 import IconVersion from "../models/IconVersion.js";
 import Project from "../models/Project.js";
 import { deleteIconsAndVersions } from "./cascade.js";
-import { assertIconRoom } from "../lib/quotas.js";
+import { assertIconRoom, assertIconRoomFor } from "../lib/quotas.js";
 import { assertFolderInProject, descendantIds, ensureFolderPath } from "./folderService.js";
 import { prepareSvg, type PreparedSvg } from "./svgPipeline.js";
 import { buildZip, readSvgsFromZip } from "./zipService.js";
-import { allocateNextCodepoint } from "./codepointService.js";
+import { allocateNextCodepoint, allocateNextCodepoints } from "./codepointService.js";
 
 type Id = Types.ObjectId;
 export type IconDocument = HydratedDocument<IconDoc>;
@@ -169,7 +169,44 @@ export type UploadSummary = {
   foldersCreated: number;
 };
 
+// One SVG waiting to be stored: where it came from, which folder it goes into and its cleaned markup.
+type PendingIcon = {
+  displayName: string;
+  name: string;
+  slug: string;
+  folderId: Id | null;
+  prepared: PreparedSvg;
+};
+
+// Writes new icons with one insert. The unique index on the slug decides which files clash: the ones that made it are returned as inserted, the others are reported by name.
+async function insertIcons(
+  documents: Record<string, unknown>[],
+  pending: PendingIcon[],
+): Promise<{ inserted: IconDocument[]; failed: { displayName: string; message: string }[] }> {
+  try {
+    const inserted = await Icon.insertMany(documents, { ordered: false });
+    return { inserted: inserted as unknown as IconDocument[], failed: [] };
+  } catch (err) {
+    const bulk = err as { insertedDocs?: unknown[]; writeErrors?: { index?: number }[] };
+    const inserted = (bulk.insertedDocs ?? []) as IconDocument[];
+    const failedIndexes = new Set((bulk.writeErrors ?? []).map((writeError) => writeError.index ?? -1));
+    // Everything that is not among the inserted documents and not listed as a write error did not make it either.
+    const insertedSlugs = new Set(inserted.map((doc) => doc.slug));
+    const failed = pending
+      .map((icon, index) => ({ icon, index }))
+      .filter(({ icon, index }) => !failedIndexes.has(index) && !insertedSlugs.has(icon.slug))
+      .map(({ icon }) => ({
+        displayName: icon.displayName,
+        message: "Another icon with that name was added at the same time.",
+      }));
+    if (inserted.length === 0) throw err;
+    return { inserted, failed };
+  }
+}
+
 // Imports SVG files and ZIP archives. A ZIP's folder structure is recreated under `folderId` (existing folders are reused). Problems with one file are reported and do not stop the others.
+//
+// The whole upload is handled as a batch: every file is cleaned and optimized up front, the names already in use are looked up in one query, the characters are reserved in one go and the new icons are written with a single insert. That keeps a hundred-file upload down to a handful of database round-trips instead of one per file.
 export async function importUpload(
   projectId: Id,
   files: UploadFile[],
@@ -178,24 +215,9 @@ export async function importUpload(
   await assertFolderInProject(projectId, options.folderId);
   const summary: UploadSummary = { created: [], replaced: [], skipped: [], errors: [], foldersCreated: 0 };
   const folderState = { created: 0, cache: new Map<string, Id>() };
-  let processed = 0;
 
-  const addOne = async (displayName: string, data: Buffer, folderId: Id | null) => {
-    if (processed >= MAX_ICONS_PER_UPLOAD) {
-      summary.errors.push({ file: displayName, message: `Only ${MAX_ICONS_PER_UPLOAD} icons can be added per upload.` });
-      return;
-    }
-    processed += 1;
-    try {
-      const outcome = await importSvg(projectId, { name: nameFromFileName(displayName), raw: data, folderId, tags: options.tags }, options);
-      if (outcome.status === "created") summary.created.push(serializeIcon(outcome.icon, false));
-      else if (outcome.status === "replaced") summary.replaced.push(serializeIcon(outcome.icon, false));
-      else summary.skipped.push({ name: outcome.name, reason: outcome.reason });
-    } catch (err) {
-      summary.errors.push({ file: displayName, message: err instanceof Error ? err.message : "Could not add this file." });
-    }
-  };
-
+  // 1. Gather the SVGs. ZIP entries keep their folder path; a plain file goes into the chosen folder.
+  const sources: { displayName: string; data: Buffer; folderId: Id | null }[] = [];
   for (const file of files) {
     const lower = file.originalname.toLowerCase();
     if (lower.endsWith(".zip") || file.mimetype === "application/zip" || file.mimetype === "application/x-zip-compressed") {
@@ -204,21 +226,134 @@ export async function importUpload(
         for (const skipped of zip.skipped) summary.errors.push({ file: skipped.path, message: skipped.reason });
         for (const entry of zip.entries) {
           const folderId = await ensureFolderPath(projectId, options.folderId, entry.folders, folderState);
-          await addOne([...entry.folders, entry.fileName].join("/"), entry.data, folderId);
+          sources.push({ displayName: [...entry.folders, entry.fileName].join("/"), data: entry.data, folderId });
         }
       } catch (err) {
         summary.errors.push({ file: file.originalname, message: err instanceof Error ? err.message : "Could not read this ZIP." });
       }
     } else if (lower.endsWith(".svg")) {
-      await addOne(file.originalname, file.buffer, options.folderId);
+      sources.push({ displayName: file.originalname, data: file.buffer, folderId: options.folderId });
     } else {
       summary.errors.push({ file: file.originalname, message: "Only .svg and .zip files can be uploaded." });
+    }
+  }
+
+  // 2. Only the first MAX_ICONS_PER_UPLOAD files are kept; the rest are reported.
+  const kept = sources.slice(0, MAX_ICONS_PER_UPLOAD);
+  for (const extra of sources.slice(MAX_ICONS_PER_UPLOAD)) {
+    summary.errors.push({ file: extra.displayName, message: `Only ${MAX_ICONS_PER_UPLOAD} icons can be added per upload.` });
+  }
+
+  // 3. Clean and optimize every file. The markup work is independent per file, so it runs together instead of one after the other.
+  const pending: PendingIcon[] = [];
+  const prepared = await Promise.all(
+    kept.map(async (source) => {
+      try {
+        return { source, prepared: prepareSvg(source.data, { optimize: options.optimize }) };
+      } catch (err) {
+        return { source, error: err instanceof Error ? err.message : "Could not add this file." };
+      }
+    }),
+  );
+  for (const item of prepared) {
+    if ("error" in item) {
+      summary.errors.push({ file: item.source.displayName, message: item.error });
+      continue;
+    }
+    const fileName = item.source.displayName.split(/[\\/]/).pop() ?? item.source.displayName;
+    const name = nameFromFileName(fileName);
+    pending.push({
+      displayName: item.source.displayName,
+      name,
+      slug: slugify(name),
+      folderId: item.source.folderId,
+      prepared: item.prepared,
+    });
+  }
+
+  if (pending.length === 0) {
+    summary.foldersCreated = folderState.created;
+    return summary;
+  }
+
+  // 4. The names already in use are looked up in one query, so no file needs a round-trip of its own.
+  const wantedSlugs = [...new Set(pending.map((icon) => icon.slug))];
+  const existingRows = await Icon.find({ projectId, deletedAt: null, slug: { $in: wantedSlugs } });
+  const existingBySlug = new Map(existingRows.map((row) => [row.slug, row]));
+
+  // 5. Work out what happens to each file: skip it, replace the icon it clashes with, or add it under a free name.
+  const toCreate: PendingIcon[] = [];
+  const toReplace: { pending: PendingIcon; existing: IconDocument }[] = [];
+  for (const icon of pending) {
+    const existing = existingBySlug.get(icon.slug);
+    if (!existing) {
+      toCreate.push(icon);
+      continue;
+    }
+    if (options.strategy === "skip") {
+      summary.skipped.push({ name: icon.name, reason: "An icon with that name already exists." });
+      continue;
+    }
+    if (options.strategy === "replace") {
+      toReplace.push({ pending: icon, existing });
+      continue;
+    }
+    // "rename": the icon keeps its name and gets a number, so both can live side by side.
+    const free = await freeSlug(projectId, icon.slug);
+    toCreate.push({ ...icon, slug: free.slug, name: `${icon.name.slice(0, 100 - ` (${free.n})`.length)} (${free.n})` });
+  }
+
+  // 6. Reserve the characters for the new icons in one step.
+  let codepoints: string[] = [];
+  if (toCreate.length > 0) {
+    await assertIconRoomFor(projectId, toCreate.length);
+    codepoints = await allocateNextCodepoints(projectId, toCreate.length);
+  }
+
+  // 7. Write the new icons with a single insert.
+  if (toCreate.length > 0) {
+    const tags = normalizeTags(options.tags);
+    const documents = toCreate.map((icon, index) => ({
+      projectId,
+      folderId: icon.folderId,
+      name: icon.name,
+      slug: icon.slug,
+      tags,
+      codepoint: codepoints[index],
+      svg: icon.prepared.svg,
+      byteSize: icon.prepared.byteSize,
+      originalByteSize: icon.prepared.originalByteSize,
+      width: icon.prepared.width,
+      height: icon.prepared.height,
+      viewBox: icon.prepared.viewBox,
+      hasStroke: icon.prepared.hasStroke,
+      hasGradient: icon.prepared.hasGradient,
+      hasText: icon.prepared.hasText,
+    }));
+    const inserted = await insertIcons(documents, toCreate);
+    for (const doc of inserted.inserted) summary.created.push(serializeIcon(doc, false));
+    for (const failure of inserted.failed) summary.errors.push({ file: failure.displayName, message: failure.message });
+  }
+
+  // 8. Replace the icons that were there before. The old markup is kept as a version, as with a normal edit.
+  for (const { pending: icon, existing } of toReplace) {
+    try {
+      if (!existing.codepoint) existing.codepoint = await allocateNextCodepoint(projectId);
+      if (existing.svg !== icon.prepared.svg) {
+        await saveVersion(existing);
+        applyPrepared(existing, icon.prepared);
+      }
+      if (existing.isModified()) await existing.save();
+      summary.replaced.push(serializeIcon(existing, false));
+    } catch (err) {
+      summary.errors.push({ file: icon.displayName, message: err instanceof Error ? err.message : "Could not add this file." });
     }
   }
 
   summary.foldersCreated = folderState.created;
   return summary;
 }
+
 
 function assertActive(icon: IconDocument): void {
   if (icon.deletedAt) throw new ConflictError("This icon is in the trash. Restore it first.");

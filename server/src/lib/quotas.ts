@@ -30,6 +30,15 @@ export async function assertIconRoom(projectId: Types.ObjectId): Promise<void> {
   }
 }
 
+// The same check for a batch that wants to add `count` icons at once: the room is counted once, not once per icon.
+export async function assertIconRoomFor(projectId: Types.ObjectId, count: number): Promise<void> {
+  const max = quotas.iconsPerProject();
+  if (count <= 0) return;
+  if ((await Icon.countDocuments({ projectId })) + count > max) {
+    throw new ConflictError(`A project can hold ${max} icons at most (the trash counts). Delete icons or empty the trash first.`);
+  }
+}
+
 export async function assertFolderRoom(projectId: Types.ObjectId): Promise<void> {
   const max = quotas.foldersPerProject();
   if ((await Folder.countDocuments({ projectId })) >= max) {

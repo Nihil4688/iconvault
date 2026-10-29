@@ -23,7 +23,8 @@ export function optimizeSvg(svg: string, options: OptimizeOptions = {}): Optimiz
   if (options.removeDimensions) plugins.push("removeDimensions");
 
   try {
-    const output = optimize(svg, { multipass: options.multipass !== false, plugins }).data;
+    // Multipass is off by default: SVGO 4's preset-default is already near-optimal in a single pass, and the extra passes dominate upload time for typical icon markup.
+    const output = optimize(svg, { multipass: options.multipass === true, plugins }).data;
     const optimizedSize = Buffer.byteLength(output, "utf8");
     return {
       svg: output,
