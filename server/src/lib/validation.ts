@@ -200,6 +200,8 @@ export const deleteUserSchema = z.object({ transferTo: objectId.optional() }).st
 export const spriteBuildFieldsSchema = z.object({
   mode: z.enum(["symbol", "stack", "css"]),
   iconCount: z.coerce.number().int().min(0).max(100000),
+  scope: z.enum(["all", "folder", "selected"]).default("all"),
+  fingerprint: z.string().trim().min(1).max(128).optional(),
 });
 
 export const transferProjectSchema = z.object({ userId: objectId }).strict();

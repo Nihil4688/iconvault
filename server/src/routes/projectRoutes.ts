@@ -1,4 +1,5 @@
 // Project routes: list, create, read, update, delete and duplicate. Every route needs a signed-in user. Mounted at /api/projects.
+import { createHash } from "node:crypto";
 import { Router } from "express";
 import multer from "multer";
 import { BadRequestError } from "../lib/errors.js";
@@ -89,8 +90,11 @@ router.post("/:projectId/font/download", heavyLimit, async (req, res) => {
   const icons = await iconsForFont(project._id, input);
   const build = await buildFont(project._id, icons, input);
   const zip = zipFontBuild(build);
-  // Editors' downloads are kept in the build history (best effort: a failure here must not lose the download).
-  if (canEdit(actor, project)) await recordFontBuild(project._id, actor.id, build, input.formats, zip).catch(() => false);
+  // Selected-icon downloads are kept only for private projects. Public and private packages
+  // are otherwise recorded once per package fingerprint; rebuilding without package changes adds nothing.
+  const fingerprint = createHash("sha256").update(JSON.stringify({ input, css: build.css, codepoints: build.codepoints })).digest("hex");
+  const keep = canEdit(actor, project) && !(project.visibility === "public" && input.scope === "selected");
+  if (keep) await recordFontBuild(project._id, actor.id, build, input.formats, zip, fingerprint).catch(() => false);
   sendDownload(res, { filename: `${build.fontName}-font.zip`, contentType: "application/zip", body: zip });
 });
 
@@ -120,7 +124,12 @@ router.post("/:projectId/sprite/builds", heavyLimit, spriteUpload.single("bundle
   const project = await loadProject(actor, req.params.projectId, "edit");
   if (!req.file) throw new BadRequestError("Send the sprite ZIP in the bundle field.");
   const fields = spriteBuildFieldsSchema.parse(req.body ?? {});
-  res.status(201).json(await recordSpriteBuild(project._id, actor.id, fields, req.file.buffer));
+  if (project.visibility === "public" && fields.scope === "selected") {
+    res.status(201).json({ kept: false });
+    return;
+  }
+  const kept = await recordSpriteBuild(project._id, actor.id, { mode: fields.mode, iconCount: fields.iconCount, fingerprint: fields.fingerprint }, req.file.buffer);
+  res.status(201).json(kept ? { ...kept, kept: true } : { kept: false });
 });
 
 router.get("/:projectId/sprite/builds", async (req, res) => {
