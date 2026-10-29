@@ -202,6 +202,14 @@ export const spriteBuildFieldsSchema = z.object({
   iconCount: z.coerce.number().int().min(0).max(100000),
 });
 
+// The facts the Sprite Builder sends after it has produced a sprite in the browser, so the server can record the build event in the activity log (the ZIP itself follows separately in POST /sprite/builds).
+export const spriteBuildLogSchema = z.object({
+  mode: z.enum(["symbol", "stack", "css"]),
+  iconCount: z.coerce.number().int().min(0).max(100000),
+  scope: z.enum(["all", "folder", "selected"]).default("all"),
+  folderId: objectId.optional().nullable(),
+}).strict();
+
 export const transferProjectSchema = z.object({ userId: objectId }).strict();
 // Several projects at once (the Manage projects screen): at most 100 per request.
 export const bulkTransferSchema = z.object({ projectIds: z.array(objectId).min(1).max(100), userId: objectId }).strict();

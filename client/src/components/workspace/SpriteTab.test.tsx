@@ -65,6 +65,7 @@ beforeEach(() => {
   vi.mocked(renderSpritePreviewPng).mockResolvedValue({ arrayBuffer: async () => new ArrayBuffer(3) } as Blob);
   listIcons.mockResolvedValue(reply([icon("home"), icon("star")]));
   vi.mocked(spritesApi.listSpriteBuilds).mockResolvedValue([]);
+  vi.mocked(spritesApi.logSpriteBuild).mockResolvedValue(undefined);
   vi.mocked(spritesApi.uploadSpriteBuild).mockResolvedValue({ id: "b1", version: 1, mode: "symbol", iconCount: 2, size: 10, createdAt: "2026-10-21T10:00:00.000Z" });
 });
 
@@ -75,6 +76,24 @@ describe("building the sprite", () => {
     expect(await screen.findByText("2 symbols")).toBeInTheDocument();
     expect(await screen.findByText("Sprite generated successfully.", { exact: true })).toBeInTheDocument();
     expect(listIcons).toHaveBeenCalledWith("p1", { sort: "name", limit: 1000, page: 1 });
+  });
+
+  it("records the build in the activity log exactly once when the sprite is ready", async () => {
+    setup();
+    await screen.findByText("2 symbols");
+    await waitFor(() => expect(spritesApi.logSpriteBuild).toHaveBeenCalledTimes(1));
+    expect(spritesApi.logSpriteBuild).toHaveBeenCalledWith("p1", { mode: "symbol", iconCount: 2, scope: "all", folderId: null });
+    // Re-renders and option changes do not log a second entry.
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(spritesApi.logSpriteBuild).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not log a build when the project has nothing to compile", async () => {
+    listIcons.mockResolvedValue(reply([]));
+    setup();
+    expect(await screen.findByText("There is nothing to compile yet.")).toBeInTheDocument();
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(spritesApi.logSpriteBuild).not.toHaveBeenCalled();
   });
 
   it("has no preview panel; the symbol ids are the page's result, and the demo page is in the ZIP", async () => {

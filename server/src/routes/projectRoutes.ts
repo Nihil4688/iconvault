@@ -3,7 +3,7 @@ import { Router } from "express";
 import multer from "multer";
 import { BadRequestError } from "../lib/errors.js";
 import { actorOf, loadProject, parseObjectId, sendDownload } from "../lib/http.js";
-import { buildFontSchema, createProjectSchema, spriteBuildFieldsSchema, listProjectsQuerySchema, updateProjectSchema } from "../lib/validation.js";
+import { buildFontSchema, createProjectSchema, spriteBuildFieldsSchema, spriteBuildLogSchema, listProjectsQuerySchema, updateProjectSchema } from "../lib/validation.js";
 import { heavyLimit } from "../middleware/rateLimit.js";
 import { requireDb } from "../middleware/requireDb.js";
 import { requireUser } from "../middleware/requireUser.js";
@@ -199,20 +199,28 @@ router.delete("/:projectId/font/builds/:buildId", async (req, res) => {
 // The Sprite Builder's history: ZIPs editors downloaded (built in the browser and sent here after the download), newest first, at most 20 per project.
 const spriteUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: MAX_STORED_SPRITE_BYTES, files: 1 } });
 
-router.post("/:projectId/sprite/builds", heavyLimit, spriteUpload.single("bundle"), async (req, res) => {
+// Records a sprite build event from the Sprite Builder (the sprite is produced in the browser; this endpoint only writes the activity log entry so public sprite projects show up in the history). The editor's separate ZIP save below records a different action.
+router.post("/:projectId/sprite/builds/log", async (req, res) => {
   const actor = actorOf(req);
   const project = await loadProject(actor, req.params.projectId, "edit");
-  if (!req.file) throw new BadRequestError("Send the sprite ZIP in the bundle field.");
-  const fields = spriteBuildFieldsSchema.parse(req.body ?? {});
-  const build = await recordSpriteBuild(project._id, actor.id, fields, req.file.buffer);
+  const input = spriteBuildLogSchema.parse(req.body ?? {});
   await recordRequestActivity(req, project, {
     actionDone: "build",
     entityType: "project",
     entityId: project._id,
     entityName: project.name,
     buildType: "sprite",
-    details: { version: build.version, iconCount: build.iconCount, mode: build.mode, size: build.size },
+    details: { mode: input.mode, iconCount: input.iconCount, scope: input.scope, folderId: input.folderId ?? null },
   });
+  res.json({ logged: true });
+});
+
+router.post("/:projectId/sprite/builds", heavyLimit, spriteUpload.single("bundle"), async (req, res) => {
+  const actor = actorOf(req);
+  const project = await loadProject(actor, req.params.projectId, "edit");
+  if (!req.file) throw new BadRequestError("Send the sprite ZIP in the bundle field.");
+  const fields = spriteBuildFieldsSchema.parse(req.body ?? {});
+  const build = await recordSpriteBuild(project._id, actor.id, fields, req.file.buffer);
   res.status(201).json(build);
 });
 
@@ -242,20 +250,12 @@ router.delete("/:projectId/sprite/builds/:buildId", async (req, res) => {
   res.json({ deleted: true });
 });
 
-// The icons compiled into one SVG sprite. Optional query: folderId (a folder and its subfolders) or folderId=root (uncategorized only).
+// The icons compiled into one SVG sprite. Optional query: folderId (a folder and its subfolders) or folderId=root (uncategorized only). Pure asset endpoint: no activity log entry, so asset consumers (CLI, monitoring, CDN) do not pollute the activity log.
 router.get("/:projectId/sprite", heavyLimit, async (req, res) => {
   const project = await loadProject(actorOf(req), req.params.projectId, "view");
   const folderId = typeof req.query.folderId === "string" ? req.query.folderId : undefined;
   const folder = folderId === undefined ? null : folderId === "root" ? "root" : parseObjectId(folderId, "folder id");
   const built = await buildProjectSprite(project._id, project.prefix ?? "icon", folder);
-  await recordRequestActivity(req, project, {
-    actionDone: "build",
-    entityType: "project",
-    entityId: project._id,
-    entityName: project.name,
-    buildType: "sprite",
-    details: { iconCount: built.ids.length, folderId: folderId ?? null },
-  });
   res.setHeader("X-Sprite-Symbols", String(built.ids.length));
   sendDownload(res, { filename: `${project.prefix ?? "sprite"}.svg`, contentType: "image/svg+xml", body: Buffer.from(built.xml, "utf8") });
 });

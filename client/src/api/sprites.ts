@@ -5,7 +5,19 @@ import type { DownloadedFile, SpriteBuildSummary } from "./types";
 
 const project = (projectId: string) => `/api/projects/${encodeURIComponent(projectId)}`;
 
-export async function uploadSpriteBuild(projectId: string, bundle: Blob, facts: { mode: SpriteBuildSummary["mode"]; iconCount: number }): Promise<SpriteBuildSummary> {
+export type SpriteBuildMode = SpriteBuildSummary["mode"];
+
+// Records a sprite build event in the activity log. Called from the Sprite Builder once the browser-side sprite is ready; the separate ZIP upload (when an editor downloads it) records its own action.
+export async function logSpriteBuild(projectId: string, facts: { mode: SpriteBuildMode; iconCount: number; scope?: "all" | "folder" | "selected"; folderId?: string | null }): Promise<void> {
+  await http.post(`${project(projectId)}/sprite/builds/log`, {
+    mode: facts.mode,
+    iconCount: facts.iconCount,
+    scope: facts.scope ?? "all",
+    folderId: facts.folderId ?? null,
+  });
+}
+
+export async function uploadSpriteBuild(projectId: string, bundle: Blob, facts: { mode: SpriteBuildMode; iconCount: number }): Promise<SpriteBuildSummary> {
   const form = new FormData();
   form.append("bundle", bundle, "bundle.zip");
   form.append("mode", facts.mode);
@@ -27,3 +39,4 @@ export async function downloadSpriteBuild(projectId: string, buildId: string): P
 export async function deleteSpriteBuild(projectId: string, buildId: string): Promise<void> {
   await http.delete(`${project(projectId)}/sprite/builds/${encodeURIComponent(buildId)}`);
 }
+

@@ -31,7 +31,7 @@ vi.mock("../api/fonts", () => ({
   downloadFont: vi.fn(),
   listFontBuilds: vi.fn().mockResolvedValue([]),
 }));
-vi.mock("../api/sprites", () => ({ listSpriteBuilds: vi.fn().mockResolvedValue([]), uploadSpriteBuild: vi.fn() }));
+vi.mock("../api/sprites", () => ({ listSpriteBuilds: vi.fn().mockResolvedValue([]), uploadSpriteBuild: vi.fn(), logSpriteBuild: vi.fn().mockResolvedValue(undefined) }));
 vi.mock("../lib/fontPreview", () => ({ loadPreviewFont: vi.fn().mockResolvedValue(true), unloadPreviewFont: vi.fn(), nextPreviewFamily: vi.fn(() => "iconfont-preview-test") }));
 vi.mock("../lib/fontBuildCache", () => ({ cacheBuild: vi.fn(), peekCachedBuild: vi.fn().mockReturnValue(null), clearCachedBuild: vi.fn() }));
 const getProject = vi.mocked(projectsApi.getProject);
@@ -67,6 +67,7 @@ beforeEach(() => {
   // The Sprite and Font tabs read these on mount so the automatic build / history load does not blow up.
   vi.mocked(fontsApi.listFontBuilds).mockResolvedValue([]);
   vi.mocked(spritesApi.listSpriteBuilds).mockResolvedValue([]);
+  vi.mocked(spritesApi.logSpriteBuild).mockResolvedValue(undefined);
   vi.mocked(fontsApi.buildFont).mockResolvedValue({
     fontName: "Feather",
     prefix: "feather",
