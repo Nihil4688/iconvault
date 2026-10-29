@@ -1,6 +1,7 @@
 // Tests for the Sprite section: building from the project's icons, scopes, preview, copy and downloads, the symbol id list, read-only behaviour and errors.
 import { cleanup, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { useMemo, type ReactNode } from "react";
 import { MemoryRouter } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "../../api/http";
@@ -8,6 +9,7 @@ import * as iconsApi from "../../api/icons";
 import * as spritesApi from "../../api/sprites";
 import { ToastProvider } from "../../context/ToastContext";
 import { WorkspaceContext, type WorkspaceContextValue } from "../../context/workspaceContext";
+import { useSelection } from "../../hooks/useSelection";
 import * as clipboard from "../../lib/clipboard";
 import { buildSprite } from "../../lib/spriteBuild";
 import { READ_ONLY, makeDetail, makeFolder, makeIcon } from "../../test/fixtures";
@@ -26,26 +28,34 @@ const SVG = (body: string) => `<svg xmlns="http://www.w3.org/2000/svg" viewBox="
 const icon = (slug: string, name = slug) => ({ ...makeIcon({ id: slug, name, slug }), svg: SVG("<path d='M1 1'/>") });
 const reply = (icons: ReturnType<typeof icon>[], total = icons.length) => ({ icons, total, page: 1, limit: 1000 });
 
+// The wrapper owns the selection so it lives in the same render tree as the tab; updates flow through context.
+function WorkspaceProvider({ base, children }: { base: WorkspaceContextValue; children: ReactNode }) {
+  const selection = useSelection("p1");
+  const value = useMemo<WorkspaceContextValue>(() => ({ ...base, selection }), [base, selection]);
+  return <WorkspaceContext.Provider value={value}>{children}</WorkspaceContext.Provider>;
+}
+
 function setup(over: Partial<WorkspaceContextValue> = {}, state?: unknown) {
   const fns = { selectFolder: vi.fn(), refreshProject: vi.fn(), refreshFolders: vi.fn(), refreshIcons: vi.fn() };
-  const value: WorkspaceContextValue = {
+  const base: WorkspaceContextValue = {
     project: makeDetail({ id: "p1", prefix: "fth", iconCount: 2 }),
     folderList: { folders: [makeFolder({ id: "ui", name: "UI" })], uncategorizedCount: 0 },
     selectedFolder: "all",
     iconsVersion: 0,
     ...fns,
     ...over,
+    selection: undefined as unknown as WorkspaceContextValue["selection"],
   };
   render(
     <MemoryRouter initialEntries={[{ pathname: "/projects/p1", state }]}>
       <ToastProvider>
-        <WorkspaceContext.Provider value={value}>
+        <WorkspaceProvider base={base}>
           <SpriteTab />
-        </WorkspaceContext.Provider>
+        </WorkspaceProvider>
       </ToastProvider>
     </MemoryRouter>,
   );
-  return fns;
+  return { ...fns };
 }
 
 beforeEach(() => {

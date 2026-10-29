@@ -36,16 +36,17 @@ const FORMATS: { value: FontFormat; label: string; hint: string }[] = [
 const columnHeading = "text-xs font-semibold uppercase tracking-wide text-muted-foreground";
 
 export default function FontTab() {
-  const { project, folderList, actionsSlot } = useWorkspace();
+  const { project, folderList, actionsSlot, selection } = useWorkspace();
   const { showToast } = useToast();
   const canEdit = project.access.canEdit;
   const folderOptions = flattenFolderTree(buildFolderTree(folderList.folders));
 
-  // Icons handed over by the bulk bar ("Generate font") arrive as the chosen icons; nothing is built until Build font.
+  // The selection is shared with the Icons screen: whatever the user ticked there is the starting "Chosen" set on this page. The router state handed over by "Build font" still wins when present, so the navigation never silently changes the selection.
   const handed = readBuildSelection(useLocation().state);
-  const [chosen, setChosen] = useState<string[] | null>(handed?.iconIds ?? null);
+  const handedIds = handed?.iconIds ?? null;
+  const [chosen, setChosen] = useState<string[] | null>(handedIds ?? (selection.size > 0 ? selection.ids : null));
   const [choosing, setChoosing] = useState(false);
-  const [scopeKind, setScopeKind] = useState<"all" | "folder" | "selected">(handed ? "selected" : "all");
+  const [scopeKind, setScopeKind] = useState<"all" | "folder" | "selected">(handedIds || selection.size > 0 ? "selected" : "all");
   const [folderChoice, setFolderChoice] = useState("");
   // The scope the server is asked for: "all", "selected" or a folder id.
   const scope = scopeKind === "folder" ? folderChoice : scopeKind;
@@ -139,10 +140,13 @@ export default function FontTab() {
   const builtSignature = useRef<string | null>(null);
   const [displayedBuildSignature, setDisplayedBuildSignature] = useState<string | null>(null);
   const buildCount = useRef(0);
+  // The Icons tab's selection drives this page's "Selected icons" scope. The first successful build made from that selection consumes it: the Icons screen empties its bulk bar and checkboxes so the user does not have to clear manually. Later option tweaks rebuild the same chosen set without touching the selection again; entering the page with a fresh selection arms it again.
+  const selectionConsumed = useRef(false);
 
   async function runBuild(override?: string[], codepointOverrides = fontCodepointOverrides) {
     const input = options(override, codepointOverrides);
     if (typeof input === "string") return setError(input);
+    const builtFromSelection = typeof input !== "string" && input.scope === "selected";
     const mine = ++buildCount.current;
     setBuilding(true);
     setError(null);
@@ -159,6 +163,11 @@ export default function FontTab() {
       setResult({ build: built, family, loaded });
       setFilter("");
       showToast("Font generated successfully.", "success");
+      // The build that just succeeded is the one the Icons selection was used for: clear the selection once.
+      if (builtFromSelection && !selectionConsumed.current) {
+        selectionConsumed.current = true;
+        selection.clear();
+      }
       if (input.reassignCodepoints || built.codepoints.some((glyph) => glyph.isNew)) {
         const nextOverrides = { ...codepointOverrides, ...Object.fromEntries(built.codepoints.map((glyph) => [glyph.id, glyph.codepoint])) };
         setFontCodepointOverrides(nextOverrides);
@@ -234,7 +243,6 @@ export default function FontTab() {
     const timer = window.setTimeout(buildAutomatically, fontAutoBuild.delayMs);
     return () => window.clearTimeout(timer);
   }, [signature, inScope]);
-
   // The three actions sit in the project bar (like Upload icons on the Icons screen); without a bar they show above the settings.
   const actions = (
     <div role="group" aria-label="Font actions" className="flex flex-wrap items-center gap-2">
@@ -436,6 +444,8 @@ export default function FontTab() {
         onClose={() => setChoosing(false)}
         onConfirm={(iconIds) => {
           setChosen(iconIds);
+          // Sync the Icons screen's selection so it shows the same chosen icons (and survives a return to the Icons tab).
+          selection.set(iconIds);
           setScopeKind("selected");
           setChoosing(false);
         }}

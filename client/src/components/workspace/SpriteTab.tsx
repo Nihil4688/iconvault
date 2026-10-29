@@ -1,6 +1,6 @@
 // The Sprite Builder, laid out like the Font Builder and like Icon Vault's sprite page: the actions in the project bar (Download sprite ZIP is the main one, with Copy sprite), then three columns: 1. Scope selection (whole project, a folder or the chosen icons, with the icon checklist), 2. Sprite architecture (symbols, a stack, or symbols with a CSS stylesheet), 3. Processing options (the symbol id pattern, colours to currentColor, namespaced ids). The sprite builds by itself in the browser whenever the icons or an option change, so the ZIP (sprite, grid sprite, demo page, preview image) is ready to download as soon as the page shows it. Below: the symbol ids with the code for each, and the sprite build history (there is no preview panel; the demo page is inside the ZIP). Anyone who can see the project can build and download; the ZIPs editors download are kept in the history.
 import { CheckSquare, Copy, FileArchive } from "lucide-react";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useLocation } from "react-router-dom";
 import { uploadSpriteBuild } from "../../api/sprites";
@@ -39,15 +39,15 @@ const MODES: { value: SpriteMode; label: string; hint: string }[] = [
 ];
 
 export default function SpriteTab() {
-  const { project, folderList, iconsVersion, actionsSlot } = useWorkspace();
+  const { project, folderList, iconsVersion, actionsSlot, selection } = useWorkspace();
   const { showToast } = useToast();
   const canEdit = project.access.canEdit;
-  // Icons handed over by the bulk bar ("Build sprite") arrive as the chosen icons.
+  // The selection is shared with the Icons screen: whatever the user ticked there is the starting "Chosen" set on this page. The router state handed over by "Build sprite" still wins when present, so the navigation never silently changes the selection.
   const handed = readBuildSelection(useLocation().state);
-  const [chosen, setChosen] = useState<string[] | null>(handed?.iconIds ?? null);
-  const [choiceVersion, setChoiceVersion] = useState(0);
+  const handedIds = handed?.iconIds ?? null;
+  const [chosen, setChosen] = useState<string[] | null>(handedIds ?? (selection.size > 0 ? selection.ids : null));
   const [choosing, setChoosing] = useState(false);
-  const [scopeKind, setScopeKind] = useState<"all" | "folder" | "selected">(handed ? "selected" : "all");
+  const [scopeKind, setScopeKind] = useState<"all" | "folder" | "selected">(handedIds || selection.size > 0 ? "selected" : "all");
   const [folderChoice, setFolderChoice] = useState("");
   const scope = scopeKind === "folder" ? folderChoice : scopeKind;
   const [mode, setMode] = useState<SpriteMode>(DEFAULT_SPRITE_OPTIONS.mode);
@@ -62,7 +62,7 @@ export default function SpriteTab() {
   const waitingForFolder = scopeKind === "folder" && !folderChoice;
   const patternProblem = idPatternProblem(idPattern);
 
-  const loaded = useResource(waitingForFolder ? null : `sprite:${project.id}:${scope}:${choiceVersion}:${iconsVersion}`, async () => {
+  const loaded = useResource(waitingForFolder ? null : `sprite:${project.id}:${scope}:${iconsVersion}:${chosen?.join(",") ?? ""}`, async () => {
     if (scope !== "selected") return loadAllIcons(project.id, scope);
     const wanted = new Set(chosen ?? []);
     return (await loadAllIcons(project.id)).filter((icon) => wanted.has(icon.id));
@@ -80,6 +80,18 @@ export default function SpriteTab() {
   useEffect(() => {
     if (ready) showToast("Sprite generated successfully.", "success");
   }, [built, ready, showToast]);
+
+  // The Icons tab's selection drives this page's "Selected icons" scope. Once the sprite is built from that selection (not a manual choice in the checklist), the selection has been consumed and the Icons screen empties its bulk bar and checkboxes. Subsequent option tweaks rebuild the same chosen set without touching the selection again. The router-state hand-over path from the bulk bar's "Build sprite" also consumes the selection so coming back to the Icons tab does not leave stale ids behind.
+  const selectionConsumed = useRef(false);
+  useEffect(() => {
+    if (selectionConsumed.current) return;
+    if (!ready) return;
+    if (scopeKind !== "selected") return;
+    if (!chosen || chosen.length === 0) return;
+    selectionConsumed.current = true;
+    selection.clear();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [ready, scopeKind, chosen]);
 
   async function copyAndToast(text: string, what: string) {
     const ok = await copyText(text);
@@ -293,7 +305,8 @@ export default function SpriteTab() {
         onConfirm={(iconIds) => {
           setChoosing(false);
           setChosen(iconIds);
-          setChoiceVersion((value) => value + 1);
+          // Sync the Icons screen's selection so it shows the same chosen icons (and survives a return to the Icons tab).
+          selection.set(iconIds);
           setScopeKind("selected");
         }}
       />

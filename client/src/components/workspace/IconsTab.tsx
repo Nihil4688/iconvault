@@ -11,7 +11,6 @@ import { useIconAppearance } from "../../hooks/useIconAppearance";
 import { useDebounced } from "../../hooks/useDebounced";
 import { usePersistentChoice } from "../../hooks/usePersistentChoice";
 import { useResource } from "../../hooks/useResource";
-import { useSelection } from "../../hooks/useSelection";
 import { cacheBuild } from "../../lib/fontBuildCache";
 import { defaultFontOptions } from "../../lib/fontDefaults";
 import { loadPreviewFont, nextPreviewFamily } from "../../lib/fontPreview";
@@ -38,7 +37,7 @@ const MAX_SHOWN = 1000;
 type Dialog = "add" | "move" | "tag" | "delete" | null;
 
 export default function IconsTab() {
-  const { project, folderList, selectedFolder, refreshProject, refreshFolders, refreshIcons, iconsVersion, actionsSlot } = useWorkspace();
+  const { project, folderList, selectedFolder, refreshProject, refreshFolders, refreshIcons, iconsVersion, actionsSlot, selection } = useWorkspace();
   const { showToast } = useToast();
   const navigate = useNavigate();
   const canEdit = project.access.canEdit;
@@ -68,7 +67,7 @@ export default function IconsTab() {
   const icons = useResource(`icons:${filterKey}:${limit}:${iconsVersion}`, () => listIcons(project.id, params));
   const shown = icons.data?.icons ?? [];
   const total = icons.data?.total ?? 0;
-  const selection = useSelection(`${filterKey}:${iconsVersion}`);
+  // The selection is intentionally not pruned against the loaded list: the user's instruction is that nothing except "Clear selection" empties it. Bulk actions report matched < requested when an icon is gone, and stale ids in the selection are harmless until the user clears them.
   const currentFolderId = selectedFolder === "all" || selectedFolder === "root" ? null : selectedFolder;
 
   const refreshAll = () => {
@@ -88,7 +87,7 @@ export default function IconsTab() {
     }
   }
 
-  // "Build font" / "Build sprite" on the bulk bar. A sprite project just opens the Sprite page with the selection (it builds in the browser). A font project builds the font on the server first, from the selection and the project's default font settings, and opens the Font page with the result already in place; if the build fails the reason is shown here and nothing moves.
+  // "Build font" / "Build sprite" on the bulk bar. A sprite project just opens the Sprite page with the selection (the sprite builds in the browser, and the Sprite tab clears the selection when its build is ready). A font project builds the font on the server first from the selection, then clears the selection and opens the Font page with the result already in place; if the build fails the reason is shown here and the selection is left untouched.
   async function buildSelected() {
     const iconIds = selection.ids;
     if (project.purpose !== "font") {
@@ -101,6 +100,8 @@ export default function IconsTab() {
       const family = nextPreviewFamily();
       const loaded = await loadPreviewFont(family, build.preview.base64);
       cacheBuild({ projectId: project.id, build, family, loaded });
+      // The selection has been consumed by the build: clear it before navigating so the Icons screen does not re-show it.
+      selection.clear();
       // New characters were saved on the icons: the totals and lists elsewhere should show them.
       if (canEdit && build.codepoints.some((glyph) => glyph.isNew)) {
         refreshIcons();
