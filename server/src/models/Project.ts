@@ -46,7 +46,7 @@ export const projectSchema = new Schema(
       enum: PROJECT_PURPOSES,
       default: "sprite",
     },
-    // Public projects can be viewed (and icons copied out) by any signed-in user; only the owner or an admin can change them.
+    // Active public projects can be viewed (and icons copied out) by any signed-in user; drafts remain owner/admin-only.
     visibility: {
       type: String,
       enum: PROJECT_VISIBILITIES,

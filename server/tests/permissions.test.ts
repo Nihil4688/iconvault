@@ -25,6 +25,7 @@ const actors: Record<string, Actor> = {
 const projects: Record<string, ProjectAccessInfo> = {
   public: { ownerId: OWNER_ID, visibility: "public" },
   private: { ownerId: OWNER_ID, visibility: "private" },
+  draft: { ownerId: OWNER_ID, visibility: "public", isArchived: true },
 };
 
 // Expected rights: [view, copyFrom, edit, manage]
@@ -37,6 +38,9 @@ const matrix: Array<[string, string, [boolean, boolean, boolean, boolean]]> = [
   ["other", "private", [false, false, false, false]],
   ["admin", "public", [true, true, true, true]],
   ["admin", "private", [true, true, true, true]],
+  ["owner", "draft", [true, true, true, true]],
+  ["other", "draft", [false, false, false, false]],
+  ["admin", "draft", [true, true, true, true]],
 ];
 
 describe("project permissions", () => {

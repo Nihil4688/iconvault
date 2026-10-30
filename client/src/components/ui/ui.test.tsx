@@ -7,6 +7,7 @@ import ActionMenu from "./ActionMenu";
 import { Button, IconButton } from "./Button";
 import ConfirmDialog from "./ConfirmDialog";
 import Dialog from "./Dialog";
+import DialogFooter from "./DialogFooter";
 import SvgPreview from "./SvgPreview";
 
 describe("Button", () => {
@@ -53,6 +54,46 @@ function Harness({ dismissOnBackdrop = true }: { dismissOnBackdrop?: boolean }) 
 }
 
 describe("Dialog", () => {
+  it("limits the panel to the viewport and scrolls only its content section", () => {
+    render(
+      <Dialog open onClose={() => undefined} title="Responsive">
+        <div>Long content</div>
+      </Dialog>,
+    );
+
+    const dialog = screen.getByRole("dialog");
+    const content = dialog.querySelector('[data-slot="dialog-content"]');
+    expect(dialog).toHaveClass("overflow-hidden", "max-h-[calc(100dvh-1rem)]", "w-[calc(100vw-1rem)]");
+    expect(content).toHaveClass("min-h-0", "overflow-y-auto");
+  });
+
+  it("renders a DialogFooter as a sibling of the header and submits its form", async () => {
+    const onSubmit = vi.fn((event: React.FormEvent<HTMLFormElement>) => event.preventDefault());
+    render(
+      <Dialog open onClose={() => undefined} title="Form dialog">
+        <form onSubmit={onSubmit}>
+          <label>
+            Name
+            <input />
+          </label>
+          <DialogFooter>
+            <button type="submit">Save</button>
+          </DialogFooter>
+        </form>
+      </Dialog>,
+    );
+
+    const dialog = screen.getByRole("dialog");
+    const header = dialog.querySelector("h2")?.parentElement?.parentElement;
+    const saveButton = screen.getByRole("button", { name: "Save" });
+    const footer = saveButton.closest("footer") ?? saveButton.closest("div");
+    expect(footer?.parentElement).toBe(header?.parentElement);
+    expect(dialog.contains(saveButton)).toBe(true);
+
+    await userEvent.click(screen.getByRole("button", { name: "Save" }));
+    expect(onSubmit).toHaveBeenCalledOnce();
+  });
+
   it("is not in the page until opened, then is labelled by its title and description", async () => {
     render(<Harness />);
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
