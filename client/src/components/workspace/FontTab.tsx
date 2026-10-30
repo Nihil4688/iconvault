@@ -257,17 +257,31 @@ export default function FontTab() {
 
   return (
     <div>
-      {actionsSlot ? createPortal(actions, actionsSlot) : <div className="mb-4 flex justify-end">{actions}</div>}
+      {actionsSlot ? (
+        createPortal(actions, actionsSlot)
+      ) : (
+        <div className="mb-4 flex justify-end">{actions}</div>
+      )}
       <form onSubmit={(event) => event.preventDefault()} className="space-y-4">
         {error && (
           <p role="alert" className="text-sm font-medium text-destructive">
             {error}{" "}
-            <button type="button" className="underline" onClick={() => void runBuild()} disabled={building}>
+            <button
+              type="button"
+              className="underline"
+              onClick={() => void runBuild()}
+              disabled={building}
+            >
               Try again
             </button>
           </p>
         )}
-        {!canEdit && <p className="text-xs text-muted-foreground">You can build and download this font. The characters are not saved on the project because you cannot change it.</p>}
+        {!canEdit && (
+          <p className="text-xs text-muted-foreground">
+            You can build and download this font. The characters are not saved
+            on the project because you cannot change it.
+          </p>
+        )}
 
         <div className="grid gap-4 rounded-2xl border border-border p-4 md:grid-cols-3 md:gap-6">
           <section aria-labelledby="font-scope" className="space-y-4">
@@ -277,15 +291,32 @@ export default function FontTab() {
               </legend>
               <div className="mt-3 space-y-2 text-sm">
                 <label className="flex cursor-pointer items-center gap-2">
-                  <input type="radio" name="font-scope" checked={scopeKind === "all"} onChange={() => setScopeKind("all")} className="h-4 w-4 accent-[hsl(var(--primary))]" />
+                  <input
+                    type="radio"
+                    name="font-scope"
+                    checked={scopeKind === "all"}
+                    onChange={() => setScopeKind("all")}
+                    className="h-4 w-4 accent-[hsl(var(--primary))]"
+                  />
                   {`Whole project (${pluralize(project.iconCount, "icon")})`}
                 </label>
                 <label className="flex cursor-pointer items-center gap-2">
-                  <input type="radio" name="font-scope" checked={scopeKind === "folder"} onChange={() => setScopeKind("folder")} className="h-4 w-4 accent-[hsl(var(--primary))]" />
+                  <input
+                    type="radio"
+                    name="font-scope"
+                    checked={scopeKind === "folder"}
+                    onChange={() => setScopeKind("folder")}
+                    className="h-4 w-4 accent-[hsl(var(--primary))]"
+                  />
                   Selected folder
                 </label>
                 {scopeKind === "folder" && (
-                  <SelectField label="Folder" hideLabel value={folderChoice} onChange={(event) => setFolderChoice(event.target.value)}>
+                  <SelectField
+                    label="Folder"
+                    hideLabel
+                    value={folderChoice}
+                    onChange={(event) => setFolderChoice(event.target.value)}
+                  >
                     <option value="">Choose a folder…</option>
                     {folderOptions.map((folder) => (
                       <option key={folder.id} value={folder.id}>
@@ -314,58 +345,65 @@ export default function FontTab() {
             <div className="rounded-xl border border-border bg-muted/40 p-3">
               <div className="flex items-center justify-between text-sm font-semibold">
                 <span className="flex items-center gap-1.5">
-                  <CheckSquare aria-hidden="true" className="h-4 w-4 text-primary" />
+                  <CheckSquare
+                    aria-hidden="true"
+                    className="h-4 w-4 text-primary"
+                  />
                   Icon checklist
                 </span>
-                <span className="text-primary" aria-label={`${inScope} of ${project.iconCount} icons included`}>
+                <span
+                  className="text-primary"
+                  aria-label={`${inScope} of ${project.iconCount} icons included`}
+                >
                   {inScope} / {project.iconCount}
                 </span>
               </div>
-              <p className="mt-1 text-xs text-muted-foreground">Only checked icons will be compiled into the font glyphs and CSS.</p>
-              <Button className="mt-2 w-full" size="sm" onClick={() => setChoosing(true)}>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Only checked icons will be compiled into the font glyphs and
+                CSS.
+              </p>
+              <Button
+                className="mt-2 w-full"
+                size="sm"
+                onClick={() => setChoosing(true)}
+              >
                 Review / edit checklist
               </Button>
             </div>
-
-            <fieldset>
-              <legend id="font-formats" className={columnHeading}>
-                Target formats
-              </legend>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {FORMATS.map((format) => (
-                  <label key={format.value} className="cursor-pointer" title={format.hint}>
-                    <input type="checkbox" checked={formats.includes(format.value)} onChange={() => toggleFormat(format.value)} className="peer sr-only" />
-                    <span className="inline-flex h-9 items-center rounded-full border border-input bg-background px-4 font-mono text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground peer-checked:border-primary peer-checked:bg-primary/10 peer-checked:text-primary peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-ring">{format.label}</span>
-                  </label>
-                ))}
-              </div>
-            </fieldset>
           </section>
 
           <section aria-labelledby="font-css" className="space-y-3">
             <h2 id="font-css" className={columnHeading}>
               2. Font &amp; CSS settings
             </h2>
-            <TextField label="Font name" value={fontName} maxLength={50} autoComplete="off" onChange={(event) => setFontName(event.target.value)} />
-            <div className="grid gap-3 sm:grid-cols-2">
-              <TextField label="Class prefix" value={prefix} maxLength={20} autoComplete="off" hint="Classes look like prefix-name." onChange={(event) => setPrefix(event.target.value)} />
-              <TextField label="Base class" value={baseClass} maxLength={30} autoComplete="off" hint="Optional. Then use class=&quot;base prefix-name&quot;." onChange={(event) => setBaseClass(event.target.value)} />
-            </div>
             <TextField
-              label="Starting codepoint (hex)"
-              value={startCodepoint}
-              maxLength={4}
+              label="Font name"
+              value={fontName}
+              maxLength={50}
               autoComplete="off"
-              hint="Default: E001 (Private Use Area). Changing this rebases included icons from the new value (E000 to F8FF)."
-              onChange={(event) => {
-                startCodepointRef.current = event.target.value;
-                setStartCodepoint(event.target.value);
-                setReassignCodepoints(true);
-              }}
+              onChange={(event) => setFontName(event.target.value)}
             />
+            <div className="grid gap-3 sm:grid-cols-2">
+              <TextField
+                label="Class prefix"
+                value={prefix}
+                maxLength={20}
+                autoComplete="off"
+                hint="Classes look like prefix-name."
+                onChange={(event) => setPrefix(event.target.value)}
+              />
+              <TextField
+                label="Base class"
+                value={baseClass}
+                maxLength={30}
+                autoComplete="off"
+                hint='Optional. Then use class="base prefix-name".'
+                onChange={(event) => setBaseClass(event.target.value)}
+              />
+            </div>
           </section>
 
-          <section aria-labelledby="font-metrics" className="space-y-3">
+          {/* <section aria-labelledby="font-metrics" className="space-y-3">
             <h2 id="font-metrics" className={columnHeading}>
               3. Font metrics &amp; normalization
             </h2>
@@ -377,6 +415,53 @@ export default function FontTab() {
               <input type="checkbox" checked={normalize} onChange={(event) => setNormalize(event.target.checked)} className="h-4 w-4 accent-[hsl(var(--primary))]" />
               Normalize glyph bounds to height
             </label>
+          </section> */}
+
+          <section aria-labelledby="font-metrics" className="space-y-3">
+            <h2 id="font-metrics" className={columnHeading}>
+              3. Font Export Settings
+            </h2>
+            <TextField
+              label="Unicode Starting Point"
+              value={startCodepoint}
+              maxLength={4}
+              autoComplete="off"
+              hint="Controls where icon unicode assignments begin. Recommended range: E000-F8FF."
+              onChange={(event) => {
+                startCodepointRef.current = event.target.value;
+                setStartCodepoint(event.target.value);
+                setReassignCodepoints(true);
+              }}
+            />
+            <fieldset>
+              <legend id="font-formats" className="text-sm font-semibold">
+                Export formats
+              </legend>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Choose the font file formats to include in the generated
+                package.
+              </p>
+
+              <div className="mt-3 flex flex-wrap gap-2">
+                {FORMATS.map((format) => (
+                  <label
+                    key={format.value}
+                    className="cursor-pointer"
+                    title={format.hint}
+                  >
+                    <input
+                      type="checkbox"
+                      checked={formats.includes(format.value)}
+                      onChange={() => toggleFormat(format.value)}
+                      className="peer sr-only"
+                    />
+                    <span className="inline-flex h-9 items-center rounded-full border border-input bg-background px-4 font-mono text-xs font-semibold text-muted-foreground transition-colors hover:text-foreground peer-checked:border-primary peer-checked:bg-primary/10 peer-checked:text-primary peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-ring">
+                      {format.label}
+                    </span>
+                  </label>
+                ))}
+              </div>
+            </fieldset>
           </section>
         </div>
       </form>
@@ -384,21 +469,34 @@ export default function FontTab() {
       {built && (
         <section aria-label="Built font" className="mt-6 space-y-4">
           <p role="status" className="text-sm">
-            <span className="font-semibold">{pluralize(built.iconCount, "icon")}</span>
+            <span className="font-semibold">
+              {pluralize(built.iconCount, "icon")}
+            </span>
             <span className="text-muted-foreground">
               {" "}
               in {built.fontName}
-              {Object.entries(built.sizes).length > 0 ? `: ${Object.entries(built.sizes).map(([format, size]) => `${format.toUpperCase()} ${formatBytes(size)}`).join(", ")}` : ""}
+              {Object.entries(built.sizes).length > 0
+                ? `: ${Object.entries(built.sizes)
+                    .map(
+                      ([format, size]) =>
+                        `${format.toUpperCase()} ${formatBytes(size)}`,
+                    )
+                    .join(", ")}`
+                : ""}
             </span>
           </p>
 
           {built.warnings.length > 0 && (
             <details className="rounded-lg border border-amber-500/40 bg-muted px-3 py-2 text-sm">
-              <summary className="cursor-pointer font-medium">{pluralize(built.warnings.length, "icon warning")}: some icons may not convert cleanly</summary>
+              <summary className="cursor-pointer font-medium">
+                {pluralize(built.warnings.length, "icon warning")}: some icons
+                may not convert cleanly
+              </summary>
               <ul className="mt-2 space-y-1">
                 {built.warnings.map((warning, index) => (
                   <li key={`${warning.icon}-${index}`}>
-                    <span className="font-medium">{warning.icon}:</span> {warning.message}
+                    <span className="font-medium">{warning.icon}:</span>{" "}
+                    {warning.message}
                   </li>
                 ))}
               </ul>
@@ -406,34 +504,78 @@ export default function FontTab() {
           )}
 
           {!result?.loaded && (
-            <p role="note" className="rounded-lg border border-border bg-muted px-3 py-2 text-sm text-muted-foreground">
-              Your browser could not load the preview font, so only the names and characters are shown. The download is not affected.
+            <p
+              role="note"
+              className="rounded-lg border border-border bg-muted px-3 py-2 text-sm text-muted-foreground"
+            >
+              Your browser could not load the preview font, so only the names
+              and characters are shown. The download is not affected.
             </p>
           )}
 
-          <section aria-labelledby="font-mapping" className="rounded-2xl border border-border p-4">
+          <section
+            aria-labelledby="font-mapping"
+            className="rounded-2xl border border-border p-4"
+          >
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div>
                 <h3 id="font-mapping" className="text-base font-semibold">
                   Stable Unicode codepoints mapping
                 </h3>
-                <p className="mt-0.5 text-sm text-muted-foreground">Each icon keeps its character when the font is rebuilt, so CSS you already published keeps working.{canEdit ? " Change a value (E000 to F8FF) and the font is rebuilt with it." : ""}</p>
+                <p className="mt-0.5 text-sm text-muted-foreground">
+                  Each icon keeps its character when the font is rebuilt, so CSS
+                  you already published keeps working.
+                  {canEdit
+                    ? " Change a value (E000 to F8FF) and the font is rebuilt with it."
+                    : ""}
+                </p>
               </div>
-              {built.codepoints.length > 10 && <input type="search" aria-label="Filter characters" placeholder="Filter" value={filter} onChange={(event) => setFilter(event.target.value)} className="rounded-lg border border-input bg-background px-3 py-1.5 text-sm" />}
+              {built.codepoints.length > 10 && (
+                <input
+                  type="search"
+                  aria-label="Filter characters"
+                  placeholder="Filter"
+                  value={filter}
+                  onChange={(event) => setFilter(event.target.value)}
+                  className="rounded-lg border border-input bg-background px-3 py-1.5 text-sm"
+                />
+              )}
             </div>
             <div className="mt-3">
-              <CodepointTable glyphs={shown.slice(0, 300)} family={result?.loaded ? result.family : null} canEdit={canEdit} busy={building || reassignCodepoints} onSave={saveCodepoint} onCopyClass={(className) => {
-                  const classes = built.baseClass ? `${built.baseClass} ${className}` : className;
+              <CodepointTable
+                glyphs={shown.slice(0, 300)}
+                family={result?.loaded ? result.family : null}
+                canEdit={canEdit}
+                busy={building || reassignCodepoints}
+                onSave={saveCodepoint}
+                onCopyClass={(className) => {
+                  const classes = built.baseClass
+                    ? `${built.baseClass} ${className}`
+                    : className;
                   void copy(classes, `the class ${classes}`);
-                }} />
+                }}
+              />
             </div>
-            {shown.length === 0 && <p className="mt-2 text-sm text-muted-foreground">No characters match “{filter}”.</p>}
-            {shown.length > 300 && <p className="mt-2 text-sm text-muted-foreground">Showing the first 300 of {shown.length}. Use the filter to find others.</p>}
+            {shown.length === 0 && (
+              <p className="mt-2 text-sm text-muted-foreground">
+                No characters match “{filter}”.
+              </p>
+            )}
+            {shown.length > 300 && (
+              <p className="mt-2 text-sm text-muted-foreground">
+                Showing the first 300 of {shown.length}. Use the filter to find
+                others.
+              </p>
+            )}
           </section>
         </section>
       )}
 
-      <FontHistory projectId={project.id} canEdit={canEdit} version={historyVersion} />
+      <FontHistory
+        projectId={project.id}
+        canEdit={canEdit}
+        version={historyVersion}
+      />
 
       <IconChecklistDialog
         open={choosing}

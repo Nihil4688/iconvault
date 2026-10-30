@@ -24,7 +24,7 @@ type IconCardProps = {
 };
 
 export default function IconCard({ icon, purpose = "font", idPrefix = "", selected, surface, appearance, canDrag, dragIds, onToggle, onOpen }: IconCardProps) {
-  const warnings = iconWarnings(icon);
+  const warnings = iconWarnings(icon).filter((warning) => warning !== "Stroke");
   return (
     <li
       draggable={canDrag}

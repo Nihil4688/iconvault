@@ -31,6 +31,8 @@
     "mongoose": "^9.7.4",
     "multer": "^2.4.0",
     "opentype.js": "^2.0.0",
+    "svg-path-outline": "^1.0.1",
+    "svg-pathdata": "^9.0.0",
     "svgo": "^4.1.0",
     "wawoff2": "^2.0.1",
     "zod": "^4.6.7"
@@ -50,5 +52,8 @@
     "esbuild@0.28.1": true,
     "es5-ext@0.10.64": false,
     "ttf2woff2@8.0.1": false
+  },
+  "overrides": {
+    "makerjs": "0.19.2"
   }
 }

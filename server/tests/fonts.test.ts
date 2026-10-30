@@ -7,7 +7,8 @@ import { after, before, describe, it } from "node:test";
 import { unzipSync } from "fflate";
 import { generateFonts, type FontAssetType } from "fantasticon";
 import { JSDOM } from "jsdom";
-import { conversionWarnings, createMetrop, planCodepoints, safeFontName, toHex, zipFontBuild } from "../src/services/fontService.js";
+import opentype from "opentype.js";
+import { conversionWarnings, createMetrop, planCodepoints, prepareFontSvg, safeFontName, toHex, zipFontBuild } from "../src/services/fontService.js";
 import { MAX_FONT_BYTES, parseMapping, privateUseOnly, readFontGlyphs } from "../src/services/fontImport.js";
 import { buildFontSchema } from "../src/lib/validation.js";
 
@@ -66,14 +67,13 @@ describe("planCodepoints", () => {
 });
 
 describe("small helpers", () => {
-  it("warns about strokes, gradients and text only", () => {
+  it("warns about gradients and text after converting strokes to outlines", () => {
     const warnings = conversionWarnings([
       { name: "Line", hasStroke: true, hasGradient: false, hasText: false },
       { name: "Fill", hasStroke: false, hasGradient: false, hasText: false },
       { name: "Both", hasStroke: false, hasGradient: true, hasText: true },
     ]);
-    assert.deepEqual(warnings.map((w) => w.icon), ["Line", "Both", "Both"]);
-    assert.match(warnings[0]?.message ?? "", /strokes/);
+    assert.deepEqual(warnings.map((w) => w.icon), ["Both", "Both"]);
   });
 
   it("makes font names safe", () => {
@@ -89,6 +89,51 @@ describe("small helpers", () => {
     for (const bad of [{ formats: [] }, { startCodepoint: "0041" }, { startCodepoint: "E0" }, { scope: "folder" }, { scope: "selected" }, { fontHeight: 10 }, { formats: ["pdf"] }, { surprise: 1 }, { prefix: "a b" }]) {
       assert.equal(buildFontSchema.safeParse(bad).success, false, JSON.stringify(bad));
     }
+  });
+});
+
+describe("font SVG preparation", () => {
+  it("expands inherited strokes to filled outlines before font generation", async () => {
+    const svg = prepareFontSvg('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><g fill="none" stroke="#111" stroke-width="2" stroke-linecap="round"><path d="M3 12H21"/><circle cx="12" cy="12" r="8"/></g></svg>');
+    assert.doesNotMatch(svg, /\sstroke(?:-width|-linecap)?=/);
+    assert.doesNotMatch(svg, /<(?:circle|ellipse|line|polygon|polyline|rect)\b/);
+    assert.match(svg, /fill=/);
+    const preparedPaths = Array.from(new JSDOM(svg, { contentType: "image/svg+xml" }).window.document.querySelectorAll("path"));
+    assert.equal(preparedPaths.length, 2, "the line and circle must both become path outlines");
+    assert.ok(preparedPaths.every((path) => path.getAttribute("fill") === "currentColor"));
+
+    const dir = await mkdtemp(path.join(tmpdir(), "font-stroke-"));
+    try {
+      const inputDir = path.join(dir, "in");
+      const outputDir = path.join(dir, "out");
+      await mkdir(inputDir);
+      await mkdir(outputDir);
+      await writeFile(path.join(inputDir, "stroke.svg"), svg);
+      await generateFonts({ inputDir, outputDir, name: "Stroke", fontTypes: ["ttf"], assetTypes: [], codepoints: { stroke: 0xe001 }, fontHeight: 1000, descent: 0, normalize: true });
+      const bytes = await readFile(path.join(outputDir, "Stroke.ttf"));
+      const font = opentype.parse(bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as ArrayBuffer);
+      const glyph = font.charToGlyph(String.fromCodePoint(0xe001));
+      assert.ok(glyph.path.commands.length > 0, "the stroked icon must have a visible glyph outline");
+      assert.ok(glyph.getBoundingBox().x2 > glyph.getBoundingBox().x1, "the generated glyph must have a non-empty width");
+      assert.ok(glyph.getBoundingBox().y2 > glyph.getBoundingBox().y1, "the generated glyph must have a non-empty height");
+    } finally {
+      await rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("preserves filled paths while adding a filled outline for their strokes", () => {
+    const svg = prepareFontSvg('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 4H20V20H4Z" fill="#111" stroke="#111" stroke-width="2"/></svg>');
+    const paths = Array.from(new JSDOM(svg, { contentType: "image/svg+xml" }).window.document.querySelectorAll("path"));
+    assert.equal(paths.length, 2);
+    assert.equal(paths[0]?.getAttribute("fill"), "#111");
+    assert.equal(paths[1]?.getAttribute("fill"), "currentColor");
+  });
+
+  it("reads stroke values from inline SVG styles", () => {
+    const svg = prepareFontSvg('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 12H21" style="fill:none;stroke:#111;stroke-width:2"/></svg>');
+    const path = new JSDOM(svg, { contentType: "image/svg+xml" }).window.document.querySelector("path");
+    assert.equal(path?.getAttribute("fill"), "currentColor");
+    assert.match(path?.getAttribute("d") ?? "", /Z$/i);
   });
 });
 
@@ -110,6 +155,13 @@ describe("font ZIP layout", () => {
     assert.match(icons[0]?.getAttribute("Data") ?? "", /^M0 0L1 1/);
     assert.equal(icons[0]?.querySelector("Settings")?.getAttribute("FontFamily"), "Webdings");
     assert.match(icons[1]?.getAttribute("Data") ?? "", /^M12 3A9 9/);
+  });
+
+  it("uses SVG path data when a generated glyph has no readable font path", () => {
+    const metrop = createMetrop([
+      { name: "Ambulance", slug: "ambulance", codepoint: "E001", dataFont: "", svg: '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M3 12H21" fill="none" stroke="#111" stroke-width="2"/></svg>' },
+    ]);
+    assert.match(metrop, /DataFont="M[^"]*Z"/i, "fallback path is a filled stroke outline");
   });
 
   it("packages font assets in the project folder structure, with an embedded stylesheet", () => {

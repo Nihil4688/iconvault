@@ -6,6 +6,8 @@ import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promis
 import { tmpdir } from "node:os";
 import path from "node:path";
 import opentype from "opentype.js";
+import strokeOutline from "svg-path-outline";
+import { SVGPathData, type SVGCommand } from "svg-pathdata";
 import { optimize } from "svgo";
 import { isFontCodepoint } from "../lib/codepoint.js";
 import { BadRequestError, ConflictError } from "../lib/errors.js";
@@ -32,6 +34,127 @@ export type CodepointPlan = {
 };
 
 export const toHex = (n: number): string => n.toString(16).toUpperCase().padStart(4, "0");
+
+function splitPathData(pathData: string, iconName: string): string[] {
+  let commands: SVGCommand[];
+  try {
+    commands = new SVGPathData(pathData).toAbs().commands;
+  } catch (error) {
+    throw new BadRequestError(`The path in "${iconName}" could not be converted to a font outline: ${error instanceof Error ? error.message : "unknown error"}`);
+  }
+  const subpaths: SVGCommand[][] = [];
+  for (const command of commands) {
+    if (command.type === SVGPathData.MOVE_TO) subpaths.push([]);
+    subpaths[subpaths.length - 1]?.push(command);
+  }
+  return subpaths.map((commands) => new SVGPathData(commands).encode());
+}
+
+function strokeProperty(element: Element, property: string, fallback = ""): string {
+  const ancestors: Element[] = [];
+  for (let current: Element | null = element; current; current = current.parentElement) ancestors.unshift(current);
+  let value = fallback;
+  for (const ancestor of ancestors) {
+    const inline = ancestor.getAttribute("style");
+    const styleValue = inline
+      ?.split(";")
+      .map((declaration) => declaration.trim())
+      .reduce<string | undefined>((latest, declaration) => {
+        if (!new RegExp(`^${property}\\s*:`, "i").test(declaration)) return latest;
+        return declaration.replace(/^[^:]*:/, "").trim();
+      }, undefined);
+    const candidate = styleValue || ancestor.getAttribute(property);
+    if (candidate && !["inherit", "unset", "initial"].includes(candidate.toLowerCase())) {
+      value = candidate.replace(/\s*!important\s*$/i, "").trim();
+    }
+  }
+  return value;
+}
+
+function removeStrokeStyles(element: Element): void {
+  for (const attribute of ["stroke", "stroke-width", "stroke-linecap", "stroke-linejoin", "stroke-miterlimit", "stroke-dasharray", "stroke-dashoffset", "stroke-opacity", "vector-effect"]) {
+    element.removeAttribute(attribute);
+  }
+  const style = element.getAttribute("style");
+  if (!style) return;
+  const kept = style.split(";").filter((declaration) => !/^\s*(stroke(?:-[\w-]+)?|vector-effect)\s*:/i.test(declaration));
+  if (kept.length > 0) element.setAttribute("style", kept.join(";"));
+  else element.removeAttribute("style");
+}
+
+function expandedStroke(pathData: string, strokeWidth: number, iconName: string): string {
+  const expanded: string[] = [];
+  for (const subpath of splitPathData(pathData, iconName)) {
+    const closed = new SVGPathData(subpath).commands.some((command) => command.type === SVGPathData.CLOSE_PATH);
+    let outline: string;
+    try {
+      outline = strokeOutline(subpath, strokeWidth / 2, {
+        bezierAccuracy: 0.25,
+        inside: true,
+        outside: true,
+        joints: 0,
+      });
+    } catch (error) {
+      throw new BadRequestError(`The stroke in "${iconName}" could not be converted to a font outline: ${error instanceof Error ? error.message : "unknown error"}`);
+    }
+    const contours = splitPathData(outline, iconName);
+    if (contours.length === 0) throw new BadRequestError(`The stroke in "${iconName}" did not produce a font outline.`);
+    expanded.push(...contours.map((contour, index) => closed && index === 1
+      ? new SVGPathData(contour).toAbs().aToC().reverse().encode()
+      : contour));
+  }
+  return expanded.join(" ");
+}
+
+function strokeWidthValue(value: string, iconName: string): number {
+  const match = /^\s*((?:\d+(?:\.\d*)?|\.\d+)(?:e[+-]?\d+)?)\s*(?:px)?\s*$/i.exec(value);
+  const width = match?.[1] ? Number(match[1]) : NaN;
+  if (!Number.isFinite(width) || width < 0) {
+    throw new BadRequestError(`The stroke width in "${iconName}" is not a supported SVG length.`);
+  }
+  return width;
+}
+
+export function prepareFontSvg(markup: string, iconName = "icon"): string {
+  const converted = optimize(markup, {
+    plugins: [{ name: "convertShapeToPath", params: { convertArcs: true } }],
+  }).data;
+  const document = new JSDOM(converted, { contentType: "image/svg+xml" }).window.document;
+  for (const element of Array.from(document.querySelectorAll("path"))) {
+    const stroke = strokeProperty(element, "stroke");
+    if (!stroke || ["none", "transparent"].includes(stroke.toLowerCase())) continue;
+    const width = strokeWidthValue(strokeProperty(element, "stroke-width", "1"), iconName);
+    if (width === 0) continue;
+    const dashArray = strokeProperty(element, "stroke-dasharray", "none");
+    if (dashArray.toLowerCase() !== "none") {
+      throw new BadRequestError(`The dashed stroke in "${iconName}" cannot be represented in a font. Convert it to outlines first.`);
+    }
+    if (strokeProperty(element, "vector-effect").toLowerCase() === "non-scaling-stroke") {
+      throw new BadRequestError(`The non-scaling stroke in "${iconName}" cannot be represented in a font. Convert it to outlines first.`);
+    }
+    const pathData = element.getAttribute("d");
+    if (!pathData) continue;
+    const outline = expandedStroke(pathData, width, iconName);
+    const fill = strokeProperty(element, "fill", "black").toLowerCase();
+    const target = fill === "none" ? element : element.cloneNode(true) as Element;
+    if (target !== element) {
+      target.removeAttribute("id");
+      element.after(target);
+    }
+    target.setAttribute("d", outline);
+    target.setAttribute("fill", "currentColor");
+    target.setAttribute("fill-rule", "nonzero");
+    target.setAttribute("stroke", "none");
+    const style = target.getAttribute("style");
+    if (style) {
+      const kept = style.split(";").filter((declaration) => !/^\s*(fill|fill-rule)\s*:/i.test(declaration));
+      if (kept.length > 0) target.setAttribute("style", kept.join(";"));
+      else target.removeAttribute("style");
+    }
+  }
+  for (const element of [document.documentElement, ...Array.from(document.querySelectorAll("*"))]) removeStrokeStyles(element);
+  return document.documentElement.outerHTML;
+}
 
 // Pure: keeps existing codepoints, and gives the others the next free character from `startHex`, wrapping around the Private Use Area. `usedElsewhere` holds codepoints of icons that are not in this build but share the project (they must not be reused).
 export function planCodepoints(icons: Pick<FontIcon, "id" | "codepoint">[], startHex: string, usedElsewhere: Iterable<number> = [], reassignExisting = false, nextAfter?: number): CodepointPlan {
@@ -78,7 +201,6 @@ export function planCodepoints(icons: Pick<FontIcon, "id" | "codepoint">[], star
 export function conversionWarnings(icons: Pick<FontIcon, "name" | "hasStroke" | "hasGradient" | "hasText">[]) {
   const warnings: { icon: string; message: string }[] = [];
   for (const icon of icons) {
-    if (icon.hasStroke) warnings.push({ icon: icon.name, message: "Uses strokes. Icon fonts need filled shapes, so the outline may come out thin or missing until the strokes are turned into outlines." });
     if (icon.hasGradient) warnings.push({ icon: icon.name, message: "Uses a gradient. A font glyph has one colour." });
     if (icon.hasText) warnings.push({ icon: icon.name, message: "Contains text. Turn the text into outlines first." });
   }
@@ -133,8 +255,16 @@ export function createMetrop(icons: (Pick<FontIcon, "name" | "slug" | "svg"> & {
       .filter((path): path is string => Boolean(path))
       .join(" ");
     if (!data) throw new BadRequestError(`The icon "${icon.name}" does not contain path data for a Metrop file.`);
-    if (!icon.dataFont) throw new BadRequestError(`The icon "${icon.name}" does not contain font path data for a Metrop file.`);
-    return [`  <Icon Name="${escapeXml(icon.name)}" FontName="${escapeXml(icon.slug)}" IsDuplicate="false" ASCIIValue="${icon.codepoint.toLowerCase()}" AlphaNumericValue="" FiValue="" GroupName="Custom" HasCharacterMap="false" IsDirty="false" ExportCommand="MetroGraphicsPackage.IconCommand" DataFont="${escapeXml(icon.dataFont)}" Data="${escapeXml(data)}">
+    let dataFont = icon.dataFont;
+    if (!dataFont) {
+      const preparedDocument = new JSDOM(prepareFontSvg(icon.svg, icon.name), { contentType: "image/svg+xml" }).window.document;
+      const preparedData = Array.from(preparedDocument.querySelectorAll("path"))
+        .map((element) => element.getAttribute("d")?.trim())
+        .filter((path): path is string => Boolean(path))
+        .join(" ");
+      dataFont = preparedData || data;
+    }
+    return [`  <Icon Name="${escapeXml(icon.name)}" FontName="${escapeXml(icon.slug)}" IsDuplicate="false" ASCIIValue="${icon.codepoint.toLowerCase()}" AlphaNumericValue="" FiValue="" GroupName="Custom" HasCharacterMap="false" IsDirty="false" ExportCommand="MetroGraphicsPackage.IconCommand" DataFont="${escapeXml(dataFont)}" Data="${escapeXml(data)}">
     <Settings FontFamily="Webdings" Character="&gt;" IconBrush="#FFFFFFFF" FlipCommand="MetroGraphicsPackage.IconCommand" SldierValueChanged="MetroGraphicsPackage.IconCommand" FlipX="1" FlipY="1" IsLinked="false" ContentHeight="48" ContentWidth="48" SizeIndex="4" MainWidth="48" Angle="0" MainHeight="48" CustomSize="48" MaximumPadding="15" BackgroundBrush="#FF000000" IconShape="None" IsBackgroundVisible="true" IsRect="false" CustomWidth="48" CustomHeight="48" Padding="0" />
   </Icon>`];
   });
@@ -187,7 +317,7 @@ export async function buildFont(projectId: Id, icons: FontIcon[], input: BuildFo
     await mkdir(outDir);
     const codepoints: Record<string, number> = {};
     for (const icon of icons) {
-      await writeFile(path.join(inDir, `${icon.slug}.svg`), icon.svg, "utf8");
+      await writeFile(path.join(inDir, `${icon.slug}.svg`), prepareFontSvg(icon.svg, icon.name), "utf8");
       codepoints[icon.slug] = plan.all.get(icon.id) as number;
     }
 
