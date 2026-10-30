@@ -1,5 +1,5 @@
 // Tests for the Icons section: loading and empty states, what is asked of the server for each folder, search and sort, views, "show more", selection, every bulk action (with undo for trash), read-only behaviour, failures, and opening an icon.
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { MemoryRouter, useLocation } from "react-router-dom";
@@ -135,6 +135,57 @@ describe("empty states", () => {
     expect(screen.getByRole("dialog", { name: "Add icons" })).toBeInTheDocument();
   });
 
+  it("disables browsing controls when the project has no icons but keeps upload available", async () => {
+    setup({ project: makeDetail({ id: "p1", iconCount: 0 }) });
+    await screen.findByText("No icons yet.");
+
+    const controls = screen.getByRole("group", { name: "Icon browsing controls" });
+    for (const control of controls.querySelectorAll("button, input, select")) {
+      expect(control).toBeDisabled();
+    }
+    expect(screen.getAllByRole("button", { name: "Upload icons" })[0]).toBeEnabled();
+  });
+
+  it("keeps browsing controls disabled while switching from empty all-icons to uncategorized", async () => {
+    let resolveUncategorized: ((result: ReturnType<typeof reply>) => void) | undefined;
+    listIcons.mockImplementation((_projectId, params) => new Promise((resolve) => {
+      if (params?.folderId === "root") resolveUncategorized = resolve;
+      else resolve(reply([]));
+    }));
+
+    const { rerender } = setup({
+      project: makeDetail({ id: "p1", iconCount: 0 }),
+      folderList: { folders: [], uncategorizedCount: 0 },
+    });
+    expect(await screen.findByText("No icons yet.")).toBeInTheDocument();
+
+    await act(async () => rerender({ selectedFolder: "root" }));
+    expect(resolveUncategorized).toBeDefined();
+    const controls = screen.getByRole("group", { name: "Icon browsing controls" });
+    const disabledWhileSwitching = Array.from(controls.querySelectorAll("button, input, select")).every((control) => control.matches(":disabled"));
+
+    await act(async () => resolveUncategorized?.(reply([])));
+    expect(await screen.findByText("No uncategorized icons.")).toBeInTheDocument();
+
+    expect(disabledWhileSwitching).toBe(true);
+  });
+
+  it("keeps browsing controls disabled while switching from empty uncategorized to all-icons", async () => {
+    const { rerender } = setup({
+      project: makeDetail({ id: "p1", iconCount: 0 }),
+      folderList: { folders: [], uncategorizedCount: 0 },
+      selectedFolder: "root",
+    });
+    expect(await screen.findByText("No uncategorized icons.")).toBeInTheDocument();
+
+    act(() => rerender({ selectedFolder: "all" }));
+    const controls = screen.getByRole("group", { name: "Icon browsing controls" });
+    const disabledWhileSwitching = Array.from(controls.querySelectorAll("button, input, select")).every((control) => control.matches(":disabled"));
+    expect(await screen.findByText("No icons yet.")).toBeInTheDocument();
+
+    expect(disabledWhileSwitching).toBe(true);
+  });
+
   it("tells a read-only viewer that nothing is here, without offering to add", async () => {
     setup({ project: makeDetail({ id: "p1", access: READ_ONLY }) });
     expect(await screen.findByText("No icons yet.")).toBeInTheDocument();
@@ -148,8 +199,16 @@ describe("empty states", () => {
       return r;
     })();
     unmount();
-    setup({ selectedFolder: "ui" });
+    setup({
+      selectedFolder: "ui",
+      folderList: { folders: [makeFolder({ id: "ui", name: "UI", iconCount: 0 })], uncategorizedCount: 0 },
+    });
     expect(await screen.findByText("This folder is empty.")).toBeInTheDocument();
+    const controls = screen.getByRole("group", { name: "Icon browsing controls" });
+    for (const control of controls.querySelectorAll("button, input, select")) {
+      expect(control).toBeDisabled();
+    }
+    expect(screen.getAllByRole("button", { name: "Upload icons" })[0]).toBeEnabled();
   });
 
   it("says no icons are uncategorized", async () => {

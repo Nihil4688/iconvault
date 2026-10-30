@@ -136,6 +136,7 @@ export default function IconsTab() {
   }
 
   const emptyProject = !icons.loading && total === 0 && !search && selectedFolder === "all";
+  const noIconsInScope = project.iconCount === 0 || (!icons.loading && total === 0 && selectedFolder !== "all" && !search);
 
   return (
     <div>
@@ -154,6 +155,7 @@ export default function IconsTab() {
         actionsHost={actionsSlot}
         canAdd={project.access.canAddIcons}
         onUpload={() => setDialog("add")}
+        disabled={noIconsInScope}
       />
       </div>
 

@@ -1,7 +1,8 @@
 // Tests for the icon cards, the table view, the toolbar and the bulk bar with its dialogs.
-import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { cleanup, fireEvent, render, renderHook, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
+import { useIconAppearance } from "../../hooks/useIconAppearance";
 import { DRAG_TYPE } from "../../lib/dragIcons";
 import { DEFAULT_APPEARANCE } from "../../lib/iconAppearance";
 import { makeFolder, makeIcon } from "../../test/fixtures";
@@ -69,7 +70,7 @@ describe("IconCard", () => {
 
 describe("IconList", () => {
   const folders = [makeFolder({ id: "ui", name: "UI" }), makeFolder({ id: "ar", name: "Arrows", parentId: "ui" })];
-  const icons = [makeIcon({ id: "i1", name: "Left", folderId: "ar", tags: ["nav", "arrow"], byteSize: 300 }), makeIcon({ id: "i2", name: "Plain", folderId: null, hasGradient: true })];
+  const icons = [makeIcon({ id: "i1", name: "Left", folderId: "ar", tags: ["nav", "arrow"], byteSize: 300, hasStroke: true, hasText: true }), makeIcon({ id: "i2", name: "Plain", folderId: null, hasGradient: true })];
 
   function setup() {
     const props = { icons, folders, isSelected: (id: string) => id === "i2", surface: "theme" as const, appearance: DEFAULT_APPEARANCE, canDrag: true, dragIds: (id: string) => [id], onToggle: vi.fn(), onOpen: vi.fn() };
@@ -92,6 +93,8 @@ describe("IconList", () => {
     expect(within(row).getByText("UI / Arrows")).toBeInTheDocument();
     expect(within(row).getByText("300 B")).toBeInTheDocument();
     expect(within(row).getByText("nav, arrow")).toBeInTheDocument();
+    expect(row).not.toHaveTextContent("Stroke");
+    expect(row).toHaveTextContent("Text");
     const plain = screen.getByRole("button", { name: "Plain" }).closest("tr") as HTMLElement;
     expect(within(plain).getByText("Project root")).toBeInTheDocument();
     expect(within(plain).getByText("Gradient")).toBeInTheDocument();
@@ -196,9 +199,9 @@ describe("IconToolbar", () => {
     expect(onAppearance).toHaveBeenLastCalledWith({ color: "#123456" });
   });
 
-  it("shows the style names next to their icons", () => {
+  it("does not offer icon style overrides", () => {
     setup();
-    expect(screen.getByRole("group", { name: "Icon style" })).toHaveTextContent("NaturalFlatWireframe");
+    expect(screen.queryByRole("group", { name: "Icon style" })).not.toBeInTheDocument();
   });
 
   it("sorts from an icon whose menu names the current sort", async () => {
@@ -209,20 +212,14 @@ describe("IconToolbar", () => {
     expect(onSort).toHaveBeenCalledWith("largest");
   });
 
-  it("picks a style and marks the current one", async () => {
-    const { onAppearance } = setup({ appearance: { ...DEFAULT_APPEARANCE, style: "flat" } });
-    const group = screen.getByRole("group", { name: "Icon style" });
-    expect(within(group).getAllByRole("button").map((b) => [b.textContent, b.getAttribute("aria-pressed")])).toEqual([["Natural", "false"], ["Flat", "true"], ["Wireframe", "false"]]);
-    await userEvent.click(within(group).getByRole("button", { name: "Wireframe" }));
-    expect(onAppearance).toHaveBeenLastCalledWith({ style: "wireframe" });
-  });
-
   it("has no breadcrumb, no background dropdown, and search before the size control", () => {
     setup();
     expect(screen.queryByRole("navigation", { name: "Breadcrumb" })).not.toBeInTheDocument();
     expect(screen.queryByLabelText("Preview background")).not.toBeInTheDocument();
     const search = screen.getByRole("searchbox", { name: "Search icons" });
     const size = screen.getByRole("group", { name: "Icon size" });
+    expect(search.parentElement).toHaveClass("max-w-2xl");
+    expect(screen.getByRole("group", { name: "Icon toolbar actions" })).toHaveClass("ml-auto");
     expect(search.compareDocumentPosition(size) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
@@ -283,6 +280,17 @@ describe("IconToolbar", () => {
   it("has no select all in the toolbar (it sits above the icon list)", () => {
     setup();
     expect(screen.queryByRole("checkbox", { name: /Select all/ })).not.toBeInTheDocument();
+  });
+});
+
+describe("useIconAppearance", () => {
+  it("ignores a previously saved style override", () => {
+    window.localStorage.setItem("project:p1:iconAppearance", JSON.stringify({ size: 48, color: "#123456", style: "wireframe" }));
+
+    const { result } = renderHook(() => useIconAppearance("p1"));
+
+    expect(result.current[0]).toEqual({ size: 48, color: "#123456" });
+    window.localStorage.removeItem("project:p1:iconAppearance");
   });
 });
 

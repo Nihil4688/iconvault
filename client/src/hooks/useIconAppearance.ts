@@ -1,6 +1,6 @@
-// The icon size, colour and style chosen in a project's toolbar, remembered in this browser for that project. Falls back to the defaults when nothing valid is saved or storage is blocked.
+// The icon size and colour chosen in a project's toolbar, remembered in this browser for that project. Older saved style overrides are ignored so icons keep their uploaded appearance.
 import { useRef, useState } from "react";
-import { ICON_STYLES, DEFAULT_APPEARANCE, clampIconSize, isIconColor, type IconAppearance } from "../lib/iconAppearance";
+import { DEFAULT_APPEARANCE, clampIconSize, isIconColor, type IconAppearance } from "../lib/iconAppearance";
 
 function load(key: string): IconAppearance {
   try {
@@ -9,7 +9,6 @@ function load(key: string): IconAppearance {
     return {
       size: typeof saved.size === "number" ? clampIconSize(saved.size) : DEFAULT_APPEARANCE.size,
       color: isIconColor(saved.color) ? saved.color : DEFAULT_APPEARANCE.color,
-      style: ICON_STYLES.includes(saved.style as never) ? (saved.style as IconAppearance["style"]) : DEFAULT_APPEARANCE.style,
     };
   } catch {
     return DEFAULT_APPEARANCE;

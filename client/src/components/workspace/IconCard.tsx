@@ -41,7 +41,7 @@ export default function IconCard({ icon, purpose = "font", idPrefix = "", select
         className="flex w-full flex-col items-center gap-2 rounded-t-xl p-3 pb-1 text-center focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring"
       >
         <span className={cn("flex w-full items-center justify-center rounded-lg", surfaceClass(surface))} style={{ ...surfaceStyle(surface), minHeight: Math.max(96, appearance.size + 32) }}>
-          <SvgPreview svg={icon.svg ?? ""} size={appearance.size} color={appearance.color} iconStyle={appearance.style} />
+          <SvgPreview svg={icon.svg ?? ""} size={appearance.size} color={appearance.color} />
         </span>
         <span className="w-full truncate text-sm font-medium">{icon.name}</span>
       </button>

@@ -54,7 +54,7 @@ export default function IconList({ icons, folders, isSelected, surface, appearan
         </thead>
         <tbody>
           {icons.map((icon) => {
-            const warnings = iconWarnings(icon);
+            const warnings = iconWarnings(icon).filter((warning) => warning !== "Stroke");
             return (
               <tr
                 key={icon.id}
@@ -67,7 +67,7 @@ export default function IconList({ icons, folders, isSelected, surface, appearan
                 </td>
                 <td className="px-1 py-1.5">
                   <span className={cn("flex h-10 w-10 items-center justify-center rounded-md", surfaceClass(surface))} style={surfaceStyle(surface)}>
-                    <SvgPreview svg={icon.svg ?? ""} size={24} color={appearance.color} iconStyle={appearance.style} />
+                    <SvgPreview svg={icon.svg ?? ""} size={24} color={appearance.color} />
                   </span>
                 </td>
                 <td className="px-3 py-2">
