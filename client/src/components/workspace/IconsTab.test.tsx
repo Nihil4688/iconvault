@@ -1,5 +1,5 @@
 // Tests for the Icons section: loading and empty states, what is asked of the server for each folder, search and sort, views, "show more", selection, every bulk action (with undo for trash), read-only behaviour, failures, and opening an icon.
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { MemoryRouter, useLocation } from "react-router-dom";
@@ -17,7 +17,7 @@ import { READ_ONLY, makeDetail, makeFolder, makeIcon } from "../../test/fixtures
 import * as zip from "../../utils/zipBundle";
 import IconsTab from "./IconsTab";
 
-vi.mock("../ui/SvgPreview", () => ({ default: () => null }));
+vi.mock("../ui/SvgPreview", () => ({ default: ({ size, color }: { size: number; color?: string }) => <span data-testid="svg-preview" data-size={size} data-color={color ?? ""} /> }));
 vi.mock("../../api/icons");
 vi.mock("../../api/fonts");
 vi.mock("../../lib/fontPreview", async (importOriginal) => ({ ...(await importOriginal<typeof import("../../lib/fontPreview")>()), loadPreviewFont: vi.fn(), unloadPreviewFont: vi.fn() }));
@@ -113,6 +113,35 @@ describe("showing icons", () => {
     expect(listIcons).toHaveBeenLastCalledWith("p1", { sort: "newest", limit: 200, folderId: "root", includeSubfolders: false });
   });
 
+  it("does not apply folder appearances to icons in All icons", async () => {
+    window.localStorage.setItem("project:p1:folder:ui:iconAppearance", JSON.stringify({ size: 56, color: "#123456" }));
+    listIcons.mockResolvedValue(reply([
+      makeIcon({ id: "ui-icon", name: "UI icon", folderId: "ui" }),
+      makeIcon({ id: "nested-icon", name: "Nested icon", folderId: "ar" }),
+      makeIcon({ id: "other-icon", name: "Other icon", folderId: "assets" }),
+    ]));
+    const { rerender } = setup({
+      folderList: { folders: [makeFolder({ id: "ui", name: "UI" }), makeFolder({ id: "ar", name: "Arrows", parentId: "ui" }), makeFolder({ id: "assets", name: "Assets" })], uncategorizedCount: 0 },
+      selectedFolder: "all",
+    });
+
+    await screen.findByRole("button", { name: "Open Other icon" });
+
+    expect(screen.getAllByTestId("svg-preview").map((preview) => [preview.getAttribute("data-size"), preview.getAttribute("data-color")])).toEqual([
+      ["40", ""],
+      ["40", ""],
+      ["40", ""],
+    ]);
+    expect(screen.getByRole("slider", { name: "Icon size in pixels" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Blue" })).toBeDisabled();
+
+    await userEvent.click(screen.getByRole("button", { name: "List view" }));
+    expect(screen.getAllByTestId("svg-preview").map((preview) => preview.getAttribute("data-color"))).toEqual(["", "", ""]);
+
+    rerender({ selectedFolder: "ui" });
+    await waitFor(() => expect(screen.getAllByTestId("svg-preview").map((preview) => preview.getAttribute("data-color"))).toEqual(["#123456", "", ""]));
+  });
+
   it("shows an error with a retry", async () => {
     listIcons.mockRejectedValueOnce(new ApiError("Could not reach the server."));
     setup();
@@ -135,6 +164,57 @@ describe("empty states", () => {
     expect(screen.getByRole("dialog", { name: "Add icons" })).toBeInTheDocument();
   });
 
+  it("disables browsing controls when the project has no icons but keeps upload available", async () => {
+    setup({ project: makeDetail({ id: "p1", iconCount: 0 }) });
+    await screen.findByText("No icons yet.");
+
+    const controls = screen.getByRole("group", { name: "Icon browsing controls" });
+    for (const control of controls.querySelectorAll("button, input, select")) {
+      expect(control).toBeDisabled();
+    }
+    expect(screen.getAllByRole("button", { name: "Upload icons" })[0]).toBeEnabled();
+  });
+
+  it("keeps browsing controls disabled while switching from empty all-icons to uncategorized", async () => {
+    let resolveUncategorized: ((result: ReturnType<typeof reply>) => void) | undefined;
+    listIcons.mockImplementation((_projectId, params) => new Promise((resolve) => {
+      if (params?.folderId === "root") resolveUncategorized = resolve;
+      else resolve(reply([]));
+    }));
+
+    const { rerender } = setup({
+      project: makeDetail({ id: "p1", iconCount: 0 }),
+      folderList: { folders: [], uncategorizedCount: 0 },
+    });
+    expect(await screen.findByText("No icons yet.")).toBeInTheDocument();
+
+    await act(async () => rerender({ selectedFolder: "root" }));
+    expect(resolveUncategorized).toBeDefined();
+    const controls = screen.getByRole("group", { name: "Icon browsing controls" });
+    const disabledWhileSwitching = Array.from(controls.querySelectorAll("button, input, select")).every((control) => control.matches(":disabled"));
+
+    await act(async () => resolveUncategorized?.(reply([])));
+    expect(await screen.findByText("No uncategorized icons.")).toBeInTheDocument();
+
+    expect(disabledWhileSwitching).toBe(true);
+  });
+
+  it("keeps browsing controls disabled while switching from empty uncategorized to all-icons", async () => {
+    const { rerender } = setup({
+      project: makeDetail({ id: "p1", iconCount: 0 }),
+      folderList: { folders: [], uncategorizedCount: 0 },
+      selectedFolder: "root",
+    });
+    expect(await screen.findByText("No uncategorized icons.")).toBeInTheDocument();
+
+    act(() => rerender({ selectedFolder: "all" }));
+    const controls = screen.getByRole("group", { name: "Icon browsing controls" });
+    const disabledWhileSwitching = Array.from(controls.querySelectorAll("button, input, select")).every((control) => control.matches(":disabled"));
+    expect(await screen.findByText("No icons yet.")).toBeInTheDocument();
+
+    expect(disabledWhileSwitching).toBe(true);
+  });
+
   it("tells a read-only viewer that nothing is here, without offering to add", async () => {
     setup({ project: makeDetail({ id: "p1", access: READ_ONLY }) });
     expect(await screen.findByText("No icons yet.")).toBeInTheDocument();
@@ -148,8 +228,16 @@ describe("empty states", () => {
       return r;
     })();
     unmount();
-    setup({ selectedFolder: "ui" });
+    setup({
+      selectedFolder: "ui",
+      folderList: { folders: [makeFolder({ id: "ui", name: "UI", iconCount: 0 })], uncategorizedCount: 0 },
+    });
     expect(await screen.findByText("This folder is empty.")).toBeInTheDocument();
+    const controls = screen.getByRole("group", { name: "Icon browsing controls" });
+    for (const control of controls.querySelectorAll("button, input, select")) {
+      expect(control).toBeDisabled();
+    }
+    expect(screen.getAllByRole("button", { name: "Upload icons" })[0]).toBeEnabled();
   });
 
   it("says no icons are uncategorized", async () => {

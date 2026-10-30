@@ -47,7 +47,8 @@ export default function IconsTab() {
   const [sort, setSort] = usePersistentChoice<IconSort>(project.id, "iconSort", SORTS, "newest");
   const [view, setView] = usePersistentChoice<IconView>(project.id, "iconView", VIEWS, "grid");
   const [surface, setSurface] = usePersistentChoice<Surface>(project.id, "iconSurface", SURFACES, "theme");
-  const [appearance, setAppearance] = useIconAppearance(project.id);
+  const appearanceFolderId = selectedFolder === "all" ? undefined : selectedFolder === "root" ? null : selectedFolder;
+  const [appearance, setAppearance, appearanceForFolder] = useIconAppearance(project.id, appearanceFolderId);
   const [dialog, setDialog] = useState<Dialog>(null);
   const [openId, setOpenId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
@@ -136,6 +137,7 @@ export default function IconsTab() {
   }
 
   const emptyProject = !icons.loading && total === 0 && !search && selectedFolder === "all";
+  const noIconsInScope = project.iconCount === 0 || (!icons.loading && total === 0 && selectedFolder !== "all" && !search);
 
   return (
     <div>
@@ -151,9 +153,11 @@ export default function IconsTab() {
         onSurface={setSurface}
         appearance={appearance}
         onAppearance={setAppearance}
+        appearanceDisabled={selectedFolder === "all"}
         actionsHost={actionsSlot}
         canAdd={project.access.canAddIcons}
         onUpload={() => setDialog("add")}
+        disabled={noIconsInScope}
       />
       </div>
 
@@ -190,11 +194,11 @@ export default function IconsTab() {
             {view === "grid" ? (
               <ul className={`grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5 ${icons.loading ? "opacity-60" : ""}`}>
                 {shown.map((icon) => (
-                  <IconCard key={icon.id} icon={icon} purpose={project.purpose} idPrefix={project.prefix} selected={selection.has(icon.id)} surface={surface} appearance={appearance} canDrag={canEdit} dragIds={() => (selection.has(icon.id) ? selection.ids : [icon.id])} onToggle={() => selection.toggle(icon.id)} onOpen={() => setOpenId(icon.id)} />
+                  <IconCard key={icon.id} icon={icon} purpose={project.purpose} idPrefix={project.prefix} selected={selection.has(icon.id)} surface={surface} appearance={appearanceForFolder(icon.folderId)} canDrag={canEdit} dragIds={() => (selection.has(icon.id) ? selection.ids : [icon.id])} onToggle={() => selection.toggle(icon.id)} onOpen={() => setOpenId(icon.id)} />
                 ))}
               </ul>
             ) : (
-              <IconList icons={shown} folders={folderList.folders} isSelected={selection.has} surface={surface} appearance={appearance} canDrag={canEdit} dragIds={(id) => (selection.has(id) ? selection.ids : [id])} onToggle={selection.toggle} onOpen={(icon) => setOpenId(icon.id)} />
+              <IconList icons={shown} folders={folderList.folders} isSelected={selection.has} surface={surface} appearanceForFolder={appearanceForFolder} canDrag={canEdit} dragIds={(id) => (selection.has(id) ? selection.ids : [id])} onToggle={selection.toggle} onOpen={(icon) => setOpenId(icon.id)} />
             )}
             {total > shown.length && (
               <div className="mt-4 text-center">
