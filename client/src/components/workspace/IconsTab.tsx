@@ -153,7 +153,7 @@ export default function IconsTab() {
         onSurface={setSurface}
         appearance={appearance}
         onAppearance={setAppearance}
-        appearanceDisabled={selectedFolder === "all"}
+        appearanceScope={selectedFolder === "all" ? "all" : "folder"}
         actionsHost={actionsSlot}
         canAdd={project.access.canAddIcons}
         onUpload={() => setDialog("add")}
