@@ -1,5 +1,5 @@
 // Tests for the dashboard: loading and empty states, filters kept in the address, search, create, edit, duplicate, archive, delete, copy, permissions, and failures.
-import { render, screen, waitFor, within } from "@testing-library/react";
+import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { MemoryRouter, Route, Routes, useLocation } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
@@ -297,6 +297,30 @@ describe("private and public", () => {
 
     expect(within(privateSection).getAllByRole("heading", { name: /^Private Project \d+$/ })).toHaveLength(8);
     expect(within(privateSection).queryByRole("button", { name: /Show .* more projects/ })).not.toBeInTheDocument();
+  });
+
+  it("shows two rows at each responsive grid breakpoint and updates when the viewport changes", async () => {
+    const originalWidth = window.innerWidth;
+    window.innerWidth = 375;
+    const projects = Array.from({ length: 13 }, (_, index) => makeProject({ id: `private-${index}`, name: `Private Project ${index}`, visibility: "private" }));
+    listProjects.mockResolvedValue(reply(projects));
+
+    try {
+      renderPage();
+      const privateSection = await screen.findByRole("region", { name: /Private/ });
+      const privateCards = () => within(privateSection).getAllByRole("heading", { name: /^Private Project \d+$/ });
+      const expectedPerRowCount = [[375, 4], [768, 6], [1024, 8], [1280, 10]] as const;
+
+      for (const [width, visible] of expectedPerRowCount) {
+        window.innerWidth = width;
+        fireEvent(window, new Event("resize"));
+        await waitFor(() => expect(privateCards()).toHaveLength(visible));
+        expect(within(privateSection).getByRole("button", { name: `Show ${13 - visible} more projects` })).toBeInTheDocument();
+      }
+    } finally {
+      window.innerWidth = originalWidth;
+      fireEvent(window, new Event("resize"));
+    }
   });
 });
 

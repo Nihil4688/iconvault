@@ -1,6 +1,6 @@
 // The signed-in home screen: every project the user can see, with filters (kept in the address, so Back works and links can be shared), create, edit, duplicate, archive and delete, plus a search that also finds icons across projects and can copy them into one of the user's projects.
 import { ArrowUpDown, ChevronDown, ChevronUp, Globe, Layers, Lock, Plus, Search, Shapes, Type } from "lucide-react";
-import { useContext, useState, type ChangeEvent } from "react";
+import { useContext, useEffect, useState, type ChangeEvent } from "react";
 import { createPortal } from "react-dom";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { searchIcons } from "../api/icons";
@@ -24,7 +24,13 @@ import { cn } from "../lib/cn";
 import { pluralize } from "../lib/format";
 
 const SORT_LABELS = { updated: "Recently updated", created: "Newest", name: "Name", icons: "Most icons" } as const;
-const INITIAL_PROJECTS_PER_SECTION = 8;
+
+function projectColumnsForWidth(width: number): number {
+  if (width >= 1280) return 5;
+  if (width >= 1024) return 4;
+  if (width >= 768) return 3;
+  return 2;
+}
 
 function oneOf<T extends string>(value: string | null, allowed: readonly T[], fallback: T): T {
   return allowed.includes(value as T) ? (value as T) : fallback;
@@ -51,6 +57,15 @@ export default function DashboardPage() {
   const [deleting, setDeleting] = useState<ProjectSummary | null>(null);
   const [copying, setCopying] = useState<IconSearchResult | null>(null);
   const [expandedSections, setExpandedSections] = useState({ private: false, public: false });
+  const [initialProjectsPerSection, setInitialProjectsPerSection] = useState(() => projectColumnsForWidth(window.innerWidth) * 2);
+
+  useEffect(() => {
+    function updateVisibleProjectCount() {
+      setInitialProjectsPerSection(projectColumnsForWidth(window.innerWidth) * 2);
+    }
+    window.addEventListener("resize", updateVisibleProjectCount);
+    return () => window.removeEventListener("resize", updateVisibleProjectCount);
+  }, []);
 
   const query: ListProjectsParams = { scope: "all", status, sort, limit: 100, ...(search ? { search } : {}) };
   const projects = useResource(`projects:${JSON.stringify(query)}`, () => listProjects(query));
@@ -129,7 +144,7 @@ export default function DashboardPage() {
   const showIcons = search.length >= 2;
 
   return (
-    <main id="main" tabIndex={-1} className="flex h-dvh flex-col overflow-hidden pt-[57px] outline-none">
+    <main id="main" tabIndex={-1} className="flex h-dvh flex-col overflow-hidden pt-14.25 outline-none">
       <h1 className="sr-only">Projects</h1>
       {actionsSlot ? createPortal(headerButtons, actionsSlot) : <div className="flex justify-end px-4 pt-3 sm:px-6">{headerButtons}</div>}
 
@@ -289,9 +304,9 @@ export default function DashboardPage() {
                       {renderCards(
                         expandedSections[group.key]
                           ? group.items
-                          : group.items.slice(0, INITIAL_PROJECTS_PER_SECTION),
+                          : group.items.slice(0, initialProjectsPerSection),
                       )}
-                      {group.items.length > INITIAL_PROJECTS_PER_SECTION && (
+                      {group.items.length > initialProjectsPerSection && (
                         <div className="flex justify-center">
                         <Button
                           variant="outline-primary"
@@ -305,8 +320,8 @@ export default function DashboardPage() {
                             </>
                           ) : (
                             <>
-                              Show {group.items.length - INITIAL_PROJECTS_PER_SECTION} more{" "}
-                              {group.items.length - INITIAL_PROJECTS_PER_SECTION === 1 ? "project" : "projects"}
+                              Show {group.items.length - initialProjectsPerSection} more{" "}
+                              {group.items.length - initialProjectsPerSection === 1 ? "project" : "projects"}
                               <ChevronDown aria-hidden="true" className="h-4 w-4" />
                             </>
                           )}

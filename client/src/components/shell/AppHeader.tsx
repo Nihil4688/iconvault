@@ -24,7 +24,7 @@ export default function AppHeader({ onSignIn, crumbRef, actionsRef }: AppHeaderP
   }
 
   return (
-    <header className="fixed inset-x-0 top-0 z-40 flex h-[57px] items-center justify-between border-b border-border bg-background/85 px-4 backdrop-blur-md">
+    <header className="fixed inset-x-0 top-0 z-40 flex h-14.25 items-center justify-between border-b border-border bg-background/85 px-4 backdrop-blur-md">
       <div className="flex min-w-0 items-center gap-3">
         <Link to="/" className="flex min-w-0 items-center gap-2 rounded-md focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground">
