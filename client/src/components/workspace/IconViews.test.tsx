@@ -40,9 +40,9 @@ describe("IconCard", () => {
     expect(screen.getByRole("checkbox", { name: "Select Arrow Left" })).toBeChecked();
   });
 
-  it("warns about what will not become a font glyph, in words", () => {
+  it("omits stroke badges while keeping other font-conversion warnings", () => {
     setup({ icon: makeIcon({ hasStroke: true, hasText: true }) });
-    expect(screen.getByText("Stroke")).toBeInTheDocument();
+    expect(screen.queryByText("Stroke")).not.toBeInTheDocument();
     expect(screen.getByText("Text")).toBeInTheDocument();
     expect(screen.queryByText("Gradient")).not.toBeInTheDocument();
   });

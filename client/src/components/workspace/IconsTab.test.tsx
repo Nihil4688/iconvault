@@ -90,7 +90,7 @@ describe("showing icons", () => {
     expect(screen.getByLabelText("Loading icons")).toHaveAttribute("aria-busy", "true");
     expect(await screen.findByRole("button", { name: "Open Alpha" })).toBeInTheDocument();
     expect(screen.queryByText(/^Showing \d+ of/)).not.toBeInTheDocument();
-    expect(within(card("Gamma")).getByText("Stroke")).toBeInTheDocument();
+    expect(within(card("Gamma")).queryByText("Stroke")).not.toBeInTheDocument();
   });
 
   it("asks for the newest first, 200 at a time, for the whole project", async () => {

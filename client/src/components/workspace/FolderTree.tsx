@@ -1,4 +1,4 @@
-// The folder list beside a project's icons: All icons, Uncategorized (which has its own menu: rename, reset the name, move everything to the trash), and the nested folders with counts. Folders can be created, renamed, moved and deleted from a menu (for people who can edit), and accept icons dropped on them. Dragging is optional: moving also works from the bulk actions bar.
+// The folder list beside a project's icons: All icons, Uncategorized (which has its own menu: reset the name and move everything to the trash), and the nested folders with counts. Folders can be created, renamed, moved and deleted from a menu (for people who can edit), and accept icons dropped on them. Dragging is optional: moving also works from the bulk actions bar.
 import { ChevronDown, ChevronRight, Folder, FolderInput, FolderPlus, Inbox, Layers, Pencil, Plus, RotateCcw, Trash2 } from "lucide-react";
 import { useState } from "react";
 import type { FolderWithCount } from "../../api/types";
@@ -16,7 +16,7 @@ type FolderTreeProps = {
   uncategorizedCount: number;
   // What the icons in no folder are called here; empty means "Uncategorized".
   uncategorizedName?: string;
-  // Only the owner (or an admin) may rename the group.
+  // Only the owner (or an admin) may reset the group's custom name.
   canManage?: boolean;
   onRenameUncategorized?: (name: string) => Promise<void>;
   onTrashUncategorized?: () => Promise<void>;
@@ -36,7 +36,6 @@ type DialogState =
   | { kind: "rename"; folder: FolderWithCount }
   | { kind: "move"; folder: FolderWithCount }
   | { kind: "delete"; folder: FolderWithCount }
-  | { kind: "renameLoose" }
   | { kind: "trashLoose" }
   | null;
 
@@ -117,7 +116,6 @@ export default function FolderTree({ folders, uncategorizedCount, uncategorizedN
   const looseLabel = uncategorizedName || "Uncategorized";
   const looseActions: MenuAction[] = [];
   if (canManage && onRenameUncategorized) {
-    looseActions.push({ label: "Rename", icon: <Pencil aria-hidden="true" className="h-4 w-4" />, onSelect: () => setDialog({ kind: "renameLoose" }) });
     if (uncategorizedName) looseActions.push({ label: "Reset name", icon: <RotateCcw aria-hidden="true" className="h-4 w-4" />, onSelect: () => void onRenameUncategorized("") });
   }
   if (canEdit && onTrashUncategorized) {
@@ -175,14 +173,6 @@ export default function FolderTree({ folders, uncategorizedCount, uncategorizedN
         initialName={dialog?.kind === "rename" ? dialog.folder.name : ""}
         onClose={() => setDialog(null)}
         onSubmit={(name) => (dialog?.kind === "rename" ? onRename(dialog.folder, name) : Promise.resolve())}
-      />
-      <FolderNameDialog
-        open={dialog?.kind === "renameLoose"}
-        title={`Rename “${looseLabel}”`}
-        submitLabel="Rename"
-        initialName={uncategorizedName}
-        onClose={() => setDialog(null)}
-        onSubmit={(name) => (onRenameUncategorized ? onRenameUncategorized(name.slice(0, 40)) : Promise.resolve())}
       />
       <ConfirmDialog
         open={dialog?.kind === "trashLoose"}

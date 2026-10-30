@@ -24,6 +24,7 @@ server/src/**/*.d.ts
 server/src/**/*.d.ts.map
 server/src/types/**/*.d.ts
 !server/src/types/wawoff2.d.ts
+!server/src/types/svg-path-outline.d.ts
 
 # Editor directories and files
 .vscode/*

@@ -211,28 +211,20 @@ describe("dropping icons", () => {
 });
 
 describe("the Uncategorized menu", () => {
-  it("offers rename and move-to-trash to the owner, with the group's own name shown", async () => {
+  it("omits rename while keeping reset-name and move-to-trash actions", async () => {
     setup({ canManage: true, uncategorizedName: "Loose", onRenameUncategorized: vi.fn().mockResolvedValue(undefined), onTrashUncategorized: vi.fn().mockResolvedValue(undefined) });
     expect(screen.getByRole("button", { name: /^Loose/ })).toHaveTextContent("4");
     await userEvent.click(screen.getByRole("button", { name: "Actions for Loose" }));
-    expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toEqual(["Rename", "Reset name", "Move all to trash"]);
+    expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toEqual(["Reset name", "Move all to trash"]);
+    expect(screen.queryByRole("menuitem", { name: "Rename" })).not.toBeInTheDocument();
   });
 
-  it("renames through a dialog and resets the name", async () => {
+  it("resets the custom name", async () => {
     const onRenameUncategorized = vi.fn().mockResolvedValue(undefined);
     setup({ canManage: true, uncategorizedName: "Loose", onRenameUncategorized, onTrashUncategorized: vi.fn() });
     await userEvent.click(screen.getByRole("button", { name: "Actions for Loose" }));
-    await userEvent.click(screen.getByRole("menuitem", { name: "Rename" }));
-    const dialog = screen.getByRole("dialog", { name: "Rename “Loose”" });
-    const input = within(dialog).getByRole("textbox");
-    expect(input).toHaveValue("Loose");
-    await userEvent.clear(input);
-    await userEvent.type(input, "Misc");
-    await userEvent.click(within(dialog).getByRole("button", { name: "Rename" }));
-    expect(onRenameUncategorized).toHaveBeenCalledWith("Misc");
-    await userEvent.click(screen.getByRole("button", { name: "Actions for Loose" }));
     await userEvent.click(screen.getByRole("menuitem", { name: "Reset name" }));
-    expect(onRenameUncategorized).toHaveBeenLastCalledWith("");
+    expect(onRenameUncategorized).toHaveBeenCalledWith("");
   });
 
   it("asks before moving everything to the trash, then does it", async () => {
