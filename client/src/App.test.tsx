@@ -46,13 +46,19 @@ const user = (over: Partial<CurrentUser> = {}): CurrentUser => ({
 
 function renderApp(path = "/") {
   return render(
+    appTree(path),
+  );
+}
+
+function appTree(path = "/") {
+  return (
     <ThemeProvider>
       <ToastProvider>
         <MemoryRouter initialEntries={[path]}>
           <App />
         </MemoryRouter>
       </ToastProvider>
-    </ThemeProvider>,
+    </ThemeProvider>
   );
 }
 
@@ -158,6 +164,18 @@ describe("signed in", () => {
   it("opens a project workspace at /projects/:id", () => {
     renderApp("/projects/p1/trash");
     expect(screen.getByRole("heading", { level: 1, name: "Project workspace" })).toBeInTheDocument();
+  });
+
+  it("shows the dashboard first when a user signs in from a project URL", () => {
+    auth.currentUser = null;
+    const app = renderApp("/projects/p1/trash");
+    expect(screen.queryByRole("heading", { level: 1, name: "Project workspace" })).not.toBeInTheDocument();
+
+    auth.currentUser = user();
+    app.rerender(appTree("/projects/p1/trash"));
+
+    expect(screen.getByRole("heading", { level: 1, name: "Your projects" })).toBeInTheDocument();
+    expect(reloadPage).toHaveBeenCalledOnce();
   });
 
   it("sends unknown addresses to the dashboard", () => {
