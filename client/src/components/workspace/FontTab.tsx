@@ -62,9 +62,9 @@ export default function FontTab() {
   const startCodepointRef = useRef(startCodepoint);
   const [reassignCodepoints, setReassignCodepoints] = useState(false);
   const [formats, setFormats] = useState<FontFormat[]>(defaults.formats);
-  const [fontHeight, setFontHeight] = useState(String(defaults.fontHeight));
-  const [descent, setDescent] = useState(String(defaults.descent));
-  const [normalize, setNormalize] = useState(defaults.normalize);
+  const [fontHeight] = useState(String(defaults.fontHeight));
+  const [descent] = useState(String(defaults.descent));
+  const [normalize] = useState(defaults.normalize);
   const [building, setBuilding] = useState(false);
   const [fontCodepointOverrides, setFontCodepointOverrides] = useState<Record<string, string>>({});
   const [downloading, setDownloading] = useState(false);
