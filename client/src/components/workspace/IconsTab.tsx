@@ -68,7 +68,7 @@ export default function IconsTab() {
   const icons = useResource(`icons:${filterKey}:${limit}:${iconsVersion}`, () => listIcons(project.id, params));
   const shown = icons.data?.icons ?? [];
   const total = icons.data?.total ?? 0;
-  // The selection is intentionally not pruned against the loaded list: the user's instruction is that nothing except "Clear selection" empties it. Bulk actions report matched < requested when an icon is gone, and stale ids in the selection are harmless until the user clears them.
+  // Keep selection stable across list refreshes; a completed action or "Clear selection" explicitly consumes it.
   const currentFolderId = selectedFolder === "all" || selectedFolder === "root" ? null : selectedFolder;
 
   const refreshAll = () => {
@@ -81,6 +81,7 @@ export default function IconsTab() {
     setBusy(true);
     try {
       await action();
+      selection.clear();
     } catch (err) {
       showToast(err instanceof Error ? err.message : failure, "error");
     } finally {
@@ -92,6 +93,7 @@ export default function IconsTab() {
   async function buildSelected() {
     const iconIds = selection.ids;
     if (project.purpose !== "font") {
+      selection.clear();
       navigate(`/projects/${project.id}/sprite`, { state: { iconIds } });
       return;
     }
@@ -256,6 +258,7 @@ export default function IconsTab() {
         onClose={() => setDialog(null)}
         onSubmit={async (folderId) => {
           const result = await batchMoveIcons(project.id, selection.ids, folderId);
+          selection.clear();
           refreshAll();
           showToast(`Moved ${pluralize(result.matched, "icon")}.`, "success");
         }}
@@ -266,6 +269,7 @@ export default function IconsTab() {
         onClose={() => setDialog(null)}
         onSubmit={async (tags, mode) => {
           const result = await batchTagIcons(project.id, selection.ids, tags, mode);
+          selection.clear();
           refreshAll();
           showToast(`Updated tags on ${pluralize(result.matched, "icon")}.`, "success");
         }}
@@ -280,6 +284,7 @@ export default function IconsTab() {
         onConfirm={async () => {
           const ids = selection.ids;
           const result = await batchDeleteIcons(project.id, ids);
+          selection.clear();
           refreshAll();
           showToast(`Moved ${pluralize(result.matched, "icon")} to the trash.`, "success", [
             {

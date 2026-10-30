@@ -19,7 +19,7 @@ export type WorkspaceContextValue = {
   refreshIcons: () => void;
   // Where the project header wants the Upload icons button. Absent outside the project page.
   actionsSlot?: HTMLElement | null;
-  // The icons the user has ticked on the Icons screen. Shared across tabs so a selection survives tab navigation, a folder change or a list refresh; only "Clear selection" empties it.
+  // The icons ticked on the Icons screen. Shared across tabs and retained through navigation, folder changes and list refreshes until cleared manually or consumed by a bulk action.
   selection: Selection;
 };
 

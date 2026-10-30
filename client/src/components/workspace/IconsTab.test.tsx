@@ -334,13 +334,13 @@ describe("selection", () => {
     expect(screen.getByRole("checkbox", { name: "Select Alpha" })).toBeChecked();
   });
 
-  it("keeps the selection even when the refreshed list no longer contains the selected icons (only Clear selection empties it)", async () => {
+  it("keeps the selection when a refreshed list no longer contains the selected icons", async () => {
     const { rerender } = setup();
     await screen.findByRole("button", { name: "Open Alpha" });
     await userEvent.click(screen.getByRole("checkbox", { name: "Select Alpha" }));
     await userEvent.click(screen.getByRole("checkbox", { name: "Select Beta" }));
     expect(screen.getByText("2 icons selected")).toBeInTheDocument();
-    // After the bulk-trash refresh, only Gamma is left, but the selection is not auto-pruned.
+    // A list refresh by itself does not consume the selection.
     listIcons.mockResolvedValue(reply([makeIcon({ id: "c", name: "Gamma", hasStroke: true })]));
     rerender({ iconsVersion: 1 });
     await screen.findByRole("button", { name: "Open Gamma" });
@@ -390,6 +390,27 @@ describe("bulk actions", () => {
     expect(ctx.refreshFolders).toHaveBeenCalled();
     expect(ctx.refreshProject).toHaveBeenCalled();
   };
+  const expectSelectionCleared = () => {
+    expect(screen.queryByRole("region", { name: "Selected icons" })).not.toBeInTheDocument();
+    const selectAll = screen.getByRole("checkbox", { name: "Select all 3 shown" });
+    expect(selectAll).not.toBeChecked();
+    expect(selectAll).toHaveProperty("indeterminate", false);
+  };
+
+  it("clears the bulk bar and select-all checkbox after a successful action", async () => {
+    vi.mocked(iconsApi.batchOptimizeIcons).mockResolvedValue({ requested: 3, matched: 3, optimized: 3, bytesBefore: 300, bytesAfter: 150, failed: [] });
+    setup();
+    await screen.findByRole("button", { name: "Open Alpha" });
+    const selectAll = screen.getByRole("checkbox", { name: "Select all 3 shown" });
+    await userEvent.click(selectAll);
+    expect(selectAll).toBeChecked();
+    expect(screen.getByRole("region", { name: "Selected icons" })).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Optimize" }));
+
+    expect(await screen.findByText("Optimized 3 of 3 icons, 50% smaller.")).toBeInTheDocument();
+    expectSelectionCleared();
+  });
 
   it("moves the selection to a folder", async () => {
     vi.mocked(iconsApi.batchMoveIcons).mockResolvedValue({ requested: 2, matched: 2 });
@@ -400,6 +421,7 @@ describe("bulk actions", () => {
     await userEvent.click(within(dialog).getByRole("button", { name: "Move" }));
     expect(iconsApi.batchMoveIcons).toHaveBeenCalledWith("p1", ["a", "b"], "ui");
     expect(await screen.findByText("Moved 2 icons.")).toBeInTheDocument();
+    expectSelectionCleared();
     refreshed(ctx);
   });
 
@@ -411,6 +433,7 @@ describe("bulk actions", () => {
     await userEvent.click(screen.getByRole("button", { name: "Apply" }));
     expect(iconsApi.batchTagIcons).toHaveBeenCalledWith("p1", ["a", "b"], ["brand"], "add");
     expect(await screen.findByText("Updated tags on 2 icons.")).toBeInTheDocument();
+    expectSelectionCleared();
     refreshed(ctx);
   });
 
@@ -419,6 +442,7 @@ describe("bulk actions", () => {
     const ctx = await selectTwo();
     await userEvent.click(screen.getByRole("button", { name: "Optimize" }));
     expect(await screen.findByText("Optimized 2 of 2 icons, 40% smaller.")).toBeInTheDocument();
+    expectSelectionCleared();
     refreshed(ctx);
   });
 
@@ -428,9 +452,12 @@ describe("bulk actions", () => {
     await userEvent.click(screen.getByRole("button", { name: "Optimize" }));
     expect(await screen.findByText("They are already as small as they can be.")).toBeInTheDocument();
 
+    await userEvent.click(screen.getByRole("checkbox", { name: "Select Alpha" }));
+    await userEvent.click(screen.getByRole("checkbox", { name: "Select Beta" }));
     vi.mocked(iconsApi.batchOptimizeIcons).mockResolvedValueOnce({ requested: 2, matched: 2, optimized: 1, bytesBefore: 100, bytesAfter: 90, failed: [{ id: "b", message: "x" }] });
     await userEvent.click(screen.getByRole("button", { name: "Optimize" }));
     expect(await screen.findByText("1 icon could not be optimized.")).toBeInTheDocument();
+    expectSelectionCleared();
   });
 
   it("downloads the selection", async () => {
@@ -440,6 +467,7 @@ describe("bulk actions", () => {
     await userEvent.click(screen.getByRole("button", { name: "Download" }));
     expect(iconsApi.downloadIcons).toHaveBeenCalledWith("p1", ["a", "b"]);
     await waitFor(() => expect(zip.triggerBrowserDownload).toHaveBeenCalledWith(blob, "icons.zip"));
+    expectSelectionCleared();
   });
 
   it("asks before moving to the trash, then offers Undo", async () => {
@@ -452,6 +480,7 @@ describe("bulk actions", () => {
     await userEvent.click(within(dialog).getByRole("button", { name: "Move to trash" }));
     expect(iconsApi.batchDeleteIcons).toHaveBeenCalledWith("p1", ["a", "b"]);
     expect(await screen.findByText("Moved 2 icons to the trash.")).toBeInTheDocument();
+    expectSelectionCleared();
     ctx.refreshIcons.mockClear();
     await userEvent.click(screen.getByRole("button", { name: "Undo" }));
     expect(iconsApi.batchRestoreIcons).toHaveBeenCalledWith("p1", ["a", "b"]);
@@ -463,6 +492,8 @@ describe("bulk actions", () => {
     await selectTwo();
     await userEvent.click(screen.getByRole("button", { name: "Download" }));
     expect(await screen.findByText("No matching icons found.")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Selected icons" })).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "Select Alpha" })).toBeChecked();
   });
 
   it("keeps the dialog open and shows the reason when a move fails", async () => {
@@ -471,6 +502,7 @@ describe("bulk actions", () => {
     await userEvent.click(screen.getByRole("button", { name: "Move" }));
     await userEvent.click(within(screen.getByRole("dialog")).getByRole("button", { name: "Move" }));
     expect(await within(screen.getByRole("dialog")).findByText("That folder does not exist in this project.")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Selected icons" })).toBeInTheDocument();
   });
 });
 
@@ -495,6 +527,7 @@ describe("building a sprite or a font from the selection", () => {
     await userEvent.click(screen.getByRole("button", { name: "Build sprite" }));
     await waitFor(() => expect(screen.getByTestId("where").textContent).toBe("/projects/p1/sprite"));
     expect(state()).toEqual({ iconIds: ["a", "c"] });
+    expect(screen.queryByRole("region", { name: "Selected icons" })).not.toBeInTheDocument();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(fontsApi.buildFont).not.toHaveBeenCalled();
   });
@@ -510,6 +543,7 @@ describe("building a sprite or a font from the selection", () => {
     expect(fontsApi.buildFont).toHaveBeenCalledTimes(1);
     expect(fontsApi.buildFont).toHaveBeenCalledWith("p1", { scope: "selected", iconIds: ["a", "b"], formats: ["woff2", "woff", "ttf"], fontName: "FeatherIcons", prefix: "feather", baseClass: "", startCodepoint: "E001", fontHeight: 1000, descent: 0, normalize: true });
     expect(state()).toEqual({ iconIds: ["a", "b"], built: true });
+    expect(screen.queryByRole("region", { name: "Selected icons" })).not.toBeInTheDocument();
     expect(peekCachedBuild("p1")?.build.fontName).toBe("feather");
     expect(preview.loadPreviewFont).toHaveBeenCalledWith(expect.stringMatching(/^iconfont-preview-/), "AA==");
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
