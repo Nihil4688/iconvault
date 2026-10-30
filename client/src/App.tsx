@@ -1,7 +1,7 @@
 // Root App component. Signing in is required: a signed-out visitor sees the landing page, a signed-in user gets the dashboard (/) and project workspaces (/projects/:id).
 import { Loader2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { Navigate, Route, Routes } from "react-router-dom";
+import { Navigate, Route, Routes, useNavigate } from "react-router-dom";
 import LoginModal from "./components/LoginModal";
 import AppHeader from "./components/shell/AppHeader";
 import { HeaderActionsContext } from "./context/headerActionsContext";
@@ -14,6 +14,7 @@ import AdminPage from "./pages/AdminPage";
 import DashboardPage from "./pages/DashboardPage";
 import LandingPage from "./pages/LandingPage";
 import ProjectPage from "./pages/ProjectPage";
+import { reloadPage } from "./lib/navigation";
 
 const PENDING_LOGIN_TOAST_KEY = "pendingLoginToast";
 const PENDING_LOGOUT_TOAST_KEY = "pendingLogoutToast";
@@ -22,6 +23,7 @@ function App() {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const { currentUser, initializing } = useAuth();
   const { showToast } = useToast();
+  const navigate = useNavigate();
   const previousAuthKeyRef = useRef<string | null | undefined>(
     undefined,
   );
@@ -32,7 +34,9 @@ function App() {
       previousAuthKeyRef.current = currentKey;
       return;
     }
-    if (previousAuthKeyRef.current !== currentKey) {
+    const authChanged = previousAuthKeyRef.current !== currentKey;
+    previousAuthKeyRef.current = currentKey;
+    if (authChanged) {
       if (currentKey && currentUser) {
         // Stash both the email and the friendly display name so the post-reload
         // toast can greet the user with their name instead of their email
@@ -42,12 +46,13 @@ function App() {
           PENDING_LOGIN_TOAST_KEY,
           currentUser.displayName || currentUser.email,
         );
+        navigate("/", { replace: true });
       } else {
         sessionStorage.setItem(PENDING_LOGOUT_TOAST_KEY, "1");
       }
-      window.location.reload();
+      reloadPage();
     }
-  }, [currentUser, initializing]);
+  }, [currentUser, initializing, navigate]);
 
   useEffect(() => {
     if (initializing) return;
