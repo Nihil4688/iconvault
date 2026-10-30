@@ -2,8 +2,9 @@
 import { useRef, useState } from "react";
 import { DEFAULT_APPEARANCE, clampIconSize, isIconColor, type IconAppearance } from "../lib/iconAppearance";
 
-function storageKey(projectId: string, folderId: string | null): string {
-  return `project:${projectId}:folder:${folderId ?? "root"}:iconAppearance`;
+function storageKey(projectId: string, folderId: string | null | undefined): string {
+  const scope = folderId === undefined ? "all" : folderId ?? "root";
+  return `project:${projectId}:folder:${scope}:iconAppearance`;
 }
 
 function load(key: string | null): IconAppearance {
@@ -24,9 +25,9 @@ export function useIconAppearance(
   projectId: string,
   folderId?: string | null,
 ): [IconAppearance, (change: Partial<IconAppearance>) => void, (folderId: string | null) => IconAppearance] {
-  const key = folderId === undefined ? null : storageKey(projectId, folderId);
+  const key = storageKey(projectId, folderId);
   const [appearances, setAppearances] = useState<Record<string, IconAppearance>>({});
-  const appearance = key ? appearances[key] ?? load(key) : DEFAULT_APPEARANCE;
+  const appearance = appearances[key] ?? load(key);
   // The latest value, so two changes made before a re-render (a drag on the slider, then a click) do not undo each other.
   const latest = useRef({ key, appearance });
 
@@ -44,7 +45,7 @@ export function useIconAppearance(
   }
 
   function getForFolder(targetFolderId: string | null): IconAppearance {
-    if (folderId === undefined) return DEFAULT_APPEARANCE;
+    if (folderId === undefined) return appearance;
     const targetKey = storageKey(projectId, targetFolderId);
     return appearances[targetKey] ?? load(targetKey);
   }

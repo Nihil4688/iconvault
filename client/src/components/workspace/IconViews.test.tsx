@@ -131,6 +131,7 @@ describe("IconToolbar", () => {
       onSurface: vi.fn(),
       appearance: DEFAULT_APPEARANCE,
       onAppearance: vi.fn(),
+      appearanceScope: "folder" as const,
       canAdd: true,
       onUpload: vi.fn(),
       ...over,

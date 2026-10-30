@@ -113,7 +113,7 @@ describe("showing icons", () => {
     expect(listIcons).toHaveBeenLastCalledWith("p1", { sort: "newest", limit: 200, folderId: "root", includeSubfolders: false });
   });
 
-  it("does not apply folder appearances to icons in All icons", async () => {
+  it("customizes all icons without applying folder-specific appearances", async () => {
     window.localStorage.setItem("project:p1:folder:ui:iconAppearance", JSON.stringify({ size: 56, color: "#123456" }));
     listIcons.mockResolvedValue(reply([
       makeIcon({ id: "ui-icon", name: "UI icon", folderId: "ui" }),
@@ -132,14 +132,22 @@ describe("showing icons", () => {
       ["40", ""],
       ["40", ""],
     ]);
-    expect(screen.getByRole("slider", { name: "Icon size in pixels" })).toBeDisabled();
-    expect(screen.getByRole("button", { name: "Blue" })).toBeDisabled();
+    expect(screen.getByText("Changes apply to all icons.")).toBeInTheDocument();
+    expect(screen.getByRole("slider", { name: "Icon size in pixels" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Blue" })).toBeEnabled();
+
+    await userEvent.click(screen.getByRole("button", { name: "Blue" }));
+    expect(screen.getAllByTestId("svg-preview").map((preview) => preview.getAttribute("data-color"))).toEqual(["#3b82f6", "#3b82f6", "#3b82f6"]);
+    expect(window.localStorage.getItem("project:p1:folder:all:iconAppearance")).toContain("#3b82f6");
 
     await userEvent.click(screen.getByRole("button", { name: "List view" }));
-    expect(screen.getAllByTestId("svg-preview").map((preview) => preview.getAttribute("data-color"))).toEqual(["", "", ""]);
+    expect(screen.getAllByTestId("svg-preview").map((preview) => preview.getAttribute("data-color"))).toEqual(["#3b82f6", "#3b82f6", "#3b82f6"]);
 
     rerender({ selectedFolder: "ui" });
     await waitFor(() => expect(screen.getAllByTestId("svg-preview").map((preview) => preview.getAttribute("data-color"))).toEqual(["#123456", "", ""]));
+
+    rerender({ selectedFolder: "all" });
+    await waitFor(() => expect(screen.getAllByTestId("svg-preview").map((preview) => preview.getAttribute("data-color"))).toEqual(["#3b82f6", "#3b82f6", "#3b82f6"]));
   });
 
   it("shows an error with a retry", async () => {
