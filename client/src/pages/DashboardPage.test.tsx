@@ -252,6 +252,52 @@ describe("private and public", () => {
     await screen.findByRole("heading", { name: "Bravo" });
     expect(screen.queryByRole("region", { name: /Private/ })).not.toBeInTheDocument();
   });
+
+  it("shows a separate show-more button for each section with more than eight projects", async () => {
+    const projects = [
+      ...Array.from({ length: 17 }, (_, index) => makeProject({ id: `private-${index}`, name: `Private Project ${index}`, visibility: "private" })),
+      ...Array.from({ length: 10 }, (_, index) => makeProject({ id: `public-${index}`, name: `Public Project ${index}`, visibility: "public" })),
+    ];
+    listProjects.mockResolvedValue(reply(projects));
+    renderPage();
+
+    const privateSection = await screen.findByRole("region", { name: /Private/ });
+    const publicSection = screen.getByRole("region", { name: /Public/ });
+
+    const privateCards = () => within(privateSection).getAllByRole("heading", { name: /^Private Project \d+$/ });
+    const publicCards = () => within(publicSection).getAllByRole("heading", { name: /^Public Project \d+$/ });
+    expect(privateCards()).toHaveLength(8);
+    expect(publicCards()).toHaveLength(8);
+
+    const privateMore = within(privateSection).getByRole("button", { name: "Show 9 more projects" });
+    const publicMore = within(publicSection).getByRole("button", { name: "Show 2 more projects" });
+    await userEvent.click(privateMore);
+
+    expect(privateCards()).toHaveLength(17);
+    const privateLess = within(privateSection).getByRole("button", { name: "Show less projects" });
+    expect(privateLess).toBeInTheDocument();
+    expect(publicCards()).toHaveLength(8);
+    expect(publicMore).toBeInTheDocument();
+
+    await userEvent.click(privateLess);
+    expect(privateCards()).toHaveLength(8);
+    expect(within(privateSection).getByRole("button", { name: "Show 9 more projects" })).toBeInTheDocument();
+
+    await userEvent.click(publicMore);
+    expect(publicCards()).toHaveLength(10);
+    expect(within(publicSection).getByRole("button", { name: "Show less projects" })).toBeInTheDocument();
+  });
+
+  it("does not show a show-more button when a section has exactly eight projects", async () => {
+    const projects = Array.from({ length: 8 }, (_, index) => makeProject({ id: `private-${index}`, name: `Private Project ${index}`, visibility: "private" }));
+    listProjects.mockResolvedValue(reply(projects));
+    renderPage();
+
+    const privateSection = await screen.findByRole("region", { name: /Private/ });
+
+    expect(within(privateSection).getAllByRole("heading", { name: /^Private Project \d+$/ })).toHaveLength(8);
+    expect(within(privateSection).queryByRole("button", { name: /Show .* more projects/ })).not.toBeInTheDocument();
+  });
 });
 
 describe("the top bar", () => {

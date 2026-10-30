@@ -56,15 +56,26 @@ export default function ProjectCard({ project, currentUserId, onEdit, onDuplicat
       <p className="-mt-1 truncate pr-1 text-xs text-muted-foreground" title={project.description || undefined}>
         {project.description || "No description."}
       </p>
-
-      {project.sampleIcons.length > 0 && (
-        <div className="flex min-h-9 items-center gap-3 overflow-hidden rounded-lg bg-muted px-3 py-2" role="img" aria-label={`${pluralize(project.sampleIcons.length, "sample icon")}`}>
-          {project.sampleIcons.slice(0, 6).map((icon) => (
-            <SvgPreview key={icon.id} svg={icon.svg} size={18} />
-          ))}
-        </div>
-      )}
-
+      <div
+        className="flex min-h-9 items-center gap-3 overflow-hidden rounded-lg bg-muted px-3 py-2"
+        role="img"
+        aria-label={pluralize(project.sampleIcons.length, "sample icon")}
+      >
+        {project.sampleIcons.length > 0 ? (
+          <>
+            {project.sampleIcons.slice(0, 4).map((icon) => (
+              <SvgPreview key={icon.id} svg={icon.svg} size={18} />
+            ))}
+            <span className="text-xs text-muted-foreground">
+              {project.iconCount > 4 ? `+${project.iconCount - 4} more` : ""}
+            </span>
+          </>
+        ) : (
+          <p className="text-sm text-center text-muted-foreground">
+            No icons uploaded
+          </p>
+        )}
+      </div>
       <p className="truncate pt-0.5 text-[11px] text-muted-foreground">
         Created by <span className="font-medium text-foreground">{mine ? "You" : project.owner.displayName}</span>
       </p>

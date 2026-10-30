@@ -1,5 +1,5 @@
 // The signed-in home screen: every project the user can see, with filters (kept in the address, so Back works and links can be shared), create, edit, duplicate, archive and delete, plus a search that also finds icons across projects and can copy them into one of the user's projects.
-import { ChevronDown, Filter, Globe, Layers, Lock, Plus, Search, Shapes, Type } from "lucide-react";
+import { ArrowUpDown, ChevronDown, ChevronUp, Globe, Layers, Lock, Plus, Search, Shapes, Type } from "lucide-react";
 import { useContext, useState, type ChangeEvent } from "react";
 import { createPortal } from "react-dom";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
@@ -12,6 +12,7 @@ import ProjectCard from "../components/projects/ProjectCard";
 import ProjectFormDialog from "../components/projects/ProjectFormDialog";
 import { Button } from "../components/ui/Button";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
+import DropdownSelect from "../components/ui/DropdownSelect";
 import SegmentedGroup from "../components/ui/SegmentedGroup";
 import SvgPreview from "../components/ui/SvgPreview";
 import { HeaderActionsContext } from "../context/headerActionsContext";
@@ -23,6 +24,7 @@ import { cn } from "../lib/cn";
 import { pluralize } from "../lib/format";
 
 const SORT_LABELS = { updated: "Recently updated", created: "Newest", name: "Name", icons: "Most icons" } as const;
+const INITIAL_PROJECTS_PER_SECTION = 8;
 
 function oneOf<T extends string>(value: string | null, allowed: readonly T[], fallback: T): T {
   return allowed.includes(value as T) ? (value as T) : fallback;
@@ -48,6 +50,7 @@ export default function DashboardPage() {
   const [form, setForm] = useState<FormState>(null);
   const [deleting, setDeleting] = useState<ProjectSummary | null>(null);
   const [copying, setCopying] = useState<IconSearchResult | null>(null);
+  const [expandedSections, setExpandedSections] = useState({ private: false, public: false });
 
   const query: ListProjectsParams = { scope: "all", status, sort, limit: 100, ...(search ? { search } : {}) };
   const projects = useResource(`projects:${JSON.stringify(query)}`, () => listProjects(query));
@@ -126,7 +129,7 @@ export default function DashboardPage() {
   const showIcons = search.length >= 2;
 
   return (
-    <main id="main" tabIndex={-1} className="pt-[57px] outline-none">
+    <main id="main" tabIndex={-1} className="flex h-dvh flex-col overflow-hidden pt-[57px] outline-none">
       <h1 className="sr-only">Projects</h1>
       {actionsSlot ? createPortal(headerButtons, actionsSlot) : <div className="flex justify-end px-4 pt-3 sm:px-6">{headerButtons}</div>}
 
@@ -144,7 +147,7 @@ export default function DashboardPage() {
             onChange={(event) => setSearchText(event.target.value)}
             placeholder="Search projects and icons"
             autoComplete="off"
-            className="h-9 w-full rounded-lg border border-input bg-background pl-9 pr-3 text-sm placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
+            className="h-9 w-full rounded-lg border border-input bg-background pl-9 pr-3 text-sm placeholder:text-muted-foreground focus:shadow-[0_0_0_3px_rgba(21,85,224,0.5)] focus:outline-none"
           />
         </div>
 
@@ -168,31 +171,35 @@ export default function DashboardPage() {
             { value: "font", label: "Fonts", count: byVisibility.filter((project) => project.purpose === "font").length, icon: <Type aria-hidden="true" className="h-3.5 w-3.5" /> },
           ]}
         />
-        <div className="relative ml-auto">
-          <label htmlFor="dashboard-status" className="sr-only">
-            Status
-          </label>
-          <select id="dashboard-status" value={status} onChange={(event) => setFilter("status", event.target.value, "active")} className="h-9 appearance-none rounded-lg border border-input bg-background pl-3 pr-9 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring">
-            <option value="active">Active</option>
-            <option value="archived">Draft</option>
-            <option value="all">Both</option>
-          </select>
-          <ChevronDown aria-hidden="true" className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        </div>
+        <DropdownSelect
+          label="Status"
+          value={status}
+          onChange={(value) => setFilter("status", value, "active")}
+          options={[
+            { value: "active", label: "Active" },
+            { value: "archived", label: "Draft" },
+            { value: "all", label: "Both" },
+          ]}
+          rootClassName="ml-auto"
+          triggerClassName="inline-flex h-9 items-center gap-2 rounded-lg border border-input bg-background pl-3 pr-3 text-sm font-medium transition-colors hover:bg-accent"
+        >
+          {status === "archived" ? "Draft" : status === "all" ? "Both" : "Active"}
+          <ChevronDown aria-hidden="true" className="h-3.5 w-3.5 transition-transform group-aria-expanded:rotate-180" />
+        </DropdownSelect>
         {/* The sort choice is a filter icon; the list of choices opens from it. */}
-        <label className="relative inline-flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-input bg-background text-muted-foreground transition-colors hover:bg-accent hover:text-foreground has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-1 has-[:focus-visible]:outline-ring" title={`Sort: ${SORT_LABELS[sort]}`}>
-          <Filter aria-hidden="true" className="h-4 w-4" />
-          <select aria-label="Sort by" value={sort} onChange={(event) => setFilter("sort", event.target.value, "updated")} className="absolute inset-0 h-full w-full cursor-pointer opacity-0">
-            {(Object.keys(SORT_LABELS) as Array<keyof typeof SORT_LABELS>).map((value) => (
-              <option key={value} value={value}>
-                {SORT_LABELS[value]}
-              </option>
-            ))}
-          </select>
-        </label>
+        <DropdownSelect
+          label="Sort by"
+          value={sort}
+          onChange={(value) => setFilter("sort", value, "updated")}
+          options={(Object.keys(SORT_LABELS) as Array<keyof typeof SORT_LABELS>).map((value) => ({ value, label: SORT_LABELS[value] }))}
+          title={`Sort: ${SORT_LABELS[sort]}`}
+          triggerClassName="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-input bg-background text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+        >
+          <ArrowUpDown aria-hidden="true" className="h-4 w-4" />
+        </DropdownSelect>
       </div>
 
-      <div className="px-4 pb-10 pt-4 sm:px-6">
+      <div role="region" aria-label="Project results" className="min-h-0 flex-1 overflow-y-auto p-6">
       {showIcons && (
         <section aria-labelledby="icon-results-title">
           <h2 id="icon-results-title" className="text-lg font-semibold">
@@ -266,20 +273,46 @@ export default function DashboardPage() {
           <>
             {scope === "all" ? (
               // Private and Public projects each get their own section.
-              <div className="space-y-5">
-                {[
-                  { key: "private", title: "Private", icon: <Lock aria-hidden="true" className="h-4 w-4" />, items: privateList },
-                  { key: "public", title: "Public", icon: <Globe aria-hidden="true" className="h-4 w-4" />, items: publicList },
-                ]
+              <div className="space-y-8">
+                {([
+                  { key: "private", title: "Private", icon: <Lock aria-hidden="true" className="h-4 w-4 font-bold" />, items: privateList },
+                  { key: "public", title: "Public", icon: <Globe aria-hidden="true" className="h-4 w-4 font-bold" />, items: publicList },
+                ] as const)
                   .filter((group) => group.items.length > 0)
                   .map((group) => (
                     <section key={group.key} aria-labelledby={`group-${group.key}`}>
-                      <h3 id={`group-${group.key}`} className="mb-2 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-muted-foreground">
+                      <h3 id={`group-${group.key}`} className="mb-2 flex items-center gap-2 text-sm font-bold text-foreground uppercase tracking-wide">
                         {group.icon}
                         {group.title}
                         <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium normal-case tracking-normal">{group.items.length}</span>
                       </h3>
-                      {renderCards(group.items)}
+                      {renderCards(
+                        expandedSections[group.key]
+                          ? group.items
+                          : group.items.slice(0, INITIAL_PROJECTS_PER_SECTION),
+                      )}
+                      {group.items.length > INITIAL_PROJECTS_PER_SECTION && (
+                        <div className="flex justify-center">
+                        <Button
+                          variant="outline-primary"
+                          className="mt-3 gap-2 border-primary/20 bg-primary/5"
+                          onClick={() => setExpandedSections((expanded) => ({ ...expanded, [group.key]: !expanded[group.key] }))}
+                        >
+                          {expandedSections[group.key] ? (
+                            <>
+                              Show less projects
+                              <ChevronUp aria-hidden="true" className="h-4 w-4" />
+                            </>
+                          ) : (
+                            <>
+                              Show {group.items.length - INITIAL_PROJECTS_PER_SECTION} more{" "}
+                              {group.items.length - INITIAL_PROJECTS_PER_SECTION === 1 ? "project" : "projects"}
+                              <ChevronDown aria-hidden="true" className="h-4 w-4" />
+                            </>
+                          )}
+                        </Button>
+                        </div>
+                      )}
                     </section>
                   ))}
               </div>
