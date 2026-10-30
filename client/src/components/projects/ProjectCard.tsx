@@ -7,7 +7,7 @@ import ActionMenu, { type MenuAction } from "../ui/ActionMenu";
 import Badge from "../ui/Badge";
 import SvgPreview from "../ui/SvgPreview";
 import ProjectAvatar from "./ProjectAvatar";
-import { PurposeBadge, VisibilityBadge } from "./ProjectBadges";
+import { PurposeBadge } from "./ProjectBadges";
 
 export type ProjectCardActions = {
   onEdit: (project: ProjectSummary) => void;
@@ -37,7 +37,6 @@ export default function ProjectCard({ project, currentUserId, onEdit, onDuplicat
     <li className="relative flex flex-col gap-2.5 rounded-xl border border-border bg-card p-3.5 text-card-foreground shadow-sm transition-shadow focus-within:shadow-md hover:shadow-md">
       <div className="flex justify-between">
         <div className="flex flex-wrap items-center gap-1.5">
-          <VisibilityBadge visibility={project.visibility} />
           <PurposeBadge purpose={project.purpose} />
           {project.isArchived && <Badge icon={<Archive aria-hidden="true" className="h-3 w-3" />}>Draft</Badge>}
         </div>
