@@ -75,6 +75,18 @@ describe("loading", () => {
 });
 
 describe("details", () => {
+  it("uses the icon's folder-specific size and colour in its preview", async () => {
+    const key = "project:p1:folder:ui:iconAppearance";
+    window.localStorage.removeItem(key);
+    window.localStorage.setItem(key, JSON.stringify({ size: 64, color: "#123456" }));
+    setup({ projectId: "p1" });
+
+    const preview = await screen.findByRole("img", { name: "Arrow Left at 64 pixels" });
+
+    expect(preview).toHaveStyle({ width: "64px", height: "64px", color: "#123456" });
+    window.localStorage.removeItem(key);
+  });
+
   it("shows size and savings, canvas, dates", async () => {
     setup();
     await ready();
@@ -172,7 +184,7 @@ describe("details", () => {
 });
 
 describe("preview", () => {
-  it("shows the icon at the project-wide size, with no size buttons or background switch of its own", async () => {
+  it("shows the icon at its folder-specific size, with no size buttons or background switch of its own", async () => {
     setup();
     await ready();
     expect(screen.getByRole("img", { name: "Arrow Left at 40 pixels" })).toBeInTheDocument();
@@ -190,11 +202,13 @@ describe("preview", () => {
   });
 
   it("follows the size chosen in the Icons toolbar", async () => {
-    window.localStorage.setItem("iconAppearance", JSON.stringify({ size: 72, color: "", style: "natural" }));
-    setup();
+    const key = "project:p1:folder:ui:iconAppearance";
+    window.localStorage.removeItem(key);
+    window.localStorage.setItem(key, JSON.stringify({ size: 72, color: "", style: "natural" }));
+    setup({ projectId: "p1" });
     await ready();
     expect(screen.getByRole("img", { name: "Arrow Left at 72 pixels" })).toBeInTheDocument();
-    window.localStorage.removeItem("iconAppearance");
+    window.localStorage.removeItem(key);
   });
 });
 

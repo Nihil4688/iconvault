@@ -1,4 +1,4 @@
-// The panel that opens when an icon is clicked. Preview at the project-wide icon size and colour (set in the Icons toolbar) on the background chosen there; quick actions (copy as SVG, React or Vue, download, optimize, move to trash); and three tabs: Details (name, folder, tags, codepoint), Code (edit the SVG with a live preview, and the generated snippets) and Versions (restore an earlier state). People who cannot edit the project see everything read-only.
+// The panel that opens when an icon is clicked. Preview at the icon's folder-specific size and colour on the background chosen in the toolbar; quick actions (copy as SVG, React or Vue, download, optimize, move to trash); and three tabs: Details (name, folder, tags, codepoint), Code (edit the SVG with a live preview, and the generated snippets) and Versions (restore an earlier state). People who cannot edit the project see everything read-only.
 import { Copy, Download, Sparkles, Trash2 } from "lucide-react";
 import { useState, type FormEvent } from "react";
 import { deleteIcon, downloadIcon, getIcon, optimizeIcon, restoreIcon, restoreVersion, updateIcon } from "../../api/icons";
@@ -76,7 +76,7 @@ type PanelProps = Omit<IconDrawerProps, "iconId"> & { icon: IconDetail; tab: Tab
 function IconPanel({ projectId, icon, tab, onTab, reload, canEdit, folders, idPrefix, purpose = "font", onClose, onChanged }: PanelProps) {
   const { showToast } = useToast();
   const [surface] = usePersistentChoice(projectId ?? "unknown", "iconSurface", SURFACES, "theme");
-  const [appearance] = useIconAppearance(projectId ?? "unknown");
+  const [appearance] = useIconAppearance(projectId ?? "unknown", icon.folderId);
   const size = appearance.size;
   const [busy, setBusy] = useState<string | null>(null);
   const warnings = iconWarnings(icon);

@@ -1,5 +1,5 @@
 // Tests for the icon cards, the table view, the toolbar and the bulk bar with its dialogs.
-import { cleanup, fireEvent, render, renderHook, screen, waitFor, within } from "@testing-library/react";
+import { act, cleanup, fireEvent, render, renderHook, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { describe, expect, it, vi } from "vitest";
 import { useIconAppearance } from "../../hooks/useIconAppearance";
@@ -73,7 +73,7 @@ describe("IconList", () => {
   const icons = [makeIcon({ id: "i1", name: "Left", folderId: "ar", tags: ["nav", "arrow"], byteSize: 300, hasStroke: true, hasText: true }), makeIcon({ id: "i2", name: "Plain", folderId: null, hasGradient: true })];
 
   function setup() {
-    const props = { icons, folders, isSelected: (id: string) => id === "i2", surface: "theme" as const, appearance: DEFAULT_APPEARANCE, canDrag: true, dragIds: (id: string) => [id], onToggle: vi.fn(), onOpen: vi.fn() };
+    const props = { icons, folders, isSelected: (id: string) => id === "i2", surface: "theme" as const, appearanceForFolder: () => DEFAULT_APPEARANCE, canDrag: true, dragIds: (id: string) => [id], onToggle: vi.fn(), onOpen: vi.fn() };
     render(<IconList {...props} />);
     return props;
   }
@@ -284,13 +284,32 @@ describe("IconToolbar", () => {
 });
 
 describe("useIconAppearance", () => {
-  it("ignores a previously saved style override", () => {
-    window.localStorage.setItem("project:p1:iconAppearance", JSON.stringify({ size: 48, color: "#123456", style: "wireframe" }));
+  it("keeps appearance changes scoped to their folder", () => {
+    const keys = ["project:p1:folder:ui:iconAppearance", "project:p1:folder:assets:iconAppearance"];
+    keys.forEach((key) => window.localStorage.removeItem(key));
+    const { result, rerender } = renderHook(({ folderId }) => useIconAppearance("p1", folderId), { initialProps: { folderId: "ui" } });
 
-    const { result } = renderHook(() => useIconAppearance("p1"));
+    act(() => result.current[1]({ size: 52, color: "#123456" }));
+    expect(result.current[0]).toEqual({ size: 52, color: "#123456" });
+
+    rerender({ folderId: "assets" });
+    expect(result.current[0]).toEqual(DEFAULT_APPEARANCE);
+
+    rerender({ folderId: "ui" });
+    expect(result.current[0]).toEqual({ size: 52, color: "#123456" });
+    keys.forEach((key) => window.localStorage.removeItem(key));
+  });
+
+  it("loads the selected folder's appearance and ignores legacy project-wide settings", () => {
+    const keys = ["project:p1:iconAppearance", "project:p1:folder:ui:iconAppearance"];
+    keys.forEach((key) => window.localStorage.removeItem(key));
+    window.localStorage.setItem("project:p1:iconAppearance", JSON.stringify({ size: 72, color: "#000000" }));
+    window.localStorage.setItem("project:p1:folder:ui:iconAppearance", JSON.stringify({ size: 48, color: "#123456", style: "wireframe" }));
+
+    const { result } = renderHook(() => useIconAppearance("p1", "ui"));
 
     expect(result.current[0]).toEqual({ size: 48, color: "#123456" });
-    window.localStorage.removeItem("project:p1:iconAppearance");
+    keys.forEach((key) => window.localStorage.removeItem(key));
   });
 });
 

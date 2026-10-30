@@ -17,7 +17,7 @@ import { READ_ONLY, makeDetail, makeFolder, makeIcon } from "../../test/fixtures
 import * as zip from "../../utils/zipBundle";
 import IconsTab from "./IconsTab";
 
-vi.mock("../ui/SvgPreview", () => ({ default: () => null }));
+vi.mock("../ui/SvgPreview", () => ({ default: ({ size, color }: { size: number; color?: string }) => <span data-testid="svg-preview" data-size={size} data-color={color ?? ""} /> }));
 vi.mock("../../api/icons");
 vi.mock("../../api/fonts");
 vi.mock("../../lib/fontPreview", async (importOriginal) => ({ ...(await importOriginal<typeof import("../../lib/fontPreview")>()), loadPreviewFont: vi.fn(), unloadPreviewFont: vi.fn() }));
@@ -111,6 +111,35 @@ describe("showing icons", () => {
     setup({ selectedFolder: "root" });
     await screen.findByRole("button", { name: "Open Alpha" });
     expect(listIcons).toHaveBeenLastCalledWith("p1", { sort: "newest", limit: 200, folderId: "root", includeSubfolders: false });
+  });
+
+  it("does not apply folder appearances to icons in All icons", async () => {
+    window.localStorage.setItem("project:p1:folder:ui:iconAppearance", JSON.stringify({ size: 56, color: "#123456" }));
+    listIcons.mockResolvedValue(reply([
+      makeIcon({ id: "ui-icon", name: "UI icon", folderId: "ui" }),
+      makeIcon({ id: "nested-icon", name: "Nested icon", folderId: "ar" }),
+      makeIcon({ id: "other-icon", name: "Other icon", folderId: "assets" }),
+    ]));
+    const { rerender } = setup({
+      folderList: { folders: [makeFolder({ id: "ui", name: "UI" }), makeFolder({ id: "ar", name: "Arrows", parentId: "ui" }), makeFolder({ id: "assets", name: "Assets" })], uncategorizedCount: 0 },
+      selectedFolder: "all",
+    });
+
+    await screen.findByRole("button", { name: "Open Other icon" });
+
+    expect(screen.getAllByTestId("svg-preview").map((preview) => [preview.getAttribute("data-size"), preview.getAttribute("data-color")])).toEqual([
+      ["40", ""],
+      ["40", ""],
+      ["40", ""],
+    ]);
+    expect(screen.getByRole("slider", { name: "Icon size in pixels" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Blue" })).toBeDisabled();
+
+    await userEvent.click(screen.getByRole("button", { name: "List view" }));
+    expect(screen.getAllByTestId("svg-preview").map((preview) => preview.getAttribute("data-color"))).toEqual(["", "", ""]);
+
+    rerender({ selectedFolder: "ui" });
+    await waitFor(() => expect(screen.getAllByTestId("svg-preview").map((preview) => preview.getAttribute("data-color"))).toEqual(["#123456", "", ""]));
   });
 
   it("shows an error with a retry", async () => {
