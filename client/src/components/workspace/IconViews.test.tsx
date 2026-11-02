@@ -41,9 +41,10 @@ describe("IconCard", () => {
     expect(screen.getByRole("checkbox", { name: "Select Arrow Left" })).toBeChecked();
   });
 
-  it("omits stroke badges while keeping other font-conversion warnings", () => {
-    setup({ icon: makeIcon({ hasStroke: true, hasText: true }) });
+  it("omits stroke and gradient badges while keeping text warnings", () => {
+    setup({ icon: makeIcon({ hasStroke: true, hasGradient: true, hasText: true }) });
     expect(screen.queryByText("Stroke")).not.toBeInTheDocument();
+    expect(screen.queryByText("Gradient")).not.toBeInTheDocument();
     expect(screen.getByText("Text")).toBeInTheDocument();
     expect(screen.queryByText("Gradient")).not.toBeInTheDocument();
   });
@@ -97,7 +98,7 @@ describe("IconList", () => {
     expect(row).toHaveTextContent("Text");
     const plain = screen.getByRole("button", { name: "Plain" }).closest("tr") as HTMLElement;
     expect(within(plain).getByText("Project root")).toBeInTheDocument();
-    expect(within(plain).getByText("Gradient")).toBeInTheDocument();
+    expect(plain).not.toHaveTextContent("Gradient");
   });
 
   it("selects and opens", async () => {
@@ -131,6 +132,7 @@ describe("IconToolbar", () => {
       onSurface: vi.fn(),
       appearance: DEFAULT_APPEARANCE,
       onAppearance: vi.fn(),
+      appearanceScope: "folder" as const,
       canAdd: true,
       onUpload: vi.fn(),
       ...over,

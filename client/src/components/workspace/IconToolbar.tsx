@@ -21,6 +21,7 @@ type IconToolbarProps = {
   onSurface: (surface: Surface) => void;
   appearance: IconAppearance;
   onAppearance: (change: Partial<IconAppearance>) => void;
+  appearanceScope: "all" | "folder";
   // When set, the Upload icons button is placed in the project header instead of in this toolbar.
   actionsHost?: HTMLElement | null;
   canAdd: boolean;
@@ -31,7 +32,7 @@ type IconToolbarProps = {
 
 const SORT_LABELS: Record<IconSort, string> = { newest: "Newest", oldest: "Oldest", name: "Name A–Z", "name-desc": "Name Z–A", largest: "Largest" };
 
-export default function IconToolbar({ search, onSearch, sort, onSort, view, onView, surface, onSurface, appearance, onAppearance, actionsHost, canAdd, onUpload, disabled = false, appearanceDisabled = false }: IconToolbarProps) {
+export default function IconToolbar({ search, onSearch, sort, onSort, view, onView, surface, onSurface, appearance, onAppearance, appearanceScope, actionsHost, canAdd, onUpload, disabled = false, appearanceDisabled = false }: IconToolbarProps) {
 
 
   const actions = (
@@ -84,7 +85,7 @@ export default function IconToolbar({ search, onSearch, sort, onSort, view, onVi
             </div>
           </fieldset>
           <p id="appearance-scope-help" className={cn("text-xs text-muted-foreground", !appearanceDisabled && "sr-only")}>
-            {appearanceDisabled ? "Select a folder to customize its icons." : "Changes apply only to icons in this folder."}
+            {appearanceDisabled ? "Select a folder to customize its icons." : appearanceScope === "all" ? "Changes apply to all icons." : "Changes apply only to icons in this folder."}
           </p>
           <label className="relative inline-flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-input bg-background text-muted-foreground transition-colors hover:bg-accent hover:text-foreground has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-1 has-[:focus-visible]:outline-ring" title={`Sort: ${SORT_LABELS[sort]}`}>
             <ArrowUpDown aria-hidden="true" className="h-4 w-4" />
