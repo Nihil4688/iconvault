@@ -52,7 +52,7 @@ function UploadForm({ projectId, prefix, folders, defaultFolderId, onClose, onUp
   const [pasteCode, setPasteCode] = useState("");
   const [folderId, setFolderId] = useState(defaultFolderId ?? "");
   const [strategy, setStrategy] = useState<DuplicateStrategy>("rename");
-  const [optimize, setOptimize] = useState(false);
+  const [optimize, setOptimize] = useState(true);
   const [tagText, setTagText] = useState("");
   const [busy, setBusy] = useState(false);
   const [progress, setProgress] = useState<{ done: number; total: number } | null>(null);
@@ -80,20 +80,6 @@ function UploadForm({ projectId, prefix, folders, defaultFolderId, onClose, onUp
     return "created" in result;
   }
 
-  function uploadKey(file: File): string {
-    const name = file.name.replace(/\.svg$/i, "").replace(/\s+/g, " ").trim().slice(0, 100).trim();
-    const key = name
-      .normalize("NFKD")
-      .replace(/[\u0300-\u036f]/g, "")
-      .toLowerCase()
-      .replace(/[^a-z0-9_-]+/g, "-")
-      .replace(/-{2,}/g, "-")
-      .replace(/^[-_]+|[-_]+$/g, "")
-      .slice(0, 100)
-      .replace(/[-_]+$/g, "");
-    return key || "icon";
-  }
-
   async function processFiles(selected: File[]) {
     if (selected.length === 0) return;
     setBusy(true);
@@ -118,25 +104,9 @@ function UploadForm({ projectId, prefix, folders, defaultFolderId, onClose, onUp
       const fonts = prepared.flatMap((item) => item.font ? [item.font] : []);
 
       const batches = toBatches(uploadable);
-      const uniqueSvgBatches = fonts.length === 0
-        && uploadable.every((file) => /\.svg$/i.test(file.name))
-        && new Set(uploadable.map(uploadKey)).size === uploadable.length;
-      if (uniqueSvgBatches && batches.length > 1) {
-        for (let index = 0; index < batches.length; index += 2) {
-          setProgress({ done: index, total: batches.length });
-          const group = batches.slice(index, index + 2);
-          const settled = await Promise.allSettled(group.map((batch) => uploadIcons(projectId, batch, { folderId: folderId || null, strategy, optimize, tags: parseTags(tagText) })));
-          for (const result of settled) {
-            if (result.status === "fulfilled") results.push(result.value);
-          }
-          const failure = settled.find((result): result is PromiseRejectedResult => result.status === "rejected");
-          if (failure) throw failure.reason;
-        }
-      } else {
-        for (const [index, batch] of batches.entries()) {
-          setProgress({ done: index, total: batches.length });
-          results.push(await uploadIcons(projectId, batch, { folderId: folderId || null, strategy, optimize, tags: parseTags(tagText) }));
-        }
+      for (const [index, batch] of batches.entries()) {
+        setProgress({ done: index, total: batches.length });
+        results.push(await uploadIcons(projectId, batch, { folderId: folderId || null, strategy, optimize, tags: parseTags(tagText) }));
       }
       for (const font of fonts) {
         const imported = await importFont(projectId, font, null, { folderId: folderId || null, strategy, optimize, privateUseOnly: true });
@@ -262,13 +232,10 @@ function UploadForm({ projectId, prefix, folders, defaultFolderId, onClose, onUp
         <option value="skip">Skip</option>
       </SelectField>
       <TextField label="Tags" value={tagText} autoComplete="off" hint="Optional, separated by commas." onChange={(event) => setTagText(event.target.value)} />
-      <div className="self-end pb-2">
-        <label className="flex cursor-pointer items-center gap-2 text-sm">
-          <input type="checkbox" checked={optimize} onChange={(event) => setOptimize(event.target.checked)} className="h-4 w-4 accent-[hsl(var(--primary))]" />
-          Optimize to make the files smaller
-        </label>
-        <p className="mt-1 text-xs text-muted-foreground">Turn on to reduce file size; uploads may take longer.</p>
-      </div>
+      <label className="flex cursor-pointer items-center gap-2 self-end pb-2 text-sm">
+        <input type="checkbox" checked={optimize} onChange={(event) => setOptimize(event.target.checked)} className="h-4 w-4 accent-[hsl(var(--primary))]" />
+        Optimize to make the files smaller
+      </label>
     </div>
   );
 
