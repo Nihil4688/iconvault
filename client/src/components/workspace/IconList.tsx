@@ -54,7 +54,7 @@ export default function IconList({ icons, folders, isSelected, surface, appearan
         </thead>
         <tbody>
           {icons.map((icon) => {
-            const warnings = iconWarnings(icon).filter((warning) => warning !== "Stroke");
+            const warnings = iconWarnings(icon).filter((warning) => warning !== "Stroke" && warning !== "Gradient");
             const appearance = appearanceForFolder(icon.folderId);
             return (
               <tr
