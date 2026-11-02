@@ -93,9 +93,9 @@ describe("UploadDialog: files", () => {
     await userEvent.click(screen.getByRole("button", { name: "Add 2 files" }));
 
     expect(await screen.findByText("Added 2 icons.")).toBeInTheDocument();
-    expect(uploadIcons).toHaveBeenCalledWith("p1", [expect.objectContaining({ name: "home.svg" })], { folderId: null, strategy: "rename", optimize: false, tags: [] });
+    expect(uploadIcons).toHaveBeenCalledWith("p1", [expect.objectContaining({ name: "home.svg" })], { folderId: null, strategy: "rename", optimize: true, tags: [] });
     expect(importFont).toHaveBeenCalledTimes(1);
-    expect(importFont).toHaveBeenCalledWith("p1", expect.objectContaining({ name: "icons.ttf" }), null, { folderId: null, strategy: "rename", optimize: false, privateUseOnly: true });
+    expect(importFont).toHaveBeenCalledWith("p1", expect.objectContaining({ name: "icons.ttf" }), null, { folderId: null, strategy: "rename", optimize: true, privateUseOnly: true });
   });
 
   it("converts uploaded METROP icon projects to SVGs for the normal upload flow", async () => {
@@ -159,7 +159,7 @@ describe("UploadDialog: files", () => {
     const [projectId, sent, options] = uploadIcons.mock.calls[0] as [string, File[], object];
     expect(projectId).toBe("p1");
     expect(sent.map((f) => f.name)).toEqual(["a.svg", "b.svg"]);
-    expect(options).toEqual({ folderId: "ui", strategy: "skip", optimize: true, tags: ["ui", "nav"] });
+    expect(options).toEqual({ folderId: "ui", strategy: "skip", optimize: false, tags: ["ui", "nav"] });
 
     const result = await screen.findByRole("status");
     expect(result).toHaveTextContent("Added 2 icons.");
