@@ -64,6 +64,7 @@ function ProjectForm({ mode, project, onClose, onSaved }: Omit<ProjectFormDialog
     <form onSubmit={submit} noValidate className="space-y-4">
       <TextField
         label="Name"
+        required
         value={name}
         autoFocus
         maxLength={100}
@@ -77,6 +78,7 @@ function ProjectForm({ mode, project, onClose, onSaved }: Omit<ProjectFormDialog
       <TextAreaField label="Description" value={description} maxLength={500} placeholder="Optional" onChange={(event) => setDescription(event.target.value)} />
       <TextField
         label="Prefix"
+        required
         value={prefix}
         maxLength={20}
         autoComplete="off"

@@ -19,7 +19,7 @@ type RadioCardGroupProps<T extends string> = {
 export function RadioCardGroup<T extends string>({ legend, name, value, onChange, options, disabled = false, hint }: RadioCardGroupProps<T>) {
   return (
     <fieldset disabled={disabled}>
-      <legend className="mb-1 text-sm font-medium text-foreground">{legend}</legend>
+      <legend className="mb-1.5 text-sm font-medium text-foreground">{legend}</legend>
       <div className="grid gap-2 sm:grid-cols-2">
         {options.map((option) => (
           <label
@@ -54,7 +54,7 @@ type ColorSwatchesProps = {
 export function ColorSwatches({ legend, name, value, onChange, colors }: ColorSwatchesProps) {
   return (
     <fieldset>
-      <legend className="mb-1 text-sm font-medium text-foreground">{legend}</legend>
+      <legend className="mb-2 text-sm font-medium text-foreground">{legend}</legend>
       <div className="flex flex-wrap gap-2">
         {colors.map((color) => (
           <label key={color.value} title={color.name} className="relative cursor-pointer has-[:focus-visible]:rounded-full has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ring">

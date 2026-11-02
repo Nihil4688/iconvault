@@ -50,7 +50,7 @@ function NameForm({ submitLabel, initialName, onClose, onSubmit }: Pick<FolderNa
 
   return (
     <form onSubmit={submit} noValidate className="space-y-3">
-      <TextField label="Folder name" value={name} autoFocus maxLength={100} autoComplete="off" error={error ?? undefined} onChange={(event) => setName(event.target.value)} />
+      <TextField label="Folder name" value={name} autoFocus maxLength={100} required autoComplete="off" error={error ?? undefined} onChange={(event) => setName(event.target.value)} />
       <DialogFooter>
         <Button variant="secondary" onClick={onClose} disabled={busy}>
           Cancel
