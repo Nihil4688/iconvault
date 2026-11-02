@@ -107,6 +107,10 @@ export async function importSvg(projectId: Id, input: ImportInput, options: Impo
     optimize: options.optimize,
     ...(options.multipass === undefined ? {} : { multipass: options.multipass }),
   });
+  return importPreparedSvg(projectId, input, options, prepared);
+}
+
+async function importPreparedSvg(projectId: Id, input: ImportInput, options: ImportOptions, prepared: PreparedSvg): Promise<ImportOutcome> {
   const name = input.name.trim().slice(0, 100).trim() || "Icon";
   const baseSlug = slugify(name);
   const tags = normalizeTags(input.tags);
@@ -217,23 +221,57 @@ async function tryBulkImportUpload(
 
   const slugs = preparedEntries.map((entry) => entry.slug);
   if (new Set(slugs).size !== slugs.length) return null;
-  const failedIndexes = await withProjectIconWriteLock(projectId, async () => {
+  const bulkResult = await withProjectIconWriteLock(projectId, async () => {
     const currentIconCount = await Icon.countDocuments({ projectId });
-    if (currentIconCount + preparedEntries.length > quotas.iconsPerProject()) return null;
+    const existing = await Icon.find({ projectId, slug: { $in: slugs }, deletedAt: null }).select({ slug: 1 }).lean();
+    const existingSlugs = new Set(existing.map((icon) => icon.slug));
+    const conflictEntries = preparedEntries.filter((entry) => existingSlugs.has(entry.slug));
+    const bulkEntries = preparedEntries.filter((entry) => !existingSlugs.has(entry.slug));
+    const slotsNeeded = bulkEntries.length + (options.strategy === "rename" ? conflictEntries.length : 0);
+    if (currentIconCount + slotsNeeded > quotas.iconsPerProject()) return null;
 
-    const existing = await Icon.find({ projectId, slug: { $in: slugs }, deletedAt: null }).select({ _id: 1 }).lean();
-    if (existing.length > 0) return null;
+    const insertEntries = bulkEntries.map((entry) => ({ entry, name: entry.name, slug: entry.slug }));
+    if (options.strategy === "skip") {
+      for (const entry of conflictEntries) {
+        outcomes[entry.index] = { status: "skipped", name: entry.name, reason: "An icon with that name already exists." };
+      }
+    } else if (options.strategy === "rename" && conflictEntries.length > 0) {
+      const existingVariants = await Icon.find({
+        projectId,
+        deletedAt: null,
+        $or: conflictEntries.map((entry) => ({ slug: { $regex: new RegExp(`^${escapeRegExp(entry.slug)}(-\\d+)?$`) } })),
+      }).select({ slug: 1 }).lean();
+      for (const entry of conflictEntries) {
+        const base = entry.slug;
+        const taken = new Set(existingVariants
+          .map((icon) => icon.slug)
+          .filter((slug) => slug === base || new RegExp(`^${escapeRegExp(base)}-\\d+$`).test(slug)));
+        let n = 1;
+        let suffix = `-${n}`;
+        let slug = `${base.slice(0, 100 - suffix.length)}${suffix}`;
+        while (taken.has(slug)) {
+          n += 1;
+          suffix = `-${n}`;
+          slug = `${base.slice(0, 100 - suffix.length)}${suffix}`;
+        }
+        const nameSuffix = ` (${n})`;
+        const name = `${entry.name.slice(0, 100 - nameSuffix.length)}${nameSuffix}`;
+        insertEntries.push({ entry, name, slug });
+      }
+    }
+    const retryConflictEntries = options.strategy === "replace" ? conflictEntries : [];
+    if (insertEntries.length === 0) return { failedEntries: [], conflictEntries: retryConflictEntries };
 
-    const codepoints = await allocateCodepointRange(projectId, preparedEntries.length);
+    const codepoints = await allocateCodepointRange(projectId, insertEntries.length);
     if (!codepoints) return null;
 
     const tags = normalizeTags(options.tags);
-    const documents = preparedEntries.map((entry, index) => ({
+    const documents = insertEntries.map(({ entry, name, slug }, index) => ({
       _id: new mongoose.Types.ObjectId(),
       projectId,
       folderId: entry.folderId,
-      name: entry.name,
-      slug: entry.slug,
+      name,
+      slug,
       tags,
       codepoint: codepoints[index]!,
       svg: entry.prepared.svg,
@@ -261,25 +299,29 @@ async function tryBulkImportUpload(
     if (successfulIds.length > 0) {
       const inserted = await Icon.find({ _id: { $in: successfulIds } });
       const iconsById = new Map(inserted.map((icon) => [String(icon._id), icon]));
-      for (let index = 0; index < preparedEntries.length; index += 1) {
+      for (let index = 0; index < insertEntries.length; index += 1) {
         if (failed.has(index)) continue;
-        const entry = preparedEntries[index]!;
+        const { entry } = insertEntries[index]!;
         const icon = iconsById.get(String(documents[index]!._id));
         if (!icon) throw new Error(`The uploaded icon "${entry.displayName}" was not found after insertion.`);
         outcomes[entry.index] = { status: "created", icon };
       }
     }
-    return failed;
+    return {
+      failedEntries: insertEntries.filter((_, index) => failed.has(index)).map(({ entry }) => entry),
+      conflictEntries: retryConflictEntries,
+    };
   });
-  if (failedIndexes === null) return null;
+  if (bulkResult === null) return null;
 
-  const failedEntries = preparedEntries.filter((_, index) => failedIndexes.has(index));
-  const failedOutcomes = await mapWithConcurrency(failedEntries, UPLOAD_CONCURRENCY, async (entry) => {
+  const retryEntries = [...bulkResult.conflictEntries, ...bulkResult.failedEntries].sort((a, b) => a.index - b.index);
+  const retriedOutcomes = await mapWithConcurrency(retryEntries, UPLOAD_CONCURRENCY, async (entry) => {
     try {
-      return await importSvg(
+      return await importPreparedSvg(
         projectId,
         { name: entry.name, raw: entry.data, folderId: entry.folderId, tags: options.tags },
         { ...options, multipass: false },
+        entry.prepared,
       );
     } catch (err) {
       return {
@@ -289,8 +331,8 @@ async function tryBulkImportUpload(
       };
     }
   });
-  failedEntries.forEach((entry, index) => {
-    outcomes[entry.index] = failedOutcomes[index];
+  retryEntries.forEach((entry, index) => {
+    outcomes[entry.index] = retriedOutcomes[index];
   });
 
   for (const outcome of outcomes) {
