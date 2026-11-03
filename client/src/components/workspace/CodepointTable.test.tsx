@@ -46,7 +46,8 @@ describe("what it shows", () => {
 
   it("keeps the scroll box positioned, so its hidden caption cannot widen a phone page", () => {
     setup();
-    expect(screen.getByRole("table").parentElement).toHaveClass("relative", "overflow-x-auto");
+    const container = screen.getByRole("table").parentElement;
+    expect(container).toHaveClass("relative", "overflow-x-auto", "max-h-[40vh]", "overflow-y-auto");
   });
 
   it("shows a placeholder instead of the glyph when the preview font did not load", () => {

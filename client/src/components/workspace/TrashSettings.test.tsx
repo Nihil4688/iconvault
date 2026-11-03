@@ -56,12 +56,14 @@ describe("Trash", () => {
 
   it("lists trashed icons from the server", async () => {
     setup(<TrashTab />);
-    expect(screen.getByLabelText("Loading trash")).toBeInTheDocument();
+    expect(screen.getByRole("list", { name: "Loading Trash" })).toBeInTheDocument();
     expect(await screen.findByText("Alpha")).toBeInTheDocument();
     expect(listIcons).toHaveBeenCalledWith("p1", { trash: true, sort: "newest", limit: 1000 });
     expect(screen.getByText("2 icons in the trash")).toBeInTheDocument();
     expect(screen.getByRole("region", { name: "Trash" })).toHaveClass("h-full", "min-h-0");
-    expect(screen.getByText("Alpha").closest("ul")).toHaveClass("flex-1", "min-h-0", "overflow-y-auto");
+    const list = screen.getByText("Alpha").closest("ul");
+    expect(list).not.toHaveClass("flex-1");
+    expect(list).toHaveClass("max-h-[40vh]", "overflow-y-auto");
   });
 
   it("says the trash is empty", async () => {
