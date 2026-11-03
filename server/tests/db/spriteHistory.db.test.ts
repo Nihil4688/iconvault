@@ -57,6 +57,18 @@ describe("sprite build history (HTTP, throwaway database)", { skip: hasDatabase 
     assert.equal((await h.call(other.token, "DELETE", `/api/projects/${p.id}/sprite/builds/${list.body.builds[0].id}`)).status, 403);
   });
 
+  it("lets a selected-icon sprite download opt out of history or explicitly save a version", async () => {
+    const p = await makeProject("private");
+    const downloadOnly = await send(owner.token, p.id, zipOf("download only"), { scope: "selected", saveAsVersion: "false" });
+    assert.equal(downloadOnly.status, 201);
+    assert.deepEqual((await builds(owner.token, p.id)).body.builds, []);
+
+    const saved = await send(owner.token, p.id, zipOf("save version"), { scope: "selected", saveAsVersion: "true" });
+    assert.equal(saved.status, 201);
+    await send(owner.token, p.id, zipOf("save version"), { scope: "selected", saveAsVersion: "true" });
+    assert.deepEqual((await builds(owner.token, p.id)).body.builds.map((build: { version: number }) => build.version), [2, 1]);
+  });
+
   it("hides a private project's history from others and needs sign-in", async () => {
     const p = await makeProject();
     await send(owner.token, p.id, zipOf("secret"));

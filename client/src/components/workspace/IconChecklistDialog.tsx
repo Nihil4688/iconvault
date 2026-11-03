@@ -41,12 +41,12 @@ function Loader(props: Omit<IconChecklistDialogProps, "open">) {
       <div role="alert" className="rounded-xl border border-destructive/40 p-6 text-center">
         <p className="font-medium text-destructive">{icons.error.message}</p>
         <Button className="mt-3" onClick={icons.reload}>
-          Try again
+          Try Again
         </Button>
       </div>
     );
   }
-  if (!icons.data) return <div aria-busy="true" aria-label="Loading icons" className="h-48 animate-pulse rounded-xl bg-muted" />;
+  if (!icons.data) return <div aria-busy="true" aria-label="Loading Icons" className="h-48 animate-pulse rounded-xl bg-muted" />;
   return <Checklist {...props} icons={icons.data} />;
 }
 
@@ -106,7 +106,7 @@ function Checklist({ mode, folders, icons, initialIds, onClose, onConfirm }: Omi
       <div className="mt-3 flex flex-wrap items-center gap-2">
         <div className="relative min-w-48 flex-1">
           <label htmlFor="checklist-search" className="sr-only">
-            Filter the checklist by icon name or tag
+            Filter the Checklist by Icon Name or Tag
           </label>
           <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input id="checklist-search" type="search" value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Filter by icon name or tag" autoComplete="off" className="h-9 w-full rounded-lg border border-input bg-background pl-9 pr-3 text-sm placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring" />
@@ -115,7 +115,7 @@ function Checklist({ mode, folders, icons, initialIds, onClose, onConfirm }: Omi
           Folder
         </label>
         <select id="checklist-folder" value={folderFilter} onChange={(event) => setFolderFilter(event.target.value)} className="h-9 rounded-lg border border-input bg-background px-3 text-sm focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring">
-          <option value="all">All folders</option>
+          <option value="all">All Folders</option>
           <option value="root">Uncategorized</option>
           {folderOptions.map((folder) => (
             <option key={folder.id} value={folder.id}>
@@ -126,7 +126,7 @@ function Checklist({ mode, folders, icons, initialIds, onClose, onConfirm }: Omi
         <div role="group" aria-label="View" className="inline-flex gap-1 rounded-lg border border-input bg-muted p-0.5">
           <button type="button" aria-pressed={grouped} onClick={() => setGrouped((value) => !value)} className={toggleClass(grouped)}>
             <Layers aria-hidden="true" className="mr-1 inline h-3.5 w-3.5" />
-            Group by folder
+            Group by Folder
           </button>
           <button type="button" aria-pressed={view === "all"} onClick={() => setView("all")} className={toggleClass(view === "all")}>
             All ({icons.length})
@@ -140,10 +140,10 @@ function Checklist({ mode, folders, icons, initialIds, onClose, onConfirm }: Omi
       <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
         <div className="flex gap-2">
           <Button size="sm" onClick={() => setMany(visibleIds, true)} disabled={visibleIds.length === 0}>
-            Select all ({visibleIds.length})
+            Select All ({visibleIds.length})
           </Button>
           <Button size="sm" onClick={() => setMany(visibleIds, false)} disabled={visibleIds.length === 0}>
-            Deselect all
+            Deselect All
           </Button>
         </div>
         <p role="status" className="text-sm font-medium">
@@ -165,7 +165,7 @@ function Checklist({ mode, folders, icons, initialIds, onClose, onConfirm }: Omi
                   <button type="button" onClick={() => toggleGroup(group.key)} aria-expanded={open} aria-label={`${open ? "Collapse" : "Expand"} ${group.label}`} className="rounded p-0.5 hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring">
                     {open ? <ChevronDown aria-hidden="true" className="h-4 w-4" /> : <ChevronRight aria-hidden="true" className="h-4 w-4" />}
                   </button>
-                  <TriCheckbox label={`Select all in ${group.label}`} checked={chosen === ids.length} indeterminate={chosen > 0 && chosen < ids.length} onChange={(checked) => setMany(ids, checked)} />
+                  <TriCheckbox label={`Select All in ${group.label}`} checked={chosen === ids.length} indeterminate={chosen > 0 && chosen < ids.length} onChange={(checked) => setMany(ids, checked)} />
                   <FolderOpen aria-hidden="true" className="h-4 w-4 text-amber-600" />
                   <h3 className="text-sm font-semibold">{group.label}</h3>
                   <span className="text-xs text-muted-foreground">({pluralize(ids.length, "icon")})</span>
@@ -249,4 +249,3 @@ function TriCheckbox({ label, checked, indeterminate, onChange }: { label: strin
     />
   );
 }
-

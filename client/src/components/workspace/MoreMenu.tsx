@@ -77,8 +77,8 @@ export default function MoreMenu({ surface, onSurface }: { surface: Surface; onS
         More
       </button>
       {open && (
-        <div ref={menuRef} id={menuId} role="menu" aria-label="More view options" onKeyDown={onMenuKeyDown} className="absolute right-0 top-full z-30 mt-1 w-56 rounded-xl border border-border bg-popover p-1 text-popover-foreground shadow-lg">
-          <p className="px-2.5 pb-1 pt-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Preview background</p>
+        <div ref={menuRef} id={menuId} role="menu" aria-label="More View Options" onKeyDown={onMenuKeyDown} className="absolute right-0 top-full z-30 mt-1 w-56 rounded-xl border border-border bg-popover p-1 text-popover-foreground shadow-lg">
+          <p className="px-2.5 pb-1 pt-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Preview Background</p>
           {SURFACES.map((value) => (
             <button
               key={value}

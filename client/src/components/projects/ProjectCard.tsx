@@ -24,11 +24,11 @@ export default function ProjectCard({ project, currentUserId, onEdit, onDuplicat
     { label: "Duplicate", icon: <Copy aria-hidden="true" className="h-4 w-4" />, onSelect: () => onDuplicate(project) },
   ];
   if (project.access.canManage) {
-    actions.unshift({ label: "Edit details", icon: <Pencil aria-hidden="true" className="h-4 w-4" />, onSelect: () => onEdit(project) });
+    actions.unshift({ label: "Edit Details", icon: <Pencil aria-hidden="true" className="h-4 w-4" />, onSelect: () => onEdit(project) });
     actions.push(
       project.isArchived
-        ? { label: "Mark as active", icon: <ArchiveRestore aria-hidden="true" className="h-4 w-4" />, onSelect: () => onToggleArchive(project) }
-        : { label: "Mark as draft", icon: <Archive aria-hidden="true" className="h-4 w-4" />, onSelect: () => onToggleArchive(project) },
+        ? { label: "Mark as Active", icon: <ArchiveRestore aria-hidden="true" className="h-4 w-4" />, onSelect: () => onToggleArchive(project) }
+        : { label: "Mark as Draft", icon: <Archive aria-hidden="true" className="h-4 w-4" />, onSelect: () => onToggleArchive(project) },
       { label: "Delete", icon: <Trash2 aria-hidden="true" className="h-4 w-4" />, onSelect: () => onDelete(project), destructive: true },
     );
   }
@@ -59,7 +59,7 @@ export default function ProjectCard({ project, currentUserId, onEdit, onDuplicat
       <div
         className="flex min-h-9 items-center gap-3 overflow-hidden rounded-lg bg-muted px-3 py-2"
         role="img"
-        aria-label={pluralize(project.sampleIcons.length, "sample icon")}
+        aria-label={pluralize(project.sampleIcons.length, "Sample Icon")}
       >
         {project.sampleIcons.length > 0 ? (
           <>

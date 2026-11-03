@@ -1,4 +1,4 @@
-// "Sprite build history": the sprite ZIPs editors downloaded, newest first, each with a version number (the server keeps the last 20 per project). Anyone who can see the project can download one again; editors can delete them.
+// "Sprite build history": the sprite ZIPs editors chose to save, newest first, each with a version number (the server keeps the last 20 per project). Anyone who can see the project can download one again; editors can delete them.
 import { Download, FileArchive, History, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { deleteSpriteBuild, downloadSpriteBuild, listSpriteBuilds } from "../../api/sprites";
@@ -9,7 +9,7 @@ import { triggerBrowserDownload } from "../../utils/zipBundle";
 import { Button, IconButton } from "../ui/Button";
 import ConfirmDialog from "../ui/ConfirmDialog";
 
-const MODE_LABELS = { symbol: "Symbol sprite", stack: "Stack sprite", css: "Symbol sprite with CSS" } as const;
+const MODE_LABELS = { symbol: "Symbol Sprite", stack: "Stack Sprite", css: "Symbol Sprite with CSS" } as const;
 
 type SpriteHistoryProps = {
   projectId: string;
@@ -41,15 +41,15 @@ export default function SpriteHistory({ projectId, canEdit, version }: SpriteHis
     <section aria-labelledby="sprite-history" className="mt-6 rounded-2xl border border-border p-4">
       <h3 id="sprite-history" className="flex items-center gap-2 text-base font-semibold">
         <History aria-hidden="true" className="h-4 w-4 text-muted-foreground" />
-        Sprite build history
+        Sprite Build History
       </h3>
-      <p className="mt-0.5 text-sm text-muted-foreground">Every sprite ZIP you download is kept here with a version number (the last 20), so you can download it again later.</p>
+      <p className="mt-0.5 text-sm text-muted-foreground">Sprite ZIPs you save as versions are kept here (up to the last 20), so you can download them again later.</p>
 
       {builds.error && !builds.data ? (
         <p role="alert" className="mt-3 text-sm text-destructive">
           {builds.error.message}{" "}
           <button type="button" className="underline" onClick={builds.reload}>
-            Try again
+            Try Again
           </button>
         </p>
       ) : builds.loading && !builds.data ? (
@@ -57,7 +57,7 @@ export default function SpriteHistory({ projectId, canEdit, version }: SpriteHis
           Loading the history…
         </p>
       ) : list.length === 0 ? (
-        <p className="mt-3 text-sm text-muted-foreground">{canEdit ? "Nothing yet. Download a sprite ZIP and it will appear here." : "No sprite ZIPs have been kept for this project yet."}</p>
+        <p className="mt-3 text-sm text-muted-foreground">{canEdit ? "Nothing yet. Save a sprite download as a version and it will appear here." : "No sprite ZIPs have been kept for this project yet."}</p>
       ) : (
         <ul className="mt-3 space-y-2">
           {list.map((build) => (
@@ -72,11 +72,11 @@ export default function SpriteHistory({ projectId, canEdit, version }: SpriteHis
                   {formatDate(build.createdAt)} · {formatBytes(build.size)}
                 </p>
               </div>
-              <Button size="sm" icon={<Download aria-hidden="true" className="h-4 w-4" />} loading={busy === build.id} disabled={busy !== null} onClick={() => void download(build.id)} aria-label={`Download sprite v${build.version} from ${formatDate(build.createdAt)}`}>
+              <Button size="sm" icon={<Download aria-hidden="true" className="h-4 w-4" />} loading={busy === build.id} disabled={busy !== null} onClick={() => void download(build.id)} aria-label={`Download Sprite v${build.version} From ${formatDate(build.createdAt)}`}>
                 Download
               </Button>
               {canEdit && (
-                <IconButton label={`Delete sprite v${build.version} from ${formatDate(build.createdAt)}`} onClick={() => setDeleting({ id: build.id, version: build.version })}>
+                <IconButton label={`Delete Sprite v${build.version} From ${formatDate(build.createdAt)}`} onClick={() => setDeleting({ id: build.id, version: build.version })}>
                   <Trash2 aria-hidden="true" className="h-4 w-4" />
                 </IconButton>
               )}
@@ -87,7 +87,7 @@ export default function SpriteHistory({ projectId, canEdit, version }: SpriteHis
 
       <ConfirmDialog
         open={deleting !== null}
-        title={`Delete sprite version ${deleting?.version ?? ""}?`}
+        title={`Delete Sprite Version ${deleting?.version ?? ""}?`}
         message="Only this saved copy is removed. Your icons and any file you already downloaded are not affected."
         confirmLabel="Delete"
         destructive

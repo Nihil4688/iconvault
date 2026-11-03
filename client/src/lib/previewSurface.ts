@@ -5,7 +5,7 @@ export const SURFACES = ["theme", "light", "dark", "checker"] as const;
 export type Surface = (typeof SURFACES)[number];
 
 export const SURFACE_LABELS: Record<Surface, string> = {
-  theme: "Match theme",
+  theme: "Match Theme",
   light: "Light",
   dark: "Dark",
   checker: "Checkerboard",

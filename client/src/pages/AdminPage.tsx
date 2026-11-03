@@ -43,7 +43,7 @@ export default function AdminPage() {
   return (
     <main id="main" tabIndex={-1} className="mx-auto max-w-6xl px-4 pb-16 pt-[calc(57px+2rem)] outline-none">
       <AdminCrumb page="Manage users" />
-      <h1 className="mt-1 text-2xl font-bold tracking-tight">Manage users</h1>
+      <h1 className="mt-1 text-2xl font-bold tracking-tight">Manage Users</h1>
       <p className="mt-1 max-w-2xl text-sm text-muted-foreground">Everyone who has signed in. Users are created by signing in with Google or Microsoft, and there are no passwords to manage. Admins are the emails in the server’s ADMIN_EMAILS setting.</p>
 
       <AdminTabs />
@@ -51,11 +51,11 @@ export default function AdminPage() {
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
         <label htmlFor="admin-search" className="sr-only">
-          Search users
+          Search Users
         </label>
-        <input id="admin-search" type="search" value={searchText} onChange={(event) => setSearchText(event.target.value)} placeholder="Search by name or email" autoComplete="off" className="h-9 w-full max-w-sm rounded-lg border border-input bg-background px-3 text-sm placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring" />
+        <input id="admin-search" type="search" value={searchText} onChange={(event) => setSearchText(event.target.value)} placeholder="Search by Name or Email" autoComplete="off" className="h-9 w-full max-w-sm rounded-lg border border-input bg-background px-3 text-sm placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring" />
         <SegmentedGroup
-          label="Sign-in"
+          label="Sign-In"
           value={provider}
           onChange={(value) => {
             setProvider(value);
@@ -73,11 +73,11 @@ export default function AdminPage() {
         <div role="alert" className="mt-4 rounded-xl border border-destructive/40 p-6 text-center">
           <p className="font-medium text-destructive">{users.error.message}</p>
           <Button className="mt-3" onClick={users.reload}>
-            Try again
+            Try Again
           </Button>
         </div>
       ) : !users.data ? (
-        <div aria-busy="true" aria-label="Loading users" className="mt-4 h-48 animate-pulse rounded-xl bg-muted" />
+        <div aria-busy="true" aria-label="Loading Users" className="mt-4 h-48 animate-pulse rounded-xl bg-muted" />
       ) : rows.length === 0 ? (
         <p className="mt-6 rounded-xl border border-dashed border-border p-8 text-center text-sm text-muted-foreground">{search ? `No users match “${search}”.` : provider !== "all" ? "No users sign in with that provider." : "There are no users."}</p>
       ) : (
@@ -92,11 +92,11 @@ export default function AdminPage() {
               <thead className="bg-muted text-xs text-muted-foreground">
                 <tr>
                   <th scope="col" className="px-3 py-2 font-medium">User</th>
-                  <th scope="col" className="px-3 py-2 font-medium">Sign-in</th>
+                  <th scope="col" className="px-3 py-2 font-medium">Sign-In</th>
                   <th scope="col" className="px-3 py-2 text-right font-medium">Projects</th>
                   <th scope="col" className="px-3 py-2 text-right font-medium">Icons</th>
                   <th scope="col" className="px-3 py-2 text-right font-medium">Tokens</th>
-                  <th scope="col" className="px-3 py-2 font-medium">Last sign-in</th>
+                  <th scope="col" className="px-3 py-2 font-medium">Last Sign-In</th>
                   <th scope="col" className="px-3 py-2"><span className="sr-only">Actions</span></th>
                 </tr>
               </thead>

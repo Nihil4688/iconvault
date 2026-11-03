@@ -23,7 +23,7 @@ import { useResource } from "../hooks/useResource";
 import { cn } from "../lib/cn";
 import { pluralize } from "../lib/format";
 
-const SORT_LABELS = { updated: "Recently updated", created: "Newest", name: "Name", icons: "Most icons" } as const;
+const SORT_LABELS = { updated: "Recently Updated", created: "Newest", name: "Name", icons: "Most Icons" } as const;
 
 function projectColumnsForWidth(width: number): number {
   if (width >= 1280) return 5;
@@ -135,9 +135,9 @@ export default function DashboardPage() {
   const filtersActive = scope !== "all" || status !== "active" || purpose !== "all" || search !== "";
   const headerButtons = (
     <div className="flex flex-wrap items-center gap-2">
-      <input type="file" accept=".zip,application/zip" aria-label="Project export file" className="hidden" onChange={handleImportChosen} />
+      <input type="file" accept=".zip,application/zip" aria-label="Project Export File" className="hidden" onChange={handleImportChosen} />
       <Button variant="primary" className="h-9" icon={<Plus aria-hidden="true" className="h-4 w-4" />} onClick={() => setForm({ mode: "create" })}>
-        New project
+        New Project
       </Button>
     </div>
   );
@@ -152,7 +152,7 @@ export default function DashboardPage() {
       <div className="flex flex-wrap items-center gap-3 border-b border-border bg-background px-4 py-3 sm:px-6">
         <div className="relative w-64 max-w-full">
           <label htmlFor="dashboard-search" className="sr-only">
-            Search projects and icons
+            Search Projects and Icons
           </label>
           <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
@@ -160,7 +160,7 @@ export default function DashboardPage() {
             type="search"
             value={searchText}
             onChange={(event) => setSearchText(event.target.value)}
-            placeholder="Search projects and icons"
+            placeholder="Search Projects and Icons"
             autoComplete="off"
             className="h-9 w-full rounded-lg border border-input bg-background pl-9 pr-3 text-sm placeholder:text-muted-foreground focus:shadow-[0_0_0_3px_rgba(21,85,224,0.5)] focus:outline-none"
           />
@@ -181,7 +181,7 @@ export default function DashboardPage() {
           value={purpose}
           onChange={(value) => setFilter("type", value, "all")}
           options={[
-            { value: "all", label: "All types", count: byVisibility.length, icon: <Layers aria-hidden="true" className="h-3.5 w-3.5" /> },
+            { value: "all", label: "All Types", count: byVisibility.length, icon: <Layers aria-hidden="true" className="h-3.5 w-3.5" /> },
             { value: "sprite", label: "Sprites", count: byVisibility.filter((project) => project.purpose === "sprite").length, icon: <Shapes aria-hidden="true" className="h-3.5 w-3.5" /> },
             { value: "font", label: "Fonts", count: byVisibility.filter((project) => project.purpose === "font").length, icon: <Type aria-hidden="true" className="h-3.5 w-3.5" /> },
           ]}
@@ -203,7 +203,7 @@ export default function DashboardPage() {
         </DropdownSelect>
         {/* The sort choice is a filter icon; the list of choices opens from it. */}
         <DropdownSelect
-          label="Sort by"
+          label="Sort By"
           value={sort}
           onChange={(value) => setFilter("sort", value, "updated")}
           options={(Object.keys(SORT_LABELS) as Array<keyof typeof SORT_LABELS>).map((value) => ({ value, label: SORT_LABELS[value] }))}
@@ -214,11 +214,11 @@ export default function DashboardPage() {
         </DropdownSelect>
       </div>
 
-      <div role="region" aria-label="Project results" className="min-h-0 flex-1 overflow-y-auto p-6">
+      <div role="region" aria-label="Project Results" className="min-h-0 flex-1 overflow-y-auto p-6">
       {showIcons && (
         <section aria-labelledby="icon-results-title">
           <h2 id="icon-results-title" className="text-lg font-semibold">
-            Icons matching “{search}”
+            Icons Matching “{search}”
           </h2>
           <div role="status" aria-live="polite" className="mt-1 text-sm text-muted-foreground">
             {iconResults.error ? <span className="text-destructive">{iconResults.error.message}</span> : iconResults.loading && !iconResults.data ? "Searching…" : pluralize(iconResults.data?.total ?? 0, "icon") + " found"}
@@ -239,7 +239,7 @@ export default function DashboardPage() {
                       </div>
                     )}
                   </div>
-                  <Button size="sm" onClick={() => setCopying(icon)} aria-label={`Copy ${icon.name} to a project`}>
+                  <Button size="sm" onClick={() => setCopying(icon)} aria-label={`Copy ${icon.name} to a Project`}>
                     Copy
                   </Button>
                 </li>
@@ -257,7 +257,7 @@ export default function DashboardPage() {
         )}
         {!showIcons && (
           <h2 id="projects-title" className="sr-only">
-            Project list
+            Project List
           </h2>
         )}
 
@@ -265,11 +265,11 @@ export default function DashboardPage() {
           <div role="alert" className="rounded-xl border border-destructive/40 bg-card p-6 text-center">
             <p className="font-medium text-destructive">{projects.error.message}</p>
             <Button className="mt-3" onClick={projects.reload}>
-              Try again
+              Try Again
             </Button>
           </div>
         ) : projects.loading && !projects.data ? (
-          <ul aria-busy="true" aria-label="Loading projects" className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+          <ul aria-busy="true" aria-label="Loading Projects" className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
             {Array.from({ length: 10 }, (_, i) => (
               <li key={i} className="h-28 animate-pulse rounded-xl border border-border bg-muted" />
             ))}
@@ -280,7 +280,7 @@ export default function DashboardPage() {
             <p className="mt-1 text-sm text-muted-foreground">{filtersActive ? "Try a different search or filter." : "Create a project to start collecting icons."}</p>
             {!filtersActive && (
               <Button variant="primary" className="mt-4" onClick={() => setForm({ mode: "create" })}>
-                New project
+                New Project
               </Button>
             )}
           </div>
@@ -315,12 +315,12 @@ export default function DashboardPage() {
                         >
                           {expandedSections[group.key] ? (
                             <>
-                              Show less projects
+                              Show Less Projects
                               <ChevronUp aria-hidden="true" className="h-4 w-4" />
                             </>
                           ) : (
                             <>
-                              Show {group.items.length - initialProjectsPerSection} more{" "}
+                              Show {group.items.length - initialProjectsPerSection} More{" "}
                               {group.items.length - initialProjectsPerSection === 1 ? "project" : "projects"}
                               <ChevronDown aria-hidden="true" className="h-4 w-4" />
                             </>
@@ -354,7 +354,7 @@ export default function DashboardPage() {
         open={deleting !== null}
         title={`Delete “${deleting?.name ?? ""}”?`}
         message={`This permanently deletes the project with its ${pluralize(deleting?.iconCount ?? 0, "icon")}, folders and history. This cannot be undone.`}
-        confirmLabel="Delete project"
+        confirmLabel="Delete Project"
         destructive
         onClose={() => setDeleting(null)}
         onConfirm={async () => {

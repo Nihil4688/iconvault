@@ -10,7 +10,7 @@ const linkClass = ({ isActive }: { isActive: boolean }) =>
 
 export default function AdminTabs() {
   return (
-    <nav aria-label="Administration sections" className="mt-4 inline-flex min-h-9 items-center gap-1 rounded-xl border border-border bg-muted p-0.5">
+    <nav aria-label="Administration Sections" className="mt-4 inline-flex min-h-9 items-center gap-1 rounded-xl border border-border bg-muted p-0.5">
       <NavLink to="/admin" end className={linkClass}>
         Users
       </NavLink>

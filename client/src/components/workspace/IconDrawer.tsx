@@ -40,7 +40,7 @@ type IconDrawerProps = {
 
 export default function IconDrawer({ iconId, onClose, ...rest }: IconDrawerProps) {
   return (
-    <Dialog open={iconId !== null} onClose={onClose} title="Icon details" placement="drawer">
+    <Dialog open={iconId !== null} onClose={onClose} title="Icon Details" placement="drawer">
       {iconId && <DrawerBody key={iconId} iconId={iconId} onClose={onClose} {...rest} />}
     </Dialog>
   );
@@ -56,7 +56,7 @@ function DrawerBody({ iconId, onClose, ...rest }: Omit<IconDrawerProps, "iconId"
     return (
       <div role="alert" className="space-y-3">
         <p className="text-sm font-medium text-destructive">{icon.error.message}</p>
-        <Button onClick={icon.reload}>Try again</Button>
+        <Button onClick={icon.reload}>Try Again</Button>
       </div>
     );
   }
@@ -138,7 +138,7 @@ function IconPanel({ projectId, icon, tab, onTab, reload, canEdit, folders, idPr
 
       <section aria-label="Preview">
         <div className={cn("flex min-h-44 items-center justify-center rounded-xl border border-border p-6", surfaceClass(surface))} style={surfaceStyle(surface)}>
-          <SvgPreview svg={icon.svg} size={size} color={appearance.color} label={`${icon.name} at ${size} pixels`} />
+          <SvgPreview svg={icon.svg} size={size} color={appearance.color} label={`${icon.name} at ${size} Pixels`} />
         </div>
       </section>
 
@@ -161,7 +161,7 @@ function IconPanel({ projectId, icon, tab, onTab, reload, canEdit, folders, idPr
               Optimize
             </Button>
             <Button size="sm" variant="destructive" icon={<Trash2 aria-hidden="true" className="h-4 w-4" />} loading={busy === "trash"} disabled={busy !== null} onClick={trash}>
-              Move to trash
+              Move to Trash
             </Button>
           </>
         )}
@@ -174,7 +174,7 @@ function IconPanel({ projectId, icon, tab, onTab, reload, canEdit, folders, idPr
       )}
 
       <Tabs
-        label="Icon sections"
+        label="Icon Sections"
         value={tab}
         onChange={onTab}
         tabs={[
@@ -245,7 +245,7 @@ function DetailsTab({ icon, canEdit, folders, purpose, saved, onSaved }: { icon:
         <form onSubmit={submit} noValidate className="space-y-3">
           <TextField label="Name" value={name} maxLength={100} autoComplete="off" onChange={(event) => setName(event.target.value)} hint="Changing the name also changes the icon's id." />
           <SelectField label="Folder" value={folderId} onChange={(event) => setFolderId(event.target.value)}>
-            <option value="">Uncategorized (project root)</option>
+            <option value="">Uncategorized (Project Root)</option>
             {options.map((folder) => (
               <option key={folder.id} value={folder.id}>
                 {`${"  ".repeat(folder.depth)}${folder.name}`}
@@ -253,14 +253,14 @@ function DetailsTab({ icon, canEdit, folders, purpose, saved, onSaved }: { icon:
             ))}
           </SelectField>
           <TextField label="Tags" value={tagText} autoComplete="off" hint="Separated by commas." onChange={(event) => setTagText(event.target.value)} />
-          {purpose === "font" && <TextField label="Font codepoint" value={codepoint} autoComplete="off" spellCheck={false} maxLength={4} className="font-mono" hint="Optional: 4 hex digits from E000 to F8FF, for example E001. Kept the same every time a font is built." error={problem ?? undefined} onChange={(event) => setCodepoint(event.target.value)} />}
+          {purpose === "font" && <TextField label="Font Codepoint" value={codepoint} autoComplete="off" spellCheck={false} maxLength={4} className="font-mono" hint="Optional: 4 hex digits from E000 to F8FF, for example E001. Kept the same every time a font is built." error={problem ?? undefined} onChange={(event) => setCodepoint(event.target.value)} />}
           {error && (
             <p role="alert" className="text-sm font-medium text-destructive">
               {error}
             </p>
           )}
           <Button type="submit" variant="primary" loading={busy} disabled={!changed || problem !== null}>
-            Save changes
+            Save Changes
           </Button>
         </form>
       ) : (
@@ -329,7 +329,7 @@ function CodeTab({ icon, canEdit, onSaved }: { icon: IconDetail; canEdit: boolea
 
   return (
     <div className="space-y-4">
-      <TextAreaField label="SVG code" value={code} readOnly={!canEdit} rows={10} spellCheck={false} className="font-mono text-xs" onChange={(event) => setCode(event.target.value)} />
+      <TextAreaField label="SVG Code" value={code} readOnly={!canEdit} rows={10} spellCheck={false} className="font-mono text-xs" onChange={(event) => setCode(event.target.value)} />
       {canEdit && (
         <>
           <div className="flex items-center gap-3">
@@ -356,8 +356,8 @@ function CodeTab({ icon, canEdit, onSaved }: { icon: IconDetail; canEdit: boolea
 
       {react && (
         <>
-          <Snippet title="React component (TSX)" code={react} />
-          <Snippet title="Vue 3 component" code={vue} />
+          <Snippet title="React Component (TSX)" code={react} />
+          <Snippet title="Vue 3 Component" code={vue} />
         </>
       )}
     </div>
@@ -410,7 +410,7 @@ function VersionsTab({ icon, canEdit, onRestored }: { icon: IconDetail; canEdit:
   }
 
   return (
-    <ul aria-label="Earlier versions" className="divide-y divide-border rounded-lg border border-border text-sm">
+    <ul aria-label="Earlier Versions" className="divide-y divide-border rounded-lg border border-border text-sm">
       {icon.versions.map((version, index) => (
         <li key={version.id} className="flex items-center justify-between gap-3 px-3 py-2">
           <span>
@@ -420,7 +420,7 @@ function VersionsTab({ icon, canEdit, onRestored }: { icon: IconDetail; canEdit:
             </span>
           </span>
           {canEdit && (
-            <Button size="sm" loading={busy === version.id} disabled={busy !== null} onClick={() => restore(version.id)} aria-label={`Restore the version from ${formatRelative(version.createdAt)}`}>
+            <Button size="sm" loading={busy === version.id} disabled={busy !== null} onClick={() => restore(version.id)} aria-label={`Restore the Version From ${formatRelative(version.createdAt)}`}>
               Restore
             </Button>
           )}

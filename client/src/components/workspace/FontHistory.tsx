@@ -1,4 +1,4 @@
-// "Font build history": the packages editors downloaded earlier, newest first (the server keeps the last 20 per project). Anyone who can see the project can download one again; editors can delete them.
+// "Font build history": the versions editors chose to save, newest first (the server keeps the last 20 per project). Anyone who can see the project can download one again; editors can delete them.
 import { Download, FileArchive, History, Trash2 } from "lucide-react";
 import { useState } from "react";
 import { deleteFontBuild, downloadFontBuild, listFontBuilds } from "../../api/fonts";
@@ -39,15 +39,15 @@ export default function FontHistory({ projectId, canEdit, version }: FontHistory
     <section aria-labelledby="font-history" className="mt-6 rounded-2xl border border-border p-4">
       <h3 id="font-history" className="flex items-center gap-2 text-base font-semibold">
         <History aria-hidden="true" className="h-4 w-4 text-muted-foreground" />
-        Font build history
+        Font Build History
       </h3>
-      <p className="mt-0.5 text-sm text-muted-foreground">Every package you download is kept here with a version number (the last 20), so you can download it again later.</p>
+      <p className="mt-0.5 text-sm text-muted-foreground">Packages you save as versions are kept here (up to the last 20), so you can download them again later.</p>
 
       {builds.error && !builds.data ? (
         <p role="alert" className="mt-3 text-sm text-destructive">
           {builds.error.message}{" "}
           <button type="button" className="underline" onClick={builds.reload}>
-            Try again
+            Try Again
           </button>
         </p>
       ) : builds.loading && !builds.data ? (
@@ -55,7 +55,7 @@ export default function FontHistory({ projectId, canEdit, version }: FontHistory
           Loading the history…
         </p>
       ) : list.length === 0 ? (
-        <p className="mt-3 text-sm text-muted-foreground">{canEdit ? "Nothing yet. Download a font and it will appear here." : "No packages have been kept for this project yet."}</p>
+        <p className="mt-3 text-sm text-muted-foreground">{canEdit ? "Nothing yet. Save a font download as a version and it will appear here." : "No packages have been kept for this project yet."}</p>
       ) : (
         <ul className="mt-3 space-y-2">
           {list.map((build) => (
@@ -70,11 +70,11 @@ export default function FontHistory({ projectId, canEdit, version }: FontHistory
                   {formatDate(build.createdAt)} · {formatBytes(build.size)} · {build.formats.map((format) => format.toUpperCase()).join(", ")}
                 </p>
               </div>
-              <Button size="sm" icon={<Download aria-hidden="true" className="h-4 w-4" />} loading={busy === build.id} disabled={busy !== null} onClick={() => void download(build.id)} aria-label={`Download ${build.fontName} v${build.version} from ${formatDate(build.createdAt)}`}>
+              <Button size="sm" icon={<Download aria-hidden="true" className="h-4 w-4" />} loading={busy === build.id} disabled={busy !== null} onClick={() => void download(build.id)} aria-label={`Download ${build.fontName} v${build.version} From ${formatDate(build.createdAt)}`}>
                 Download
               </Button>
               {canEdit && (
-                <IconButton label={`Delete ${build.fontName} v${build.version} from ${formatDate(build.createdAt)}`} onClick={() => setDeleting({ id: build.id, fontName: build.fontName, version: build.version })}>
+                <IconButton label={`Delete ${build.fontName} v${build.version} From ${formatDate(build.createdAt)}`} onClick={() => setDeleting({ id: build.id, fontName: build.fontName, version: build.version })}>
                   <Trash2 aria-hidden="true" className="h-4 w-4" />
                 </IconButton>
               )}
@@ -85,7 +85,7 @@ export default function FontHistory({ projectId, canEdit, version }: FontHistory
 
       <ConfirmDialog
         open={deleting !== null}
-        title={`Delete version ${deleting?.version ?? ""} of “${deleting?.fontName ?? ""}”?`}
+        title={`Delete Version ${deleting?.version ?? ""} of “${deleting?.fontName ?? ""}”?`}
         message="Only this saved copy is removed. Your icons and any file you already downloaded are not affected."
         confirmLabel="Delete"
         destructive

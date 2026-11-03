@@ -25,7 +25,7 @@ export type CopyFromProjectDialogProps = {
 
 export default function CopyFromProjectDialog({ open, onClose, ...rest }: CopyFromProjectDialogProps) {
   return (
-    <Dialog open={open} onClose={onClose} title="Copy from another project" description="Pick icons from one of your projects or a public project." size="lg">
+    <Dialog open={open} onClose={onClose} title="Copy from Another Project" description="Pick icons from one of your projects or a public project." size="lg">
       <CopyFromProjectForm onClose={onClose} {...rest} />
     </Dialog>
   );
@@ -96,7 +96,7 @@ export function CopyFromProjectForm({ targetProjectId, targetFolders, defaultFol
     <form onSubmit={submit} className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-2">
         <SelectField
-          label="Copy from"
+          label="Copy From"
           value={sourceId}
           onChange={(event) => {
             setChosen(event.target.value);
@@ -111,7 +111,7 @@ export function CopyFromProjectForm({ targetProjectId, targetFolders, defaultFol
         </SelectField>
         <div>
           <label htmlFor="copy-search" className="mb-1 block text-sm font-medium">
-            Search icons
+            Search Icons
           </label>
           <input id="copy-search" type="search" value={search} onChange={(event) => setSearch(event.target.value)} autoComplete="off" className="h-9 w-full rounded-lg border border-input bg-background px-3 text-sm focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring" />
         </div>
@@ -120,7 +120,7 @@ export function CopyFromProjectForm({ targetProjectId, targetFolders, defaultFol
       <fieldset>
         <legend className="mb-1 flex w-full items-center justify-between text-sm font-medium">
           <span>Icons</span>
-          <span className="text-xs font-normal text-muted-foreground">{pluralize(pickedHere.length, "icon")} selected</span>
+          <span className="text-xs font-normal text-muted-foreground">{pluralize(pickedHere.length, "Icon")} Selected</span>
         </legend>
         {icons.error ? (
           <p role="alert" className="text-sm text-destructive">
@@ -136,7 +136,7 @@ export function CopyFromProjectForm({ targetProjectId, targetFolders, defaultFol
           <>
             <div className="mb-2 flex gap-2">
               <Button size="sm" onClick={() => setPicked(shown.map((icon) => icon.id))}>
-                Select all {shown.length}
+                Select All {shown.length}
               </Button>
               <Button size="sm" variant="ghost" onClick={() => setPicked([])} disabled={pickedHere.length === 0}>
                 Clear
@@ -161,17 +161,17 @@ export function CopyFromProjectForm({ targetProjectId, targetFolders, defaultFol
       </fieldset>
 
       <div className="grid gap-3 sm:grid-cols-2">
-        <SelectField label="Put them in" value={folderId} onChange={(event) => setFolderId(event.target.value)}>
-          <option value="">Uncategorized (project root)</option>
+        <SelectField label="Put Them In" value={folderId} onChange={(event) => setFolderId(event.target.value)}>
+          <option value="">Uncategorized (Project Root)</option>
           {folderOptions.map((folder) => (
             <option key={folder.id} value={folder.id}>
               {`${"  ".repeat(folder.depth)}${folder.name}`}
             </option>
           ))}
         </SelectField>
-        <SelectField label="If an icon with that name exists" value={strategy} onChange={(event) => setStrategy(event.target.value as DuplicateStrategy)}>
-          <option value="rename">Keep both (add a number)</option>
-          <option value="replace">Replace it</option>
+        <SelectField label="If an Icon with That Name Exists" value={strategy} onChange={(event) => setStrategy(event.target.value as DuplicateStrategy)}>
+          <option value="rename">Keep Both (Add a Number)</option>
+          <option value="replace">Replace It</option>
           <option value="skip">Skip</option>
         </SelectField>
       </div>

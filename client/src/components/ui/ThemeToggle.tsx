@@ -14,7 +14,7 @@ export default function ThemeToggle({ className }: { className?: string }) {
   const { preference, setPreference } = useTheme();
 
   return (
-    <div role="group" aria-label="Color theme" className={cn("inline-flex h-9 items-center rounded-lg border border-border bg-muted p-0.5", className)}>
+    <div role="group" aria-label="Color Theme" className={cn("inline-flex h-9 items-center rounded-lg border border-border bg-muted p-0.5", className)}>
       {THEME_PREFERENCES.map((value) => {
         const { label, Icon } = OPTIONS[value];
         const selected = preference === value;
@@ -23,7 +23,7 @@ export default function ThemeToggle({ className }: { className?: string }) {
             key={value}
             type="button"
             aria-pressed={selected}
-            title={`${label} theme`}
+            title={`${label} Theme`}
             onClick={() => setPreference(value)}
             className={cn(
               "inline-flex h-7 w-7 items-center justify-center rounded-md text-muted-foreground transition-colors",

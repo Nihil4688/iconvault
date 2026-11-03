@@ -10,12 +10,13 @@ export async function buildFont(projectId: string, input: BuildFontInput): Promi
   return data;
 }
 
-export async function downloadFont(projectId: string, input: BuildFontInput): Promise<DownloadedFile> {
-  const response = await http.post<Blob>(`${project(projectId)}/font/download`, input, { responseType: "blob" });
+export async function downloadFont(projectId: string, input: BuildFontInput, saveAsVersion?: boolean): Promise<DownloadedFile> {
+  const body = saveAsVersion === undefined ? input : { ...input, saveAsVersion };
+  const response = await http.post<Blob>(`${project(projectId)}/font/download`, body, { responseType: "blob" });
   return { blob: response.data, filename: filenameFromDisposition(response.headers["content-disposition"], "font.zip") };
 }
 
-// The font build history: packages editors downloaded earlier, newest first.
+// Saved font build versions, newest first.
 export async function listFontBuilds(projectId: string): Promise<FontBuildSummary[]> {
   const { data } = await http.get<{ builds: FontBuildSummary[] }>(`${project(projectId)}/font/builds`);
   return data.builds;

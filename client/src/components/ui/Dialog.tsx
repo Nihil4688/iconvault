@@ -84,7 +84,11 @@ export default function Dialog({ open, onClose, title, description, size = "md",
                 <X aria-hidden="true" className="h-5 w-5" />
               </IconButton>
             </header>
-            <section ref={setContent} data-slot="dialog-content" className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+            <section
+              ref={setContent}
+              data-slot="dialog-content"
+              className="min-h-0 flex-1 overflow-y-auto px-5 py-4 scrollbar-thin scrollbar-gutter-both"
+            >
               {children}
             </section>
             {footer && <footer data-slot="dialog-footer" className={DIALOG_FOOTER_CLASS}>{footer}</footer>}
