@@ -98,11 +98,11 @@ export default function FolderTree({ folders, uncategorizedCount, uncategorizedN
           </button>
           {canEdit && (
             <ActionMenu
-              label={`Actions for folder ${node.name}`}
+              label={`Actions for Folder ${node.name}`}
               actions={[
-                { label: "New subfolder", icon: <FolderPlus aria-hidden="true" className="h-4 w-4" />, onSelect: () => setDialog({ kind: "create", parent: node }) },
+                { label: "New Subfolder", icon: <FolderPlus aria-hidden="true" className="h-4 w-4" />, onSelect: () => setDialog({ kind: "create", parent: node }) },
                 { label: "Rename", icon: <Pencil aria-hidden="true" className="h-4 w-4" />, onSelect: () => setDialog({ kind: "rename", folder: node }) },
-                { label: "Move to…", icon: <FolderInput aria-hidden="true" className="h-4 w-4" />, onSelect: () => setDialog({ kind: "move", folder: node }) },
+                { label: "Move To…", icon: <FolderInput aria-hidden="true" className="h-4 w-4" />, onSelect: () => setDialog({ kind: "move", folder: node }) },
                 { label: "Delete", icon: <Trash2 aria-hidden="true" className="h-4 w-4" />, onSelect: () => setDialog({ kind: "delete", folder: node }), destructive: true },
               ]}
             />
@@ -116,10 +116,10 @@ export default function FolderTree({ folders, uncategorizedCount, uncategorizedN
   const looseLabel = uncategorizedName || "Uncategorized";
   const looseActions: MenuAction[] = [];
   if (canManage && onRenameUncategorized) {
-    if (uncategorizedName) looseActions.push({ label: "Reset name", icon: <RotateCcw aria-hidden="true" className="h-4 w-4" />, onSelect: () => void onRenameUncategorized("") });
+    if (uncategorizedName) looseActions.push({ label: "Reset Name", icon: <RotateCcw aria-hidden="true" className="h-4 w-4" />, onSelect: () => void onRenameUncategorized("") });
   }
   if (canEdit && onTrashUncategorized) {
-    looseActions.push({ label: "Move all to trash", icon: <Trash2 aria-hidden="true" className="h-4 w-4" />, onSelect: () => setDialog({ kind: "trashLoose" }), destructive: true, disabled: uncategorizedCount === 0 });
+    looseActions.push({ label: "Move All to Trash", icon: <Trash2 aria-hidden="true" className="h-4 w-4" />, onSelect: () => setDialog({ kind: "trashLoose" }), destructive: true, disabled: uncategorizedCount === 0 });
   }
   const allSelected = selected === "all";
   const rootSelected = selected === "root";
@@ -129,7 +129,7 @@ export default function FolderTree({ folders, uncategorizedCount, uncategorizedN
       <div className="mb-1 flex items-center justify-between pl-3 pr-1 pt-1">
         <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Folders</h2>
         {canEdit && (
-          <IconButton label="New folder" className="h-7 w-7" onClick={() => setDialog({ kind: "create", parent: null })}>
+          <IconButton label="New Folder" className="h-7 w-7" onClick={() => setDialog({ kind: "create", parent: null })}>
             <Plus aria-hidden="true" className="h-4 w-4" />
           </IconButton>
         )}
@@ -140,7 +140,7 @@ export default function FolderTree({ folders, uncategorizedCount, uncategorizedN
             <span className="h-6 w-6 shrink-0" aria-hidden="true" />
             <button type="button" onClick={() => onSelect("all")} aria-current={allSelected ? "true" : undefined} className={cn(buttonBase, allSelected && "font-semibold")}>
               <Layers aria-hidden="true" className={cn("h-4 w-4 shrink-0", allSelected ? "text-primary" : "text-muted-foreground")} />
-              <span className="truncate">All icons</span>
+              <span className="truncate">All Icons</span>
               <span className="ml-auto shrink-0 text-xs text-muted-foreground">{totalCount}</span>
             </button>
           </div>
@@ -161,14 +161,14 @@ export default function FolderTree({ folders, uncategorizedCount, uncategorizedN
 
       <FolderNameDialog
         open={dialog?.kind === "create"}
-        title={dialog?.kind === "create" && dialog.parent ? `New subfolder in “${dialog.parent.name}”` : "New folder"}
-        submitLabel="Create folder"
+        title={dialog?.kind === "create" && dialog.parent ? `New Subfolder in “${dialog.parent.name}”` : "New Folder"}
+        submitLabel="Create Folder"
         onClose={() => setDialog(null)}
         onSubmit={(name) => onCreate(dialog?.kind === "create" ? (dialog.parent?.id ?? null) : null, name)}
       />
       <FolderNameDialog
         open={dialog?.kind === "rename"}
-        title="Rename folder"
+        title="Rename Folder"
         submitLabel="Rename"
         initialName={dialog?.kind === "rename" ? dialog.folder.name : ""}
         onClose={() => setDialog(null)}
@@ -176,9 +176,9 @@ export default function FolderTree({ folders, uncategorizedCount, uncategorizedN
       />
       <ConfirmDialog
         open={dialog?.kind === "trashLoose"}
-        title={`Move all ${uncategorizedCount === 1 ? "1 icon" : `${uncategorizedCount} icons`} in “${looseLabel}” to the trash?`}
-        message="Icons in folders are not touched. You can restore these from the Trash section."
-        confirmLabel="Move to trash"
+        title={`Move All ${uncategorizedCount === 1 ? "1 icon" : `${uncategorizedCount} Icons`} in “${looseLabel}” to the Trash?`}
+        message="Icons inside folders won't be affected. You can restore moved icons from Trash anytime."
+        confirmLabel="Move to Trash"
         destructive
         onClose={() => setDialog(null)}
         onConfirm={() => (onTrashUncategorized ? onTrashUncategorized() : undefined)}
@@ -186,9 +186,9 @@ export default function FolderTree({ folders, uncategorizedCount, uncategorizedN
       <MoveFolderDialog open={dialog?.kind === "move"} folder={dialog?.kind === "move" ? dialog.folder : null} folders={folders} onClose={() => setDialog(null)} onSubmit={(parentId) => (dialog?.kind === "move" ? onMove(dialog.folder, parentId) : Promise.resolve())} />
       <ConfirmDialog
         open={dialog?.kind === "delete"}
-        title={`Delete folder “${dialog?.kind === "delete" ? dialog.folder.name : ""}”?`}
+        title={`Delete Folder “${dialog?.kind === "delete" ? dialog.folder.name : ""}”?`}
         message="Its subfolders are deleted too. The icons inside are not deleted: they move to Uncategorized."
-        confirmLabel="Delete folder"
+        confirmLabel="Delete Folder"
         destructive
         onClose={() => setDialog(null)}
         onConfirm={() => (dialog?.kind === "delete" ? onDelete(dialog.folder) : undefined)}

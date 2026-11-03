@@ -111,7 +111,7 @@ export default function SettingsTab() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex flex-wrap items-center gap-3">
               <h2 id="settings-details" className="text-lg font-bold">
-                Project settings
+                Project Settings
               </h2>
               <span className="rounded-lg border border-border bg-muted px-2.5 py-1 text-xs text-muted-foreground">
                 <span className="font-semibold text-foreground">Owner:</span> {project.owner.displayName}
@@ -120,7 +120,7 @@ export default function SettingsTab() {
             </div>
             {canManage && (
               <Button type="submit" variant="primary" icon={<Save aria-hidden="true" className="h-4 w-4" />} loading={saving} disabled={!dirty}>
-                Save settings
+                Save Settings
               </Button>
             )}
           </div>
@@ -151,23 +151,23 @@ export default function SettingsTab() {
               </div>
             </div>
 
-            <TextField label="Project name" value={name} maxLength={100} autoComplete="off" disabled={!canManage} error={errors.name} onChange={(event) => setName(event.target.value)} />
+            <TextField label="Project Name" value={name} maxLength={100} autoComplete="off" disabled={!canManage} error={errors.name} onChange={(event) => setName(event.target.value)} />
             <TextAreaField label="Description" value={description} maxLength={500} disabled={!canManage} onChange={(event) => setDescription(event.target.value)} />
             <div className="grid gap-5 sm:grid-cols-2">
-              <TextField label="CSS / symbol prefix" value={prefix} maxLength={20} autoComplete="off" spellCheck={false} disabled={!canManage} hint="Used in icon ids and CSS classes, for example feather-arrow-left." error={errors.prefix} onChange={(event) => setPrefix(event.target.value)} />
+              <TextField label="CSS / Symbol Prefix" value={prefix} maxLength={20} autoComplete="off" spellCheck={false} disabled={!canManage} hint="Used in icon ids and CSS classes, for example feather-arrow-left." error={errors.prefix} onChange={(event) => setPrefix(event.target.value)} />
               <fieldset disabled={!canManage} className="disabled:opacity-60">
-                <ColorSwatches legend="Accent colour" name={`${groupId}-color`} value={color} onChange={setColor} colors={PROJECT_COLORS} />
+                <ColorSwatches legend="Accent Colour" name={`${groupId}-color`} value={color} onChange={setColor} colors={PROJECT_COLORS} />
               </fieldset>
             </div>
             <RadioCardGroup
-              legend="Who can see it"
+              legend="Who Can See It"
               name={`${groupId}-visibility`}
               value={visibility}
               onChange={setVisibility}
               disabled={!canManage}
               options={[
-                { value: "private", label: "Private project", description: "Only you and workspace administrators can see it.", icon: <Lock aria-hidden="true" className="h-4 w-4" /> },
-                { value: "public", label: "Public project", description: "Anyone signed in can view it and copy icons. Only you (or an admin) can change it.", icon: <Globe aria-hidden="true" className="h-4 w-4" /> },
+                { value: "private", label: "Private Project", description: "Only you and workspace administrators can see it.", icon: <Lock aria-hidden="true" className="h-4 w-4" /> },
+                { value: "public", label: "Public Project", description: "Anyone signed in can view it and copy icons. Only you (or an admin) can change it.", icon: <Globe aria-hidden="true" className="h-4 w-4" /> },
               ]}
             />
           </div>
@@ -179,12 +179,12 @@ export default function SettingsTab() {
           <div>
             <h2 id="settings-export" className="flex items-center gap-2 text-base font-bold">
               <FileArchive aria-hidden="true" className="h-4 w-4 text-primary" />
-              Export entire project
+              Export Entire Project
             </h2>
             <p className="mt-1 max-w-xl text-sm text-muted-foreground">Download a ZIP with the settings, folders and icons (not the trash or saved versions). Use Import project on the dashboard to create a copy from it.</p>
           </div>
           <Button icon={<Download aria-hidden="true" className="h-4 w-4" />} onClick={handleExport} loading={exporting}>
-            Export project
+            Export Project
           </Button>
         </div>
       </section>
@@ -193,7 +193,7 @@ export default function SettingsTab() {
         <div>
           <h2 id="settings-guide" className="flex items-center gap-2 text-base font-bold">
             <BookOpen aria-hidden="true" className="h-4 w-4 text-primary" />
-            Integration guide &amp; snippets
+            Integration Guide &amp; Snippets
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">Ready-to-use snippets for using this project's {isFont ? "icon font" : "sprite"} in a page. Replace <code className="font-mono">home</code> with the slug of any icon.</p>
         </div>
@@ -213,26 +213,26 @@ export default function SettingsTab() {
       {canEdit && (
         <section aria-labelledby="settings-danger" className="rounded-2xl border border-destructive/40 p-5 sm:p-6">
           <h2 id="settings-danger" className="text-lg font-semibold text-destructive">
-            Danger zone
+            Danger Zone
           </h2>
           <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
             <p className="max-w-md text-sm text-muted-foreground">{project.isArchived ? "Mark it as active to show this project in your active list again." : "A draft is hidden from your active list and from others. Nothing is deleted."}</p>
             <Button onClick={toggleArchive} loading={busy} icon={project.isArchived ? <ArchiveRestore aria-hidden="true" className="h-4 w-4" /> : <Archive aria-hidden="true" className="h-4 w-4" />}>
-              {project.isArchived ? "Mark as active" : "Mark as draft"}
+              {project.isArchived ? "Mark as Active" : "Mark as Draft"}
             </Button>
           </div>
           {isAdmin && (
             <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
               <p className="max-w-md text-sm text-muted-foreground">As an administrator you can move this project to another user.</p>
               <Button icon={<UserCog aria-hidden="true" className="h-4 w-4" />} onClick={() => setTransferring(true)}>
-                Transfer ownership
+                Transfer Ownership
               </Button>
             </div>
           )}
           <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
             <p className="max-w-md text-sm text-muted-foreground">Deleting removes the project with all its icons, folders and history for good.</p>
             <Button variant="destructive" icon={<Trash2 aria-hidden="true" className="h-4 w-4" />} onClick={() => setDeleting(true)}>
-              Delete project
+              Delete Project
             </Button>
           </div>
         </section>
@@ -251,7 +251,7 @@ export default function SettingsTab() {
         open={deleting}
         title={`Delete “${project.name}”?`}
         message={`This permanently deletes the project with its ${pluralize(project.iconCount, "icon")}, folders and history. This cannot be undone.`}
-        confirmLabel="Delete project"
+        confirmLabel="Delete Project"
         destructive
         onClose={() => setDeleting(false)}
         onConfirm={async () => {

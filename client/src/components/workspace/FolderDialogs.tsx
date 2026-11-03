@@ -50,7 +50,7 @@ function NameForm({ submitLabel, initialName, onClose, onSubmit }: Pick<FolderNa
 
   return (
     <form onSubmit={submit} noValidate className="space-y-3">
-      <TextField label="Folder name" value={name} autoFocus maxLength={100} autoComplete="off" error={error ?? undefined} onChange={(event) => setName(event.target.value)} />
+      <TextField label="Folder Name" value={name} autoFocus maxLength={100} required autoComplete="off" error={error ?? undefined} onChange={(event) => setName(event.target.value)} />
       <DialogFooter>
         <Button variant="secondary" onClick={onClose} disabled={busy}>
           Cancel
@@ -73,7 +73,7 @@ type MoveFolderDialogProps = {
 
 export function MoveFolderDialog({ open, folder, folders, onClose, onSubmit }: MoveFolderDialogProps) {
   return (
-    <Dialog open={open} onClose={onClose} title={folder ? `Move “${folder.name}”` : "Move folder"} size="sm">
+    <Dialog open={open} onClose={onClose} title={folder ? `Move “${folder.name}”` : "Move Folder"} size="sm">
       {folder && <MoveForm folder={folder} folders={folders} onClose={onClose} onSubmit={onSubmit} />}
     </Dialog>
   );
@@ -105,8 +105,8 @@ function MoveForm({ folder, folders, onClose, onSubmit }: { folder: FolderWithCo
 
   return (
     <form onSubmit={submit} className="space-y-3">
-      <SelectField label="Move into" value={parent} onChange={(event) => setParent(event.target.value)} error={error ?? undefined}>
-        <option value="">Project root</option>
+      <SelectField label="Move Into" value={parent} onChange={(event) => setParent(event.target.value)} error={error ?? undefined}>
+        <option value="">Project Root</option>
         {options.map((option) => (
           <option key={option.id} value={option.id}>
             {`${"  ".repeat(option.depth)}${option.name}`}
@@ -118,7 +118,7 @@ function MoveForm({ folder, folders, onClose, onSubmit }: { folder: FolderWithCo
           Cancel
         </Button>
         <Button type="submit" variant="primary" loading={busy}>
-          Move folder
+          Move Folder
         </Button>
       </DialogFooter>
     </form>

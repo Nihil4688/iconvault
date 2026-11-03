@@ -17,7 +17,7 @@ type DeleteUserDialogProps = {
 
 export default function DeleteUserDialog({ user, onClose, onDeleted }: DeleteUserDialogProps) {
   return (
-    <Dialog open={user !== null} onClose={onClose} title={user ? `Delete ${user.displayName}?` : "Delete user"} size="md">
+    <Dialog open={user !== null} onClose={onClose} title={user ? `Delete ${user.displayName}?` : "Delete User"} size="md">
       {user && <DeleteForm key={user.id} user={user} onClose={onClose} onDeleted={onDeleted} />}
     </Dialog>
   );
@@ -62,14 +62,14 @@ function DeleteForm({ user, onClose, onDeleted }: { user: AdminUser; onClose: ()
 
       {hasProjects ? (
         <fieldset className="space-y-2" disabled={busy}>
-          <legend className="text-sm font-medium">They own {pluralize(user.projectCount, "project")} with {pluralize(user.iconCount, "icon")}. What happens to them?</legend>
+          <legend className="text-sm font-medium">They Own {pluralize(user.projectCount, "project")} with {pluralize(user.iconCount, "icon")}. What Happens to Them?</legend>
           <label className="flex cursor-pointer gap-2 text-sm">
-            <input type="radio" name="projects" checked={choice === "transfer"} onChange={() => setChoice("transfer")} className="mt-0.5 accent-[hsl(var(--primary))]" />
-            <span>Move them to another user</span>
+            <input type="radio" name="projects" checked={choice === "transfer"} onChange={() => setChoice("transfer")} className="mt-0.5 accent-primary" />
+            <span>Move Them to Another User</span>
           </label>
           {choice === "transfer" && (
-            <SelectField label="New owner" value={target} onChange={(event) => setTarget(event.target.value)} hint={others.loading && !others.data ? "Loading users…" : undefined}>
-              <option value="">Choose a user</option>
+            <SelectField label="New Owner" value={target} onChange={(event) => setTarget(event.target.value)} hint={others.loading && !others.data ? "Loading users…" : undefined}>
+              <option value="">Choose a User</option>
               {candidates.map((candidate) => (
                 <option key={candidate.id} value={candidate.id}>
                   {candidate.displayName} ({candidate.email})
@@ -78,8 +78,8 @@ function DeleteForm({ user, onClose, onDeleted }: { user: AdminUser; onClose: ()
             </SelectField>
           )}
           <label className="flex cursor-pointer gap-2 text-sm">
-            <input type="radio" name="projects" checked={choice === "delete"} onChange={() => setChoice("delete")} className="mt-0.5 accent-[hsl(var(--primary))]" />
-            <span>Delete them with everything in them (cannot be undone)</span>
+            <input type="radio" name="projects" checked={choice === "delete"} onChange={() => setChoice("delete")} className="mt-0.5 accent-primary" />
+            <span>Delete Them with Everything in Them (Cannot Be Undone)</span>
           </label>
         </fieldset>
       ) : (

@@ -5,13 +5,14 @@ import type { DownloadedFile, SpriteBuildSummary } from "./types";
 
 const project = (projectId: string) => `/api/projects/${encodeURIComponent(projectId)}`;
 
-export async function uploadSpriteBuild(projectId: string, bundle: Blob, facts: { mode: SpriteBuildSummary["mode"]; iconCount: number; scope?: "all" | "folder" | "selected"; fingerprint?: string }): Promise<SpriteBuildSummary> {
+export async function uploadSpriteBuild(projectId: string, bundle: Blob, facts: { mode: SpriteBuildSummary["mode"]; iconCount: number; scope?: "all" | "folder" | "selected"; fingerprint?: string; saveAsVersion?: boolean }): Promise<SpriteBuildSummary> {
   const form = new FormData();
   form.append("bundle", bundle, "bundle.zip");
   form.append("mode", facts.mode);
   form.append("iconCount", String(facts.iconCount));
   form.append("scope", facts.scope ?? "all");
   if (facts.fingerprint) form.append("fingerprint", facts.fingerprint);
+  if (facts.saveAsVersion !== undefined) form.append("saveAsVersion", String(facts.saveAsVersion));
   const { data } = await http.post<SpriteBuildSummary>(`${project(projectId)}/sprite/builds`, form);
   return data;
 }

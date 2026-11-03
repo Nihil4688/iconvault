@@ -65,6 +65,21 @@ describe("font build history (HTTP, throwaway database)", { skip: hasDatabase ? 
     assert.equal((await builds(owner.token, publicProject.id)).body.builds.length, 0);
   });
 
+  it("lets a private selected-icon download opt out of history or explicitly save a version", async () => {
+    const p = await makeProject("private");
+    const iconId = (await h.call(owner.token, "GET", `/api/projects/${p.id}/icons`)).body.icons[0].id;
+    const selected = { scope: "selected", iconIds: [iconId] };
+
+    const downloadOnly = await download(owner.token, p.id, { ...selected, saveAsVersion: false });
+    assert.equal(downloadOnly.status, 200);
+    assert.deepEqual((await builds(owner.token, p.id)).body.builds, []);
+
+    const saved = await download(owner.token, p.id, { ...selected, saveAsVersion: true });
+    assert.equal(saved.status, 200);
+    await download(owner.token, p.id, { ...selected, saveAsVersion: true });
+    assert.deepEqual((await builds(owner.token, p.id)).body.builds.map((build: { version: number }) => build.version), [2, 1]);
+  });
+
   it("does not create another history entry when an identical private package is downloaded twice", async () => {
     const p = await makeProject("private");
     await download(owner.token, p.id, { fontName: "Same" });

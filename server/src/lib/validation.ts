@@ -202,6 +202,7 @@ export const spriteBuildFieldsSchema = z.object({
   iconCount: z.coerce.number().int().min(0).max(100000),
   scope: z.enum(["all", "folder", "selected"]).default("all"),
   fingerprint: z.string().trim().min(1).max(128).optional(),
+  saveAsVersion: z.enum(["true", "false"]).transform((value) => value === "true").optional(),
 });
 
 export const transferProjectSchema = z.object({ userId: objectId }).strict();
@@ -213,8 +214,7 @@ export const bulkDeleteProjectsSchema = z.object({ projectIds: z.array(objectId)
 
 export const FONT_FORMATS = ["woff2", "woff", "ttf", "eot", "svg"] as const;
 
-export const buildFontSchema = z
-  .object({
+const buildFontOptionsSchema = z.object({
     scope: z.enum(["all", "folder", "selected"]).default("all"),
     folderId: objectId.optional(),
     iconIds: z.array(objectId).min(1).max(1000).optional(),
@@ -236,9 +236,13 @@ export const buildFontSchema = z
     descent: z.number().int().min(-1000).max(1000).default(0),
     normalize: z.boolean().default(true),
   })
-  .strict()
-  .superRefine((value, ctx) => {
-    if (value.scope === "folder" && !value.folderId) ctx.addIssue({ code: "custom", path: ["folderId"], message: "choose a folder" });
-    if (value.scope === "selected" && !value.iconIds) ctx.addIssue({ code: "custom", path: ["iconIds"], message: "choose at least one icon" });
-  });
+  .strict();
+
+function refineBuildFontScope(value: z.infer<typeof buildFontOptionsSchema>, ctx: z.RefinementCtx) {
+  if (value.scope === "folder" && !value.folderId) ctx.addIssue({ code: "custom", path: ["folderId"], message: "choose a folder" });
+  if (value.scope === "selected" && !value.iconIds) ctx.addIssue({ code: "custom", path: ["iconIds"], message: "choose at least one icon" });
+}
+
+export const buildFontSchema = buildFontOptionsSchema.superRefine(refineBuildFontScope);
+export const buildFontDownloadSchema = buildFontOptionsSchema.extend({ saveAsVersion: z.boolean().optional() }).strict().superRefine(refineBuildFontScope);
 export type BuildFontInput = z.infer<typeof buildFontSchema>;

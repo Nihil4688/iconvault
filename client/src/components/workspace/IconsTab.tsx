@@ -167,11 +167,11 @@ export default function IconsTab() {
           <div role="alert" className="min-h-0 flex-1 overflow-y-auto rounded-xl border border-destructive/40 p-6 text-center">
             <p className="font-medium text-destructive">{icons.error.message}</p>
             <Button className="mt-3" onClick={icons.reload}>
-              Try again
+              Try Again
             </Button>
           </div>
         ) : icons.loading && !icons.data ? (
-          <ul aria-busy="true" aria-label="Loading icons" className="grid min-h-0 flex-1 grid-cols-2 gap-3 overflow-y-auto sm:grid-cols-3 xl:grid-cols-5">
+          <ul aria-busy="true" aria-label="Loading Icons" className="grid min-h-0 flex-1 grid-cols-2 gap-3 overflow-y-auto sm:grid-cols-3 xl:grid-cols-5">
             {Array.from({ length: 10 }, (_, i) => (
               <li key={i} className="h-44 animate-pulse rounded-xl bg-muted" />
             ))}
@@ -185,7 +185,7 @@ export default function IconsTab() {
             <p className="mx-auto mt-1 text-sm text-muted-foreground">{search ? "Try a different search." : project.access.canAddIcons ? "Upload icons to get started." : "The owner has not added any here yet."}</p>
             {!search && project.access.canAddIcons && (
               <Button variant="primary" className="mt-4" onClick={() => setDialog("add")}>
-                Upload icons
+                Upload Icons
               </Button>
             )}
           </div>
@@ -208,7 +208,7 @@ export default function IconsTab() {
             {total > shown.length && (
               <div className="mt-4 text-center">
                 {shown.length < MAX_SHOWN ? (
-                  <Button onClick={() => setLimitState({ key: filterKey, value: Math.min(limit + PAGE, MAX_SHOWN) })}>Show more</Button>
+                  <Button onClick={() => setLimitState({ key: filterKey, value: Math.min(limit + PAGE, MAX_SHOWN) })}>Show More</Button>
                 ) : (
                   <p className="text-sm text-muted-foreground">Only the first {MAX_SHOWN} are shown. Use search or folders to narrow it down.</p>
                 )}
@@ -280,9 +280,9 @@ export default function IconsTab() {
       />
       <ConfirmDialog
         open={dialog === "delete"}
-        title={`Move ${pluralize(selection.size, "icon")} to the trash?`}
+        title={`Move ${pluralize(selection.size, "icon")} to the Trash?`}
         message="You can restore them from the Trash section."
-        confirmLabel="Move to trash"
+        confirmLabel="Move to Trash"
         destructive
         onClose={() => setDialog(null)}
         onConfirm={async () => {

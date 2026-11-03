@@ -54,7 +54,7 @@ export default function ProjectHeader({ project, actionsRef }: { project: Projec
           </div>
         </div>
 
-        <nav aria-label="Project sections" className="flex min-h-9 flex-wrap items-center justify-center gap-1 justify-self-center rounded-xl border border-border bg-muted p-0.5">
+        <nav aria-label="Project Sections" className="flex min-h-9 flex-wrap items-center justify-center gap-1 justify-self-center rounded-xl border border-border bg-muted p-0.5">
           {/* Absolute paths: relative links would resolve against the current section. */}
           <NavLink to={`/projects/${project.id}`} end className={pillClass}>
             <Layers aria-hidden="true" className="h-4 w-4" />

@@ -69,14 +69,14 @@ export default function ProjectPage() {
   if (project.error && !project.data) {
     const missing = project.error instanceof ApiError && project.error.status === 404;
     return (
-      <main id="main" tabIndex={-1} className="mx-auto max-w-3xl px-4 pb-16 pt-[calc(57px+3rem)] text-center outline-none">
+      <main id="main" tabIndex={-1} className="mx-auto max-w-3xl px-4 pb-16 pt-26.25 text-center outline-none">
         <div role="alert" className="rounded-2xl border border-border bg-card p-8">
           <h1 className="text-xl font-semibold">{missing ? "Project not found" : "Could not load the project"}</h1>
           <p className="mt-2 text-sm text-muted-foreground">{missing ? "It may have been deleted, or it is private and belongs to someone else." : project.error.message}</p>
           <div className="mt-4 flex justify-center gap-2">
-            {!missing && <Button onClick={project.reload}>Try again</Button>}
+            {!missing && <Button onClick={project.reload}>Try Again</Button>}
             <Link to="/" className="inline-flex h-9 items-center rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
-              Back to projects
+              Back to Projects
             </Link>
           </div>
         </div>
@@ -86,8 +86,8 @@ export default function ProjectPage() {
 
   if (!project.data) {
     return (
-      <main id="main" tabIndex={-1} className="mx-auto max-w-6xl px-4 pb-16 pt-[calc(57px+2rem)] outline-none">
-        <div role="status" aria-busy="true" aria-label="Loading project" className="space-y-4">
+      <main id="main" tabIndex={-1} className="mx-auto max-w-6xl px-4 pb-16 pt-22.25 outline-none">
+        <div role="status" aria-busy="true" aria-label="Loading Project" className="space-y-4">
           <div className="h-8 w-48 animate-pulse rounded-lg bg-muted" />
           <div className="h-64 animate-pulse rounded-2xl bg-muted" />
         </div>
@@ -111,7 +111,7 @@ export default function ProjectPage() {
 
   return (
     <WorkspaceContext.Provider value={context}>
-      <main id="main" tabIndex={-1} className="fixed inset-0 z-0 flex h-dvh flex-col overflow-hidden pt-[57px] outline-none">
+      <main id="main" tabIndex={-1} className="fixed inset-0 z-0 flex h-dvh flex-col overflow-hidden pt-14.25 outline-none">
         <ProjectHeader project={project.data} actionsRef={setActionsSlot} />
 
         <div className="flex min-h-0 flex-1 flex-col">
@@ -126,13 +126,13 @@ export default function ProjectPage() {
                   onClick={() => setFoldersOpen((open) => !open)}
                   className="flex w-full items-center justify-between rounded-lg border border-input bg-background px-3 py-2 text-sm font-medium focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring lg:hidden"
                 >
-                  <span>Folder: {selectedFolder === "all" ? "All icons" : selectedFolder === "root" ? project.data.uncategorizedName || "Uncategorized" : folderPath(folderList.folders, selectedFolder)}</span>
+                  <span>Folder: {selectedFolder === "all" ? "All Icons" : selectedFolder === "root" ? project.data.uncategorizedName || "Uncategorized" : folderPath(folderList.folders, selectedFolder)}</span>
                   {foldersOpen ? <ChevronUp aria-hidden="true" className="h-4 w-4" /> : <ChevronDown aria-hidden="true" className="h-4 w-4" />}
                 </button>
                 <div id="folder-panel" className={`${foldersOpen ? "mt-2 block" : "hidden"} lg:mt-0 lg:block`}>
                   {folders.error && !folders.data && (
                     <p role="alert" className="mb-2 text-sm text-destructive">
-                      Could not load folders. <button type="button" className="underline" onClick={folders.reload}>Try again</button>
+                      Could not load folders. <button type="button" className="underline" onClick={folders.reload}>Try Again</button>
                     </p>
                   )}
                   <FolderTree

@@ -347,13 +347,30 @@ describe("a font built on the Icons screen", () => {
     expect(screen.getByRole("radio", { name: "Selected icons (2)" })).toBeInTheDocument();
   });
 
-  it("lets the person download it straight away as the main action", async () => {
+  it("asks whether to save a selected font as a version before downloading", async () => {
     cacheBuild({ projectId: "p1", build: built(), family: "iconfont-preview-80", loaded: true });
     const blob = new Blob(["z"]);
     vi.mocked(fontsApi.downloadFont).mockResolvedValue({ blob, filename: "FeatherIcons-font.zip" });
     setup({}, { iconIds: ["a", "b"], built: true });
-    await userEvent.click(await screen.findByRole("button", { name: "Download font" }));
-    expect(fontsApi.downloadFont).toHaveBeenCalledWith("p1", expect.objectContaining({ scope: "selected", iconIds: ["a", "b"] }));
+    await userEvent.click(await screen.findByRole("button", { name: /Download Font/i }));
+    expect(screen.getByRole("dialog", { name: "Save this Font Build as a Version?" })).toBeInTheDocument();
+    expect(fontsApi.downloadFont).not.toHaveBeenCalled();
+
+    await userEvent.click(screen.getByRole("button", { name: "Save Version & Download" }));
+    expect(fontsApi.downloadFont).toHaveBeenCalledWith("p1", expect.objectContaining({ scope: "selected", iconIds: ["a", "b"] }), true);
+    await waitFor(() => expect(zip.triggerBrowserDownload).toHaveBeenCalledWith(blob, "FeatherIcons-font.zip"));
+  });
+
+  it("downloads a selected font without adding it to version history when requested", async () => {
+    cacheBuild({ projectId: "p1", build: built(), family: "iconfont-preview-81", loaded: true });
+    const blob = new Blob(["z"]);
+    vi.mocked(fontsApi.downloadFont).mockResolvedValue({ blob, filename: "FeatherIcons-font.zip" });
+    setup({}, { iconIds: ["a", "b"], built: true });
+
+    await userEvent.click(await screen.findByRole("button", { name: /Download Font/i }));
+    await userEvent.click(screen.getByRole("button", { name: "Download Only" }));
+
+    expect(fontsApi.downloadFont).toHaveBeenCalledWith("p1", expect.objectContaining({ scope: "selected", iconIds: ["a", "b"] }), false);
     await waitFor(() => expect(zip.triggerBrowserDownload).toHaveBeenCalledWith(blob, "FeatherIcons-font.zip"));
   });
 });

@@ -1,17 +1,18 @@
 // Form fields: a label, the control, an optional hint and an error, wired together with ids so screen readers announce them. All use native elements.
 import { useId, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react";
 import { cn } from "../../lib/cn";
+import { RequiredIndicator } from "./RequiredIndicator";
 
 const CONTROL =
-  "w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring disabled:cursor-not-allowed disabled:opacity-60 aria-[invalid=true]:border-destructive";
+  "w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:shadow-[0_0_0_3px_rgba(21,85,224,0.5)] focus:outline-none";
 
-type FieldShellProps = { id: string; label: string; hint?: string | undefined; error?: string | undefined; children: ReactNode };
+type FieldShellProps = { id: string; label: string; hint?: string | undefined; error?: string | undefined; required?: boolean; children: ReactNode };
 
-function FieldShell({ id, label, hint, error, children }: FieldShellProps) {
+function FieldShell({ id, label, hint, error, required, children }: FieldShellProps) {
   return (
     <div>
-      <label htmlFor={id} className="mb-1 block text-sm font-medium text-foreground">
-        {label}
+      <label htmlFor={id} className="mb-1.5 block text-sm font-medium text-foreground">
+        {label}{required && <RequiredIndicator />}
       </label>
       {children}
       {hint && (
@@ -39,7 +40,7 @@ export function TextField({ label, hint, error, className, id: given, ...rest }:
   const generated = useId();
   const id = given ?? generated;
   return (
-    <FieldShell id={id} label={label} hint={hint} error={error}>
+    <FieldShell id={id} label={label} hint={hint} error={error} required={rest.required}>
       <input id={id} aria-invalid={error ? true : undefined} aria-describedby={describedBy(id, hint, error)} className={cn(CONTROL, "h-9 py-0", className)} {...rest} />
     </FieldShell>
   );
@@ -51,7 +52,7 @@ export function TextAreaField({ label, hint, error, className, id: given, ...res
   const generated = useId();
   const id = given ?? generated;
   return (
-    <FieldShell id={id} label={label} hint={hint} error={error}>
+    <FieldShell id={id} label={label} hint={hint} error={error} required={rest.required}>
       <textarea id={id} aria-invalid={error ? true : undefined} aria-describedby={describedBy(id, hint, error)} className={cn(CONTROL, "min-h-20 resize-y", className)} {...rest} />
     </FieldShell>
   );
@@ -78,7 +79,7 @@ export function SelectField({ label, hint, error, hideLabel = false, className, 
     );
   }
   return (
-    <FieldShell id={id} label={label} hint={hint} error={error}>
+    <FieldShell id={id} label={label} hint={hint} error={error} required={rest.required}>
       {select}
     </FieldShell>
   );

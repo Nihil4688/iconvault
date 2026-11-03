@@ -47,8 +47,8 @@ function MoveForm({ folders, onClose, onSubmit }: Pick<MoveIconsDialogProps, "fo
 
   return (
     <form onSubmit={submit} className="space-y-3">
-      <SelectField label="Move into" value={folderId} onChange={(event) => setFolderId(event.target.value)} error={error ?? undefined}>
-        <option value="">Uncategorized (project root)</option>
+      <SelectField label="Move Into" value={folderId} onChange={(event) => setFolderId(event.target.value)} error={error ?? undefined}>
+        <option value="">Uncategorized (Project Root)</option>
         {options.map((option) => (
           <option key={option.id} value={option.id}>
             {`${"  ".repeat(option.depth)}${option.name}`}
@@ -112,9 +112,9 @@ function TagForm({ onClose, onSubmit }: Pick<TagIconsDialogProps, "onClose" | "o
   return (
     <form onSubmit={submit} noValidate className="space-y-3">
       <SelectField label="Action" value={mode} onChange={(event) => setMode(event.target.value as TagMode)}>
-        <option value="add">Add these tags</option>
-        <option value="remove">Remove these tags</option>
-        <option value="set">Replace all tags with these</option>
+        <option value="add">Add These Tags</option>
+        <option value="remove">Remove These Tags</option>
+        <option value="set">Replace All Tags with These</option>
       </SelectField>
       <TextField label="Tags" value={text} autoFocus autoComplete="off" hint="Separate tags with commas." error={error ?? undefined} onChange={(event) => setText(event.target.value)} />
       <DialogFooter>
