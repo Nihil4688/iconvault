@@ -353,10 +353,10 @@ describe("a font built on the Icons screen", () => {
     vi.mocked(fontsApi.downloadFont).mockResolvedValue({ blob, filename: "FeatherIcons-font.zip" });
     setup({}, { iconIds: ["a", "b"], built: true });
     await userEvent.click(await screen.findByRole("button", { name: /Download Font/i }));
-    expect(screen.getByRole("dialog", { name: "Save this font build as a version?" })).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "Save this Font Build as a Version?" })).toBeInTheDocument();
     expect(fontsApi.downloadFont).not.toHaveBeenCalled();
 
-    await userEvent.click(screen.getByRole("button", { name: "Save version & download" }));
+    await userEvent.click(screen.getByRole("button", { name: "Save Version & Download" }));
     expect(fontsApi.downloadFont).toHaveBeenCalledWith("p1", expect.objectContaining({ scope: "selected", iconIds: ["a", "b"] }), true);
     await waitFor(() => expect(zip.triggerBrowserDownload).toHaveBeenCalledWith(blob, "FeatherIcons-font.zip"));
   });
@@ -368,7 +368,7 @@ describe("a font built on the Icons screen", () => {
     setup({}, { iconIds: ["a", "b"], built: true });
 
     await userEvent.click(await screen.findByRole("button", { name: /Download Font/i }));
-    await userEvent.click(screen.getByRole("button", { name: "Download only" }));
+    await userEvent.click(screen.getByRole("button", { name: "Download Only" }));
 
     expect(fontsApi.downloadFont).toHaveBeenCalledWith("p1", expect.objectContaining({ scope: "selected", iconIds: ["a", "b"] }), false);
     await waitFor(() => expect(zip.triggerBrowserDownload).toHaveBeenCalledWith(blob, "FeatherIcons-font.zip"));

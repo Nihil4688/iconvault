@@ -310,7 +310,7 @@ export default function FontTab() {
                     name="font-scope"
                     checked={scopeKind === "all"}
                     onChange={() => setScopeKind("all")}
-                    className="h-4 w-4 accent-[hsl(var(--primary))]"
+                    className="h-4 w-4 accent-primary"
                   />
                   {`Whole project (${pluralize(project.iconCount, "icon")})`}
                 </label>
@@ -320,7 +320,7 @@ export default function FontTab() {
                     name="font-scope"
                     checked={scopeKind === "folder"}
                     onChange={() => setScopeKind("folder")}
-                    className="h-4 w-4 accent-[hsl(var(--primary))]"
+                    className="h-4 w-4 accent-primary"
                   />
                   Selected Folder
                 </label>
@@ -349,7 +349,7 @@ export default function FontTab() {
                       // Nothing chosen yet: open the checklist to choose.
                       if (!chosen) setChoosing(true);
                     }}
-                    className="h-4 w-4 accent-[hsl(var(--primary))]"
+                    className="h-4 w-4 accent-primary"
                   />
                   {`Selected icons (${chosen?.length ?? 0})`}
                 </label>
@@ -608,7 +608,7 @@ export default function FontTab() {
       />
       <SaveBuildVersionDialog
         open={saveVersionPromptOpen}
-        kind="font"
+        kind="Font"
         iconCount={result?.build.iconCount ?? chosen?.length ?? 0}
         busyAction={downloadAction}
         onDownloadOnly={() => void download(false)}

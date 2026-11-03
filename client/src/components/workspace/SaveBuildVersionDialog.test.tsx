@@ -10,7 +10,7 @@ describe("SaveBuildVersionDialog", () => {
     render(
       <SaveBuildVersionDialog
         open
-        kind="font"
+        kind="Font"
         iconCount={3}
         busyAction={null}
         onDownloadOnly={onDownloadOnly}
@@ -19,7 +19,7 @@ describe("SaveBuildVersionDialog", () => {
       />,
     );
 
-    expect(screen.getByRole("dialog", { name: "Save this font build as a version?" })).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "Save this Font Build as a Version?" })).toBeInTheDocument();
     expect(screen.getByText("This build contains 3 selected icons.")).toBeInTheDocument();
 
     const footer = screen.getByRole("dialog").querySelector('[data-slot="dialog-footer"]');
@@ -28,7 +28,7 @@ describe("SaveBuildVersionDialog", () => {
     expect(buttonRows?.firstElementChild).toHaveClass("grid-cols-2");
     expect(buttonRows?.lastElementChild).toHaveClass("text-primary");
 
-    await userEvent.click(screen.getByRole("button", { name: "Download only" }));
+    await userEvent.click(screen.getByRole("button", { name: "Download Only" }));
     expect(onDownloadOnly).toHaveBeenCalledOnce();
     expect(onSaveVersion).not.toHaveBeenCalled();
   });
@@ -38,7 +38,7 @@ describe("SaveBuildVersionDialog", () => {
     render(
       <SaveBuildVersionDialog
         open
-        kind="sprite"
+        kind="Sprite"
         iconCount={1}
         busyAction={null}
         onDownloadOnly={() => undefined}
@@ -48,7 +48,7 @@ describe("SaveBuildVersionDialog", () => {
     );
 
     expect(screen.getByText("This build contains 1 selected icon.")).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Save version & download" }));
+    await userEvent.click(screen.getByRole("button", { name: "Save Version & Download" }));
     expect(onSaveVersion).toHaveBeenCalledOnce();
   });
 });

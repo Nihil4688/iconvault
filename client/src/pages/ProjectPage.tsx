@@ -68,7 +68,7 @@ export default function ProjectPage() {
   if (project.error && !project.data) {
     const missing = project.error instanceof ApiError && project.error.status === 404;
     return (
-      <main id="main" tabIndex={-1} className="mx-auto max-w-3xl px-4 pb-16 pt-[calc(57px+3rem)] text-center outline-none">
+      <main id="main" tabIndex={-1} className="mx-auto max-w-3xl px-4 pb-16 pt-26.25 text-center outline-none">
         <div role="alert" className="rounded-2xl border border-border bg-card p-8">
           <h1 className="text-xl font-semibold">{missing ? "Project not found" : "Could not load the project"}</h1>
           <p className="mt-2 text-sm text-muted-foreground">{missing ? "It may have been deleted, or it is private and belongs to someone else." : project.error.message}</p>
@@ -85,7 +85,7 @@ export default function ProjectPage() {
 
   if (!project.data) {
     return (
-      <main id="main" tabIndex={-1} className="mx-auto max-w-6xl px-4 pb-16 pt-[calc(57px+2rem)] outline-none">
+      <main id="main" tabIndex={-1} className="mx-auto max-w-6xl px-4 pb-16 pt-22.25 outline-none">
         <div role="status" aria-busy="true" aria-label="Loading Project" className="space-y-4">
           <div className="h-8 w-48 animate-pulse rounded-lg bg-muted" />
           <div className="h-64 animate-pulse rounded-2xl bg-muted" />
@@ -110,7 +110,7 @@ export default function ProjectPage() {
 
   return (
     <WorkspaceContext.Provider value={context}>
-      <main id="main" tabIndex={-1} className="flex min-h-screen flex-col pt-[57px] outline-none">
+      <main id="main" tabIndex={-1} className="flex min-h-screen flex-col pt-14.25 outline-none">
         <ProjectHeader project={project.data} actionsRef={setActionsSlot} />
 
         <div className="flex flex-1 flex-col">

@@ -25,7 +25,7 @@ export function RadioCardGroup<T extends string>({ legend, name, value, onChange
           <label
             key={option.value}
             className={cn(
-              "relative flex cursor-pointer gap-3 rounded-xl border border-input bg-background p-3 text-sm transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-1 has-[:focus-visible]:outline-ring has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-60",
+              "relative flex cursor-pointer gap-3 rounded-xl border border-input bg-background p-3 text-sm transition-colors has-focus-visible:outline-2 has-focus-visible:outline-offset-1 has-focus-visible:outline-ring has-disabled:cursor-not-allowed has-disabled:opacity-60",
               value === option.value ? "border-primary bg-primary/5 ring-1 ring-primary" : "hover:bg-accent",
             )}
           >
@@ -57,7 +57,7 @@ export function ColorSwatches({ legend, name, value, onChange, colors }: ColorSw
       <legend className="mb-2 text-sm font-medium text-foreground">{legend}</legend>
       <div className="flex flex-wrap gap-2">
         {colors.map((color) => (
-          <label key={color.value} title={color.name} className="relative cursor-pointer has-[:focus-visible]:rounded-full has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ring">
+          <label key={color.value} title={color.name} className="relative cursor-pointer has-focus-visible:rounded-full has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-ring">
             <input type="radio" name={name} value={color.value} checked={value.toLowerCase() === color.value} onChange={() => onChange(color.value)} className="sr-only" />
             <span className="sr-only">{color.name}</span>
             <span aria-hidden="true" className={cn("flex h-8 w-8 items-center justify-center rounded-full border border-black/10", value.toLowerCase() === color.value && "ring-2 ring-foreground ring-offset-2 ring-offset-background")} style={{ backgroundColor: color.value, color: readableTextOn(color.value) }}>

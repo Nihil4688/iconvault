@@ -371,7 +371,7 @@ describe("the sprite build history", () => {
   it("does not make another version when the same icons are built after changing from selected to whole-project scope", async () => {
     setup({}, { iconIds: ["home", "star"] });
     await userEvent.click(await screen.findByRole("button", { name: /Download Sprite ZIP/i }));
-    await userEvent.click(screen.getByRole("button", { name: "Save version & download" }));
+    await userEvent.click(screen.getByRole("button", { name: "Save Version & Download" }));
     await waitFor(() => expect(spritesApi.uploadSpriteBuild).toHaveBeenCalledTimes(1));
     const firstFingerprint = vi.mocked(spritesApi.uploadSpriteBuild).mock.calls[0]![2].fingerprint;
 
@@ -385,9 +385,9 @@ describe("the sprite build history", () => {
   it("downloads selected icons without adding a sprite version when requested", async () => {
     setup({}, { iconIds: ["home", "star"] });
     await userEvent.click(await screen.findByRole("button", { name: /Download Sprite ZIP/i }));
-    expect(screen.getByRole("dialog", { name: "Save this sprite build as a version?" })).toBeInTheDocument();
+    expect(screen.getByRole("dialog", { name: "Save this Sprite Build as a Version?" })).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: "Download only" }));
+    await userEvent.click(screen.getByRole("button", { name: "Download Only" }));
 
     await waitFor(() => expect(zip.triggerBrowserDownload).toHaveBeenCalled());
     expect(spritesApi.uploadSpriteBuild).not.toHaveBeenCalled();
@@ -396,7 +396,7 @@ describe("the sprite build history", () => {
   it("saves selected icons to sprite history when the version option is chosen", async () => {
     setup({}, { iconIds: ["home", "star"] });
     await userEvent.click(await screen.findByRole("button", { name: /Download Sprite ZIP/i }));
-    await userEvent.click(screen.getByRole("button", { name: "Save version & download" }));
+    await userEvent.click(screen.getByRole("button", { name: "Save Version & Download" }));
 
     await waitFor(() => expect(spritesApi.uploadSpriteBuild).toHaveBeenCalledWith("p1", expect.any(Blob), expect.objectContaining({ scope: "selected", saveAsVersion: true })));
   });

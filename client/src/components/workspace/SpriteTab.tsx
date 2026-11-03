@@ -174,11 +174,11 @@ export default function SpriteTab() {
             </legend>
             <div className="mt-3 space-y-2 text-sm">
               <label className="flex cursor-pointer items-center gap-2">
-                <input type="radio" name="sprite-scope" checked={scopeKind === "all"} onChange={() => setScopeKind("all")} className="h-4 w-4 accent-[hsl(var(--primary))]" />
+                <input type="radio" name="sprite-scope" checked={scopeKind === "all"} onChange={() => setScopeKind("all")} className="h-4 w-4 accent-primary" />
                 {`Whole project (${pluralize(project.iconCount, "icon")})`}
               </label>
               <label className="flex cursor-pointer items-center gap-2">
-                <input type="radio" name="sprite-scope" checked={scopeKind === "folder"} onChange={() => setScopeKind("folder")} className="h-4 w-4 accent-[hsl(var(--primary))]" />
+                <input type="radio" name="sprite-scope" checked={scopeKind === "folder"} onChange={() => setScopeKind("folder")} className="h-4 w-4 accent-primary" />
                 Selected Folder
               </label>
               {scopeKind === "folder" && (
@@ -201,7 +201,7 @@ export default function SpriteTab() {
                     // Nothing chosen yet: open the checklist to choose.
                     if (!chosen) setChoosing(true);
                   }}
-                  className="h-4 w-4 accent-[hsl(var(--primary))]"
+                  className="h-4 w-4 accent-primary"
                 />
                 {`Selected icons (${chosen?.length ?? 0})`}
               </label>
@@ -233,7 +233,7 @@ export default function SpriteTab() {
             <legend className="sr-only">Sprite Architecture</legend>
             {MODES.map((option) => (
               <label key={option.value} className="flex cursor-pointer items-start gap-2">
-                <input type="radio" name="sprite-mode" checked={mode === option.value} onChange={() => setMode(option.value)} className="mt-0.5 h-4 w-4 accent-[hsl(var(--primary))]" />
+                <input type="radio" name="sprite-mode" checked={mode === option.value} onChange={() => setMode(option.value)} className="mt-0.5 h-4 w-4 accent-primary" />
                 <span>
                   <span className="block font-medium">{option.label}</span>
                   <span className="block text-xs text-muted-foreground">{option.hint}</span>
@@ -249,11 +249,11 @@ export default function SpriteTab() {
           </h2>
           <TextField label="Symbol ID Pattern" value={idPattern} maxLength={60} autoComplete="off" spellCheck={false} error={patternProblem ?? undefined} hint="{prefix} is the project prefix, {name} the icon name." onChange={(event) => setIdPattern(event.target.value)} />
           <label className="flex cursor-pointer items-center gap-2 text-sm">
-            <input type="checkbox" checked={stripColors} onChange={(event) => setStripColors(event.target.checked)} className="h-4 w-4 accent-[hsl(var(--primary))]" />
+            <input type="checkbox" checked={stripColors} onChange={(event) => setStripColors(event.target.checked)} className="h-4 w-4 accent-primary" />
             Convert Colours to currentColor (Monochrome)
           </label>
           <label className="flex cursor-pointer items-center gap-2 text-sm">
-            <input type="checkbox" checked={namespaceIds} onChange={(event) => setNamespaceIds(event.target.checked)} className="h-4 w-4 accent-[hsl(var(--primary))]" />
+            <input type="checkbox" checked={namespaceIds} onChange={(event) => setNamespaceIds(event.target.checked)} className="h-4 w-4 accent-primary" />
             Namespace Gradient and Mask IDs (Prevents Clashes)
           </label>
           {patternProblem && <p className="text-xs text-muted-foreground">Until that is fixed, ids use {DEFAULT_SPRITE_OPTIONS.idPattern}.</p>}
@@ -317,7 +317,7 @@ export default function SpriteTab() {
 
       <SaveBuildVersionDialog
         open={saveVersionPromptOpen}
-        kind="sprite"
+        kind="Sprite"
         iconCount={built?.ids.length ?? chosen?.length ?? 0}
         busyAction={downloadAction}
         onDownloadOnly={() => void downloadBundle(false)}
