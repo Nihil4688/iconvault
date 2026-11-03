@@ -7,7 +7,7 @@ import { useToast } from "../../context/ToastContext";
 import { useWorkspace } from "../../context/workspaceContext";
 import { useResource } from "../../hooks/useResource";
 import { formatBytes, formatRelative, pluralize } from "../../lib/format";
-import { Button } from "../ui/Button";
+import { Button, IconButton } from "../ui/Button";
 import ConfirmDialog from "../ui/ConfirmDialog";
 import SvgPreview from "../ui/SvgPreview";
 
@@ -61,8 +61,8 @@ export default function TrashTab() {
   }
 
   return (
-    <div className="mx-auto max-w-5xl">
-      <section aria-labelledby="trash-heading" className="rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
+    <div className="mx-auto flex h-full min-h-0 w-full max-w-5xl flex-col">
+      <section aria-labelledby="trash-heading" className="flex h-full min-h-0 flex-col rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
       <h2 id="trash-heading" className="text-lg font-bold">
         Trash
       </h2>
@@ -101,7 +101,7 @@ export default function TrashTab() {
               </Button>
             </div>
           </div>
-          <ul className="mt-3 divide-y divide-border rounded-xl border border-border">
+          <ul className="mt-3 min-h-0 flex-1 overflow-y-auto divide-y divide-border rounded-xl border border-border">
             {icons.map((icon) => (
               <li key={icon.id} className="flex flex-wrap items-center gap-3 px-3 py-2">
                 <span className="flex h-10 w-10 items-center justify-center rounded-md bg-muted">
@@ -114,12 +114,12 @@ export default function TrashTab() {
                     {icon.deletedAt ? ` · deleted ${formatRelative(icon.deletedAt)}` : ""}
                   </span>
                 </span>
-                <Button size="sm" onClick={() => restoreOne(icon)} disabled={busy} aria-label={`Restore ${icon.name}`}>
-                  Restore
-                </Button>
-                <Button size="sm" variant="destructive" onClick={() => setPending({ kind: "one", icon })} disabled={busy} aria-label={`Delete forever: ${icon.name}`}>
-                  Delete forever
-                </Button>
+                <IconButton label={`Restore ${icon.name}`} variant="secondary" onClick={() => restoreOne(icon)} disabled={busy}>
+                  <RotateCcw aria-hidden="true" className="h-4 w-4" />
+                </IconButton>
+                <IconButton label={`Delete forever: ${icon.name}`} variant="destructive" onClick={() => setPending({ kind: "one", icon })} disabled={busy}>
+                  <Trash2 aria-hidden="true" className="h-4 w-4" />
+                </IconButton>
               </li>
             ))}
           </ul>

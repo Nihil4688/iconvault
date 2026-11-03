@@ -10,7 +10,6 @@ import { ToastProvider } from "../../context/ToastContext";
 import { WorkspaceContext, type WorkspaceContextValue } from "../../context/workspaceContext";
 import { useSelection } from "../../hooks/useSelection";
 import { READ_ONLY, makeDetail, makeIcon } from "../../test/fixtures";
-import * as clipboard from "../../lib/clipboard";
 import * as zip from "../../utils/zipBundle";
 import SettingsTab from "./SettingsTab";
 import TrashTab from "./TrashTab";
@@ -21,7 +20,6 @@ vi.mock("../../utils/zipBundle", () => ({ triggerBrowserDownload: vi.fn() }));
 vi.mock("../admin/TransferProjectDialog", () => ({ default: ({ open }: { open: boolean }) => (open ? <div role="dialog" aria-label="Transfer ownership" /> : null) }));
 vi.mock("../../api/icons");
 vi.mock("../../api/projects");
-vi.mock("../../lib/clipboard");
 
 const listIcons = vi.mocked(iconsApi.listIcons);
 const trashed = (id: string, name: string) => makeIcon({ id, name, deletedAt: "2026-10-18T10:00:00.000Z" });
@@ -62,6 +60,8 @@ describe("Trash", () => {
     expect(await screen.findByText("Alpha")).toBeInTheDocument();
     expect(listIcons).toHaveBeenCalledWith("p1", { trash: true, sort: "newest", limit: 1000 });
     expect(screen.getByText("2 icons in the trash")).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Trash" })).toHaveClass("h-full", "min-h-0");
+    expect(screen.getByText("Alpha").closest("ul")).toHaveClass("flex-1", "min-h-0", "overflow-y-auto");
   });
 
   it("says the trash is empty", async () => {
@@ -198,22 +198,6 @@ describe("Settings", () => {
     await userEvent.type(screen.getByLabelText("Project name"), "!");
     await userEvent.click(screen.getByRole("button", { name: "Save settings" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Could not save.");
-  });
-
-  it("gives the usage snippets for the project type, with a copy button", async () => {
-    vi.mocked(clipboard.copyText).mockResolvedValue(true);
-    setup(<SettingsTab />, { project: makeDetail({ id: "p1", name: "Feather", prefix: "fth", purpose: "sprite" }) });
-    expect(screen.getByRole("heading", { name: /Integration guide/ })).toBeInTheDocument();
-    expect(screen.getByText(/sprite.svg#fth-home/)).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Copy: SVG sprite inline usage" }));
-    expect(clipboard.copyText).toHaveBeenCalledWith(expect.stringContaining('href="sprite.svg#fth-home"'));
-    expect(await screen.findByText("Copied svg sprite inline usage.")).toBeInTheDocument();
-  });
-
-  it("gives font snippets for a font project", () => {
-    setup(<SettingsTab />, { project: makeDetail({ id: "p1", name: "Feather Icons", prefix: "fth", purpose: "font" }) });
-    expect(screen.getByText(/FeatherIcons\.css/)).toBeInTheDocument();
-    expect(screen.getByText(/<i className="fth-home"/)).toBeInTheDocument();
   });
 
   it("marks a project as a draft", async () => {

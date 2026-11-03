@@ -51,6 +51,7 @@ export default function ProjectPage() {
   const requested = params.get("folder");
   const selectedFolder: FolderSelection = requested === "root" ? "root" : requested && folderList.folders.some((f) => f.id === requested) ? requested : "all";
   const onIconsSection = /^\/projects\/[^/]+\/?$/.test(location.pathname);
+  const onTrashSection = /^\/projects\/[^/]+\/trash\/?$/.test(location.pathname);
 
   function selectFolder(selection: FolderSelection) {
     setParams(
@@ -110,14 +111,14 @@ export default function ProjectPage() {
 
   return (
     <WorkspaceContext.Provider value={context}>
-      <main id="main" tabIndex={-1} className="flex min-h-screen flex-col pt-[57px] outline-none">
+      <main id="main" tabIndex={-1} className="fixed inset-0 z-0 flex h-dvh flex-col overflow-hidden pt-[57px] outline-none">
         <ProjectHeader project={project.data} actionsRef={setActionsSlot} />
 
-        <div className="flex flex-1 flex-col">
+        <div className="flex min-h-0 flex-1 flex-col">
           {onIconsSection ? (
             // Split view: the folders on the left, the icons on the right, divided by a line, using the whole width.
-            <div className="grid flex-1 lg:grid-cols-[17rem_minmax(0,1fr)]">
-              <aside aria-label="Folders" className="border-b border-border p-3 lg:border-b-0 lg:border-r lg:p-4">
+            <div className="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)] lg:grid-cols-[17rem_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)]">
+              <aside aria-label="Folders" className="max-h-[35dvh] overflow-y-auto border-b border-border p-3 lg:max-h-none lg:border-b-0 lg:border-r lg:p-4">
                 <button
                   type="button"
                   aria-expanded={foldersOpen}
@@ -204,12 +205,13 @@ export default function ProjectPage() {
                   />
                 </div>
               </aside>
-              <div className="min-w-0">
+              <div className="min-h-0 min-w-0">
                 <IconsTab key={projectId} />
               </div>
             </div>
           ) : (
-            <div className="mx-auto w-full max-w-7xl px-4 py-6 sm:px-6">
+            <div className={`min-h-0 flex-1 ${onTrashSection ? "overflow-hidden" : "overflow-y-auto"}`}>
+              <div className={`mx-auto w-full max-w-7xl px-4 py-6 sm:px-6 ${onTrashSection ? "h-full min-h-0" : ""}`}>
             <Routes>
               {/* A project is a sprite project or a font project, chosen at creation: each has only its own section. */}
               <Route path="sprite" element={project.data.purpose === "sprite" ? <SpriteTab /> : <Navigate to={`/projects/${projectId}`} replace />} />
@@ -218,6 +220,7 @@ export default function ProjectPage() {
               <Route path="settings" element={<SettingsTab />} />
               <Route path="*" element={<Navigate to={`/projects/${projectId}`} replace />} />
             </Routes>
+              </div>
             </div>
           )}
         </div>
