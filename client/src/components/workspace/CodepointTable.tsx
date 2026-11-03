@@ -20,7 +20,7 @@ type CodepointTableProps = {
 
 export default function CodepointTable({ glyphs, family, canEdit, busy, onSave, onCopyClass }: CodepointTableProps) {
   return (
-    <div className="relative overflow-x-auto rounded-xl border border-border">
+    <div className="relative max-h-[40vh] overflow-x-auto overflow-y-auto rounded-xl border border-border">
       <table className="w-full min-w-3xl text-left text-sm">
         <caption className="sr-only">Stable Unicode codepoints mapping</caption>
         <thead className="bg-muted text-xs text-muted-foreground">

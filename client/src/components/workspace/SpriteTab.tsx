@@ -297,7 +297,7 @@ export default function SpriteTab() {
               </h3>
               {built.ids.length > 10 && <input type="search" aria-label="Filter Symbol IDs" placeholder="Filter ids" value={filter} onChange={(event) => setFilter(event.target.value)} className="h-9 rounded-lg border border-input bg-background px-3 text-sm" />}
             </div>
-            <div className="mt-2 h-[40vh] min-h-64 overflow-y-auto rounded-xl border border-border py-3 pl-3">
+            <div className="mt-2 max-h-[40vh] overflow-y-auto rounded-xl border border-border py-3 pl-3">
               <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
                 {shownIds.slice(0, MAX_LISTED_IDS).map((id) => (
                   <li key={id}>

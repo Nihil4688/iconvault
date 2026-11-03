@@ -88,6 +88,14 @@ describe("building the sprite", () => {
     expect(vi.mocked(zip.createZip).mock.calls[0]![0].some((entry) => entry.name === "demo.html")).toBe(true);
   });
 
+  it("lets the symbol ID container grow with its contents and scroll at its maximum height", async () => {
+    setup();
+    await screen.findByText("2 symbols");
+    const container = screen.getByRole("list").parentElement;
+    expect(container).not.toHaveClass("h-[40vh]");
+    expect(container).toHaveClass("max-h-[40vh]", "overflow-y-auto");
+  });
+
   it("asks for a folder and its subfolders when one is chosen", async () => {
     setup();
     await screen.findByText("2 symbols");
