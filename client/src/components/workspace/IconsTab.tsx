@@ -24,6 +24,7 @@ import { MoveIconsDialog, TagIconsDialog } from "./BulkDialogs";
 import IconCard from "./IconCard";
 import IconDrawer from "./IconDrawer";
 import IconList from "./IconList";
+import MoreMenu from "./MoreMenu";
 import SelectAllBar from "./SelectAllBar";
 import IconToolbar, { type IconSort, type IconView } from "./IconToolbar";
 import UploadDialog from "./UploadDialog";
@@ -151,8 +152,6 @@ export default function IconsTab() {
         onSort={setSort}
         view={view}
         onView={setView}
-        surface={surface}
-        onSurface={setSurface}
         appearance={appearance}
         onAppearance={setAppearance}
         appearanceScope={selectedFolder === "all" ? "all" : "folder"}
@@ -192,8 +191,9 @@ export default function IconsTab() {
           </div>
         ) : (
           <div className="flex min-h-0 flex-1 flex-col">
-            <div className="shrink-0 pt-2">
+            <div className="flex shrink-0 items-center justify-between py-2 pr-7">
               <SelectAllBar loaded={shown.length} selected={selection.size} onSelectAll={(checked) => (checked ? selection.selectAll(shown.map((icon) => icon.id)) : selection.clear())} />
+              <MoreMenu surface={surface} onSurface={setSurface} disabled={noIconsInScope} />
             </div>
             <div className="min-h-0 flex-1 overflow-y-auto pb-24 pr-3">
             {view === "grid" ? (

@@ -8,7 +8,7 @@ export const SURFACE_LABELS: Record<Surface, string> = {
   theme: "Match theme",
   light: "Light",
   dark: "Dark",
-  checker: "Checkerboard",
+  checker: "Transparent",
 };
 
 export function surfaceClass(surface: Surface): string {

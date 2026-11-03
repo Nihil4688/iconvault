@@ -19,7 +19,7 @@ export default function SelectAllBar({ loaded, selected, onSelectAll }: SelectAl
   }, [some]);
 
   return (
-    <label className="mb-3 inline-flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
+    <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
       <input ref={ref} type="checkbox" checked={all} disabled={loaded === 0} onChange={(event) => onSelectAll(event.target.checked)} className="h-4 w-4 accent-[hsl(var(--primary))]" />
       Select all {loaded} shown
     </label>

@@ -11,6 +11,7 @@ import { MoveIconsDialog, TagIconsDialog } from "./BulkDialogs";
 import IconCard from "./IconCard";
 import IconList from "./IconList";
 import IconToolbar from "./IconToolbar";
+import MoreMenu from "./MoreMenu";
 import SelectAllBar from "./SelectAllBar";
 
 describe("IconCard", () => {
@@ -121,15 +122,13 @@ describe("IconList", () => {
 
 describe("IconToolbar", () => {
   function setup(over: Partial<React.ComponentProps<typeof IconToolbar>> = {}) {
-    const props = {
+    const props: React.ComponentProps<typeof IconToolbar> = {
       search: "",
       onSearch: vi.fn(),
       sort: "newest" as const,
       onSort: vi.fn(),
       view: "grid" as const,
       onView: vi.fn(),
-      surface: "theme" as const,
-      onSurface: vi.fn(),
       appearance: DEFAULT_APPEARANCE,
       onAppearance: vi.fn(),
       appearanceScope: "folder" as const,
@@ -142,14 +141,11 @@ describe("IconToolbar", () => {
   }
 
   it("reports searching, sorting, background and view changes", async () => {
-    const { onSearch, onSort, onSurface, onView } = setup();
+    const { onSearch, onSort, onView } = setup();
     await userEvent.type(screen.getByRole("searchbox", { name: "Search icons" }), "ar");
     expect(onSearch).toHaveBeenLastCalledWith("r");
     await userEvent.selectOptions(screen.getByLabelText("Sort by"), "name");
     expect(onSort).toHaveBeenCalledWith("name");
-    await userEvent.click(screen.getByRole("button", { name: "More" }));
-    await userEvent.click(screen.getByRole("menuitemradio", { name: "Checkerboard" }));
-    expect(onSurface).toHaveBeenCalledWith("checker");
     await userEvent.click(screen.getByRole("button", { name: "List view" }));
     expect(onView).toHaveBeenCalledWith("list");
   });
@@ -214,24 +210,42 @@ describe("IconToolbar", () => {
     expect(onSort).toHaveBeenCalledWith("largest");
   });
 
-  it("has no breadcrumb, no background dropdown, and search before the size control", () => {
+  it("keeps search and actions on one responsive row", () => {
     setup();
     expect(screen.queryByRole("navigation", { name: "Breadcrumb" })).not.toBeInTheDocument();
-    expect(screen.queryByLabelText("Preview background")).not.toBeInTheDocument();
     const search = screen.getByRole("searchbox", { name: "Search icons" });
     const size = screen.getByRole("group", { name: "Icon size" });
-    expect(search.parentElement).toHaveClass("max-w-2xl");
-    expect(screen.getByRole("group", { name: "Icon toolbar actions" })).toHaveClass("ml-auto");
+    const actions = screen.getByRole("group", { name: "Icon toolbar actions" });
+    expect(search.parentElement).toHaveClass("min-w-56", "max-w-lg", "flex-1");
+    expect(search.parentElement?.parentElement?.parentElement).toHaveClass("overflow-x-auto");
+    expect(actions).toHaveClass("ml-auto", "shrink-0", "flex-nowrap");
+    expect(actions.parentElement).toHaveClass("flex-nowrap");
     expect(search.compareDocumentPosition(size) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
+});
+
+describe("MoreMenu", () => {
+  function setup(surface: React.ComponentProps<typeof MoreMenu>["surface"] = "theme", disabled = false) {
+    const onSurface = vi.fn();
+    render(<MoreMenu surface={surface} onSurface={onSurface} disabled={disabled} />);
+    return { onSurface };
+  }
 
   it("keeps the preview background in the More menu: a single choice with the current one checked", async () => {
-    const { onSurface } = setup({ surface: "light" });
-    const more = screen.getByRole("button", { name: "More" });
+    const { onSurface } = setup("light");
+    const more = screen.getByRole("button", { name: "Preview background" });
+    expect(more).not.toHaveTextContent("More");
     expect(more).toHaveAttribute("aria-expanded", "false");
     await userEvent.click(more);
-    const menu = screen.getByRole("menu", { name: "More view options" });
-    expect(within(menu).getAllByRole("menuitemradio").map((i) => [i.textContent, i.getAttribute("aria-checked")])).toEqual([["Match theme", "false"], ["Light", "true"], ["Dark", "false"], ["Checkerboard", "false"]]);
+    const menu = screen.getByRole("menu", { name: "Preview background options" });
+    expect(menu).toHaveClass("w-[min(32rem,calc(100vw-2rem))]");
+    expect(menu.querySelector(".grid")).toHaveClass("grid-cols-4");
+    const options = within(menu).getAllByRole("menuitemradio");
+    expect(options.map((item) => [item.textContent, item.getAttribute("aria-checked")])).toEqual([["Match theme", "false"], ["Light", "true"], ["Dark", "false"], ["Transparent", "false"]]);
+    expect(options[0]).toHaveClass("flex-col");
+    expect(options[1]).toHaveClass("border-primary", "bg-primary/5");
+    expect(options[1]).toHaveClass("min-h-24");
+    expect(options[1].querySelector('[aria-hidden="true"]')).toHaveClass("h-12", "w-12");
     await userEvent.click(within(menu).getByRole("menuitemradio", { name: "Dark" }));
     expect(onSurface).toHaveBeenCalledWith("dark");
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
@@ -240,12 +254,12 @@ describe("IconToolbar", () => {
 
   it("moves through the More menu with the keyboard and closes on Escape or an outside click", async () => {
     setup();
-    const more = screen.getByRole("button", { name: "More" });
+    const more = screen.getByRole("button", { name: "Preview background" });
     more.focus();
     await userEvent.keyboard("{ArrowDown}");
     await waitFor(() => expect(screen.getByRole("menuitemradio", { name: "Match theme" })).toHaveFocus());
     await userEvent.keyboard("{End}");
-    expect(screen.getByRole("menuitemradio", { name: "Checkerboard" })).toHaveFocus();
+    expect(screen.getByRole("menuitemradio", { name: "Transparent" })).toHaveFocus();
     await userEvent.keyboard("{ArrowDown}");
     expect(screen.getByRole("menuitemradio", { name: "Match theme" })).toHaveFocus();
     await userEvent.keyboard("{Escape}");
@@ -255,6 +269,32 @@ describe("IconToolbar", () => {
     await userEvent.click(document.body);
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
   });
+
+  it("disables the menu when icon browsing is unavailable", () => {
+    setup("theme", true);
+    expect(screen.getByRole("button", { name: "Preview background" })).toBeDisabled();
+  });
+});
+
+describe("IconToolbar uploads", () => {
+  function setup(over: Partial<React.ComponentProps<typeof IconToolbar>> = {}) {
+    const props: React.ComponentProps<typeof IconToolbar> = {
+      search: "",
+      onSearch: vi.fn(),
+      sort: "newest" as const,
+      onSort: vi.fn(),
+      view: "grid" as const,
+      onView: vi.fn(),
+      appearance: DEFAULT_APPEARANCE,
+      onAppearance: vi.fn(),
+      appearanceScope: "folder" as const,
+      canAdd: true,
+      onUpload: vi.fn(),
+      ...over,
+    };
+    render(<IconToolbar {...props} />);
+    return props;
+  }
 
   it("puts the upload button into the header slot when there is one", () => {
     const host = document.createElement("div");

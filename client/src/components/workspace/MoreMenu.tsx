@@ -1,10 +1,10 @@
-// The "More" button in the icon toolbar: a menu of extra view options. Today it holds the preview background (Match theme, Light, Dark, Checkerboard) as a single-choice list. Keyboard: Enter, Space or the arrows open it, arrows/Home/End move, Enter or Space picks, Escape closes and returns focus to the button.
-import { Check, MoreHorizontal } from "lucide-react";
+// The preview background picker in the icon toolbar. Keyboard: Enter, Space or the arrows open it, arrows/Home/End move, Enter or Space picks, Escape closes and returns focus to the button.
+import { Check, ChevronDown, PanelsTopLeft } from "lucide-react";
 import { useEffect, useId, useRef, useState, type KeyboardEvent } from "react";
 import { cn } from "../../lib/cn";
 import { SURFACES, SURFACE_LABELS, type Surface } from "../../lib/previewSurface";
 
-export default function MoreMenu({ surface, onSurface }: { surface: Surface; onSurface: (surface: Surface) => void }) {
+export default function MoreMenu({ surface, onSurface, disabled = false }: { surface: Surface; onSurface: (surface: Surface) => void; disabled?: boolean }) {
   const [open, setOpen] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
@@ -28,7 +28,8 @@ export default function MoreMenu({ surface, onSurface }: { surface: Surface; onS
     setOpen(true);
     requestAnimationFrame(() => {
       const list = items();
-      (list[index < 0 ? list.length - 1 : index] ?? list[0])?.focus();
+      const selectedIndex = list.findIndex((item) => item.getAttribute("aria-checked") === "true");
+      (list[index < 0 ? list.length - 1 : index === 0 ? Math.max(selectedIndex, 0) : index] ?? list[0])?.focus();
     });
   }
 
@@ -66,36 +67,64 @@ export default function MoreMenu({ surface, onSurface }: { surface: Surface; onS
       <button
         ref={triggerRef}
         type="button"
+        disabled={disabled}
+        aria-label="Preview background"
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}
         onClick={() => setOpen((value) => !value)}
         onKeyDown={onTriggerKeyDown}
-        className="inline-flex h-9 items-center gap-1.5 rounded-lg border border-input bg-background px-3 text-sm font-semibold transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
+        title="Preview background"
+        className="inline-flex h-9 w-12 items-center justify-center gap-1 rounded-lg border border-input bg-background text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
       >
-        <MoreHorizontal aria-hidden="true" className="h-4 w-4" />
-        More
+        <PanelsTopLeft aria-hidden="true" className="h-4 w-4" />
+        <ChevronDown aria-hidden="true" className="h-3 w-3" />
       </button>
       {open && (
-        <div ref={menuRef} id={menuId} role="menu" aria-label="More view options" onKeyDown={onMenuKeyDown} className="absolute right-0 top-full z-30 mt-1 w-56 rounded-xl border border-border bg-popover p-1 text-popover-foreground shadow-lg">
-          <p className="px-2.5 pb-1 pt-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Preview background</p>
-          {SURFACES.map((value) => (
-            <button
-              key={value}
-              type="button"
-              role="menuitemradio"
-              aria-checked={surface === value}
-              onClick={() => {
-                onSurface(value);
-                setOpen(false);
-                triggerRef.current?.focus();
-              }}
-              className={cn("flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition-colors hover:bg-accent focus-visible:bg-accent focus-visible:outline-none", surface === value && "font-semibold")}
-            >
-              <Check aria-hidden="true" className={cn("h-4 w-4 shrink-0", surface === value ? "text-primary" : "invisible")} />
-              {SURFACE_LABELS[value]}
-            </button>
-          ))}
+        <div ref={menuRef} id={menuId} role="menu" aria-label="Preview background options" onKeyDown={onMenuKeyDown} className="absolute right-0 top-full z-30 mt-2 w-[min(32rem,calc(100vw-2rem))] rounded-xl border border-border bg-popover p-3 text-popover-foreground shadow-lg sm:p-4">
+          <p className="relative z-10 pb-2 text-sm font-semibold">Preview Background</p>
+          <div className="relative z-10 grid grid-cols-4 gap-2">
+            {SURFACES.map((value) => {
+              const selected = surface === value;
+              const backgroundClass = value === "dark" ? "bg-neutral-900" : value === "light" ? "bg-white" : value === "theme" ? "bg-background" : "";
+              const backgroundStyle = value === "checker"
+                ? { background: "conic-gradient(#d1d5db 25%, #fff 0 50%, #d1d5db 0 75%, #fff 0)", backgroundSize: "10px 10px" }
+                : value === "theme"
+                  ? { background: "linear-gradient(135deg, #fff 50%, #1f2937 50%)" }
+                  : undefined;
+              return (
+                <button
+                  key={value}
+                  type="button"
+                  role="menuitemradio"
+                  aria-checked={selected}
+                  onClick={() => {
+                    onSurface(value);
+                    setOpen(false);
+                    triggerRef.current?.focus();
+                  }}
+                  className={cn(
+                    "relative flex min-h-24 min-w-0 flex-col items-center justify-center gap-1 rounded-lg border p-1.5 text-xs font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring",
+                    selected ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border",
+                  )}
+                >
+                  {value === "theme" ? (
+                    <span aria-hidden="true" className="flex h-16 w-16 shrink-0 items-center justify-center">
+                      <span className={cn("h-12 w-12 rounded-lg border border-border", backgroundClass)} style={backgroundStyle} />
+                    </span>
+                  ) : (
+                    <span aria-hidden="true" className={cn("h-12 w-12 shrink-0 rounded-lg border border-border", backgroundClass)} style={backgroundStyle} />
+                  )}
+                  {SURFACE_LABELS[value]}
+                  {selected && (
+                    <span className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
+                      <Check aria-hidden="true" className="h-3 w-3" />
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>
