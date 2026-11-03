@@ -21,7 +21,7 @@ type ProjectFormDialogProps = {
 
 export default function ProjectFormDialog({ open, mode, project, onClose, onSaved }: ProjectFormDialogProps) {
   return (
-    <Dialog open={open} onClose={onClose} title={mode === "create" ? "New project" : "Edit project"} description={mode === "create" ? "A project holds your icons, folders and builds." : undefined}>
+    <Dialog open={open} onClose={onClose} dismissOnBackdrop={false} title={mode === "create" ? "New Project" : "Edit Project"} description={mode === "create" ? "A project holds your icons, folders and builds." : undefined}>
       <ProjectForm mode={mode} project={project} onClose={onClose} onSaved={onSaved} />
     </Dialog>
   );
@@ -64,6 +64,7 @@ function ProjectForm({ mode, project, onClose, onSaved }: Omit<ProjectFormDialog
     <form onSubmit={submit} noValidate className="space-y-4">
       <TextField
         label="Name"
+        placeholder="Enter project name"
         required
         value={name}
         autoFocus
@@ -75,10 +76,11 @@ function ProjectForm({ mode, project, onClose, onSaved }: Omit<ProjectFormDialog
           if (!prefixEdited) setPrefix(suggestPrefix(event.target.value));
         }}
       />
-      <TextAreaField label="Description" value={description} maxLength={500} placeholder="Optional" onChange={(event) => setDescription(event.target.value)} />
+      <TextAreaField label="Description" value={description} maxLength={500} placeholder="Add a short description (optional)" onChange={(event) => setDescription(event.target.value)} />
       <TextField
         label="Prefix"
         required
+        placeholder="e.g. feather"
         value={prefix}
         maxLength={20}
         autoComplete="off"
@@ -90,7 +92,7 @@ function ProjectForm({ mode, project, onClose, onSaved }: Omit<ProjectFormDialog
           setPrefixEdited(true);
         }}
       />
-      <ColorSwatches legend="Accent color" name={`${groupId}-color`} value={color} onChange={setColor} colors={PROJECT_COLORS} />
+      <ColorSwatches legend="Accent Color" name={`${groupId}-color`} value={color} onChange={setColor} colors={PROJECT_COLORS} />
       <RadioCardGroup
         legend="Type"
         name={`${groupId}-purpose`}
@@ -100,11 +102,11 @@ function ProjectForm({ mode, project, onClose, onSaved }: Omit<ProjectFormDialog
         hint={mode === "edit" ? "The type is fixed once the project is created." : undefined}
         options={[
           { value: "sprite", label: "Sprite", description: "Build SVG sprite sheets." },
-          { value: "font", label: "Icon font", description: "Build icon fonts." },
+          { value: "font", label: "Icon Font", description: "Build icon fonts." },
         ]}
       />
       <RadioCardGroup
-        legend="Who can see it"
+        legend="Who Can See It"
         name={`${groupId}-visibility`}
         value={visibility}
         onChange={setVisibility}
@@ -123,7 +125,7 @@ function ProjectForm({ mode, project, onClose, onSaved }: Omit<ProjectFormDialog
           Cancel
         </Button>
         <Button type="submit" variant="primary" loading={busy}>
-          {mode === "create" ? "Create project" : "Save changes"}
+          {mode === "create" ? "Create Project" : "Save Changes"}
         </Button>
       </DialogFooter>
     </form>

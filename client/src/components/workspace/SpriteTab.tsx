@@ -1,4 +1,4 @@
-// The Sprite Builder, laid out like the Font Builder and like Icon Vault's sprite page: the actions in the project bar (Download sprite ZIP is the main one, with Copy sprite), then three columns: 1. Scope selection (whole project, a folder or the chosen icons, with the icon checklist), 2. Sprite architecture (symbols, a stack, or symbols with a CSS stylesheet), 3. Processing options (the symbol id pattern, colours to currentColor, namespaced ids). The sprite builds by itself in the browser whenever the icons or an option change, so the ZIP (sprite, grid sprite, demo page, preview image) is ready to download as soon as the page shows it. Below: the symbol ids with the code for each, and the sprite build history (there is no preview panel; the demo page is inside the ZIP). Anyone who can see the project can build and download; the ZIPs editors download are kept in the history.
+// The Sprite Builder, laid out like the Font Builder and like Icon Vault's sprite page: the actions in the project bar (Download sprite ZIP is the main one, with Copy sprite), then three columns: 1. Scope selection (whole project, a folder or the chosen icons, with the icon checklist), 2. Sprite architecture (symbols, a stack, or symbols with a CSS stylesheet), 3. Processing options (the symbol id pattern, colours to currentColor, namespaced ids). The sprite builds by itself in the browser whenever the icons or an option change, so the ZIP (sprite, grid sprite, demo page, preview image) is ready to download as soon as the page shows it. Below: the symbol ids with the code for each, and the sprite build history (there is no preview panel; the demo page is inside the ZIP). Anyone who can see the project can build and download; editors can save ZIPs to history.
 import { CheckSquare, Copy, FileArchive } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
@@ -28,14 +28,15 @@ import { Button } from "../ui/Button";
 import { SelectField, TextField } from "../ui/Fields";
 import IconChecklistDialog from "./IconChecklistDialog";
 import SpriteHistory from "./SpriteHistory";
+import SaveBuildVersionDialog from "./SaveBuildVersionDialog";
 
 const MAX_LISTED_IDS = 200;
 const columnHeading = "text-xs font-semibold uppercase tracking-wide text-muted-foreground";
 
 const MODES: { value: SpriteMode; label: string; hint: string }[] = [
-  { value: "symbol", label: "Symbol sprite (recommended)", hint: "Uses <symbol> with <use href=\"#id\">" },
-  { value: "stack", label: "Stack sprite", hint: "Uses :target CSS, for <img> or backgrounds" },
-  { value: "css", label: "CSS companion sprite", hint: "Symbols plus a sprite.css stylesheet" },
+  { value: "symbol", label: "Symbol Sprite (Recommended)", hint: "Uses <symbol> with <use href=\"#id\">" },
+  { value: "stack", label: "Stack Sprite", hint: "Uses :target CSS, for <img> or backgrounds" },
+  { value: "css", label: "CSS Companion Sprite", hint: "Symbols plus a sprite.css stylesheet" },
 ];
 
 export default function SpriteTab() {
@@ -55,6 +56,8 @@ export default function SpriteTab() {
   const [stripColors, setStripColors] = useState(DEFAULT_SPRITE_OPTIONS.stripColors);
   const [namespaceIds, setNamespaceIds] = useState(DEFAULT_SPRITE_OPTIONS.namespaceIds);
   const [bundleBusy, setBundleBusy] = useState(false);
+  const [saveVersionPromptOpen, setSaveVersionPromptOpen] = useState(false);
+  const [downloadAction, setDownloadAction] = useState<"download" | "save" | null>(null);
   const [historyVersion, setHistoryVersion] = useState(0);
   const [filter, setFilter] = useState("");
   const folderOptions = flattenFolderTree(buildFolderTree(folderList.folders));
@@ -98,9 +101,18 @@ export default function SpriteTab() {
     showToast(ok ? `Copied ${what}.` : "Could not copy to the clipboard.", ok ? "success" : "error");
   }
 
-  async function downloadBundle() {
+  function requestDownloadBundle() {
+    if (canEdit && project.visibility === "private" && scopeKind === "selected") {
+      setSaveVersionPromptOpen(true);
+      return;
+    }
+    void downloadBundle();
+  }
+
+  async function downloadBundle(saveAsVersion?: boolean) {
     if (!built || built.ids.length === 0) return;
     setBundleBusy(true);
+    setDownloadAction(saveAsVersion ? "save" : "download");
     try {
       const entries: { name: string; data: string | Uint8Array }[] = [
         { name: `${fileName}.svg`, data: built.xml },
@@ -114,30 +126,38 @@ export default function SpriteTab() {
       triggerBrowserDownload(zip, `${fileName}-bundle.zip`);
       showToast("Sprite ZIP downloaded.", "success");
       // An editor's download is kept in the history (best effort: it must not turn the download into a failure).
-      if (canEdit) {
+      if (canEdit && (scopeKind !== "selected" || saveAsVersion === true || project.visibility === "public")) {
         try {
           const fingerprint = spriteFingerprint(JSON.stringify({ fileName, xml: built.xml, css: built.css, mode: built.mode, ids: built.ids }));
-          await uploadSpriteBuild(project.id, zip, { mode: built.mode, iconCount: built.ids.length, scope: scopeKind, fingerprint });
+          await uploadSpriteBuild(project.id, zip, {
+            mode: built.mode,
+            iconCount: built.ids.length,
+            scope: scopeKind,
+            fingerprint,
+            ...(scopeKind === "selected" && project.visibility === "private" ? { saveAsVersion: true } : {}),
+          });
           setHistoryVersion((value) => value + 1);
         } catch {
           // The file was downloaded; only the history entry is missing.
         }
       }
+      setSaveVersionPromptOpen(false);
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Could not build the sprite ZIP.", "error");
     } finally {
       setBundleBusy(false);
+      setDownloadAction(null);
     }
   }
 
   // The actions sit in the project bar (like Upload icons on the Icons screen); without a bar they show above the settings.
   const actions = (
-    <div role="group" aria-label="Sprite actions" className="flex flex-wrap items-center gap-2">
-      <Button variant="primary" className="h-9" icon={<FileArchive aria-hidden="true" className="h-4 w-4" />} onClick={() => void downloadBundle()} loading={bundleBusy} disabled={!ready}>
-        Download sprite ZIP
+    <div role="group" aria-label="Sprite Actions" className="flex flex-wrap items-center gap-2">
+      <Button variant="primary" className="h-9" icon={<FileArchive aria-hidden="true" className="h-4 w-4" />} onClick={requestDownloadBundle} loading={bundleBusy} disabled={!ready}>
+        Download Sprite ZIP
       </Button>
       <Button className="h-9" icon={<Copy aria-hidden="true" className="h-4 w-4" />} onClick={() => built && void copyAndToast(built.xml, "the sprite")} disabled={!ready}>
-        Copy sprite
+        Copy Sprite
       </Button>
     </div>
   );
@@ -150,7 +170,7 @@ export default function SpriteTab() {
         <section aria-labelledby="sprite-scope" className="space-y-4">
           <fieldset>
             <legend id="sprite-scope" className={columnHeading}>
-              1. Scope selection
+              1. Scope Selection
             </legend>
             <div className="mt-3 space-y-2 text-sm">
               <label className="flex cursor-pointer items-center gap-2">
@@ -159,11 +179,11 @@ export default function SpriteTab() {
               </label>
               <label className="flex cursor-pointer items-center gap-2">
                 <input type="radio" name="sprite-scope" checked={scopeKind === "folder"} onChange={() => setScopeKind("folder")} className="h-4 w-4 accent-[hsl(var(--primary))]" />
-                Selected folder
+                Selected Folder
               </label>
               {scopeKind === "folder" && (
                 <SelectField label="Folder" hideLabel value={folderChoice} onChange={(event) => setFolderChoice(event.target.value)}>
-                  <option value="">Choose a folder…</option>
+                  <option value="">Choose a Folder…</option>
                   {folderOptions.map((folder) => (
                     <option key={folder.id} value={folder.id}>
                       {`${"  ".repeat(folder.depth)}${folder.name} (${pluralize(totalIconCount(folder), "icon")})`}
@@ -194,23 +214,23 @@ export default function SpriteTab() {
                 <CheckSquare aria-hidden="true" className="h-4 w-4 text-primary" />
                 Icon checklist
               </span>
-              <span className="text-primary" aria-label={`${inScope} of ${project.iconCount} icons included`}>
+              <span className="text-primary" aria-label={`${inScope} of ${project.iconCount} Icons Included`}>
                 {inScope} / {project.iconCount}
               </span>
             </div>
             <p className="mt-1 text-xs text-muted-foreground">Only checked icons are bundled into the sprite.</p>
             <Button className="mt-2 w-full" size="sm" onClick={() => setChoosing(true)}>
-              Review / edit checklist
+              Review / Edit Checklist
             </Button>
           </div>
         </section>
 
         <section aria-labelledby="sprite-architecture" className="space-y-3">
           <h2 id="sprite-architecture" className={columnHeading}>
-            2. Sprite architecture
+            2. Sprite Architecture
           </h2>
           <fieldset className="space-y-2.5 text-sm">
-            <legend className="sr-only">Sprite architecture</legend>
+            <legend className="sr-only">Sprite Architecture</legend>
             {MODES.map((option) => (
               <label key={option.value} className="flex cursor-pointer items-start gap-2">
                 <input type="radio" name="sprite-mode" checked={mode === option.value} onChange={() => setMode(option.value)} className="mt-0.5 h-4 w-4 accent-[hsl(var(--primary))]" />
@@ -225,16 +245,16 @@ export default function SpriteTab() {
 
         <section aria-labelledby="sprite-options" className="space-y-3">
           <h2 id="sprite-options" className={columnHeading}>
-            3. Processing options
+            3. Processing Options
           </h2>
-          <TextField label="Symbol id pattern" value={idPattern} maxLength={60} autoComplete="off" spellCheck={false} error={patternProblem ?? undefined} hint="{prefix} is the project prefix, {name} the icon name." onChange={(event) => setIdPattern(event.target.value)} />
+          <TextField label="Symbol ID Pattern" value={idPattern} maxLength={60} autoComplete="off" spellCheck={false} error={patternProblem ?? undefined} hint="{prefix} is the project prefix, {name} the icon name." onChange={(event) => setIdPattern(event.target.value)} />
           <label className="flex cursor-pointer items-center gap-2 text-sm">
             <input type="checkbox" checked={stripColors} onChange={(event) => setStripColors(event.target.checked)} className="h-4 w-4 accent-[hsl(var(--primary))]" />
-            Convert colours to currentColor (monochrome)
+            Convert Colours to currentColor (Monochrome)
           </label>
           <label className="flex cursor-pointer items-center gap-2 text-sm">
             <input type="checkbox" checked={namespaceIds} onChange={(event) => setNamespaceIds(event.target.checked)} className="h-4 w-4 accent-[hsl(var(--primary))]" />
-            Namespace gradient and mask ids (prevents clashes)
+            Namespace Gradient and Mask IDs (Prevents Clashes)
           </label>
           {patternProblem && <p className="text-xs text-muted-foreground">Until that is fixed, ids use {DEFAULT_SPRITE_OPTIONS.idPattern}.</p>}
         </section>
@@ -246,14 +266,14 @@ export default function SpriteTab() {
         <div role="alert" className="mt-4 rounded-xl border border-destructive/40 p-6 text-center">
           <p className="font-medium text-destructive">{loaded.error.message}</p>
           <Button className="mt-3" onClick={loaded.reload}>
-            Try again
+            Try Again
           </Button>
         </div>
       ) : !built ? (
-        <div aria-busy="true" aria-label="Building the sprite" className="mt-4 h-64 animate-pulse rounded-xl bg-muted" />
+        <div aria-busy="true" aria-label="Building the Sprite" className="mt-4 h-64 animate-pulse rounded-xl bg-muted" />
       ) : built.ids.length === 0 ? (
         <div className="mt-4 rounded-2xl border border-dashed border-border p-10 text-center">
-          <p className="text-base font-semibold">There is nothing to compile yet.</p>
+          <p className="text-base font-semibold">There Is Nothing to Compile Yet.</p>
           <p className="mt-1 text-sm text-muted-foreground">{project.access.canAddIcons ? "Add icons, or import an existing sprite from the Icons screen's Upload icons menu, and the sprite is built here." : "This project has no icons in that selection."}</p>
         </div>
       ) : (
@@ -273,14 +293,14 @@ export default function SpriteTab() {
           <section aria-labelledby="sprite-ids">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <h3 id="sprite-ids" className="text-sm font-semibold">
-                Symbol ids
+                Symbol IDs
               </h3>
-              {built.ids.length > 10 && <input type="search" aria-label="Filter symbol ids" placeholder="Filter ids" value={filter} onChange={(event) => setFilter(event.target.value)} className="h-9 rounded-lg border border-input bg-background px-3 text-sm" />}
+              {built.ids.length > 10 && <input type="search" aria-label="Filter Symbol IDs" placeholder="Filter ids" value={filter} onChange={(event) => setFilter(event.target.value)} className="h-9 rounded-lg border border-input bg-background px-3 text-sm" />}
             </div>
             <ul className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
               {shownIds.slice(0, MAX_LISTED_IDS).map((id) => (
                 <li key={id}>
-                  <button type="button" onClick={() => copyAndToast(snippetFor(built.mode, id, `${fileName}.svg`), `the code for ${id}`)} aria-label={`Copy code for ${id}`} className="flex w-full items-center justify-between gap-2 rounded-lg border border-border px-3 py-1.5 text-left font-mono text-xs hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring">
+                  <button type="button" onClick={() => copyAndToast(snippetFor(built.mode, id, `${fileName}.svg`), `the code for ${id}`)} aria-label={`Copy Code for ${id}`} className="flex w-full items-center justify-between gap-2 rounded-lg border border-border px-3 py-1.5 text-left font-mono text-xs hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring">
                     <span className="truncate">{id}</span>
                     <Copy aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
                   </button>
@@ -294,6 +314,18 @@ export default function SpriteTab() {
       )}
 
       <SpriteHistory projectId={project.id} canEdit={canEdit} version={historyVersion} />
+
+      <SaveBuildVersionDialog
+        open={saveVersionPromptOpen}
+        kind="sprite"
+        iconCount={built?.ids.length ?? chosen?.length ?? 0}
+        busyAction={downloadAction}
+        onDownloadOnly={() => void downloadBundle(false)}
+        onSaveVersion={() => void downloadBundle(true)}
+        onClose={() => {
+          if (!bundleBusy) setSaveVersionPromptOpen(false);
+        }}
+      />
 
       <IconChecklistDialog
         open={choosing}

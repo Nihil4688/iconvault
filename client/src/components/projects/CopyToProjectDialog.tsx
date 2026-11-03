@@ -21,7 +21,7 @@ type CopyToProjectDialogProps = {
 
 export default function CopyToProjectDialog({ open, icon, onClose, onCopied }: CopyToProjectDialogProps) {
   return (
-    <Dialog open={open} onClose={onClose} title="Copy to project" description="Add a copy of this icon to one of your projects.">
+    <Dialog open={open} onClose={onClose} title="Copy to Project" description="Add a copy of this icon to one of your projects.">
       {icon && <CopyForm icon={icon} onClose={onClose} onCopied={onCopied} />}
     </Dialog>
   );
@@ -91,16 +91,16 @@ function CopyForm({ icon, onClose, onCopied }: { icon: IconSearchResult; onClose
             ))}
           </SelectField>
           <SelectField label="Folder" value={folderId} onChange={(event) => setFolderId(event.target.value)}>
-            <option value="">Project root</option>
+            <option value="">Project Root</option>
             {folderOptions.map((folder) => (
               <option key={folder.id} value={folder.id}>
                 {`${"  ".repeat(folder.depth)}${folder.name}`}
               </option>
             ))}
           </SelectField>
-          <SelectField label="If an icon with that name exists" value={strategy} onChange={(event) => setStrategy(event.target.value as DuplicateStrategy)}>
-            <option value="rename">Keep both (add a number)</option>
-            <option value="replace">Replace it</option>
+          <SelectField label="If an Icon with That Name Exists" value={strategy} onChange={(event) => setStrategy(event.target.value as DuplicateStrategy)}>
+            <option value="rename">Keep Both (Add a Number)</option>
+            <option value="replace">Replace It</option>
             <option value="skip">Skip</option>
           </SelectField>
         </>
@@ -116,7 +116,7 @@ function CopyForm({ icon, onClose, onCopied }: { icon: IconSearchResult; onClose
           Cancel
         </Button>
         <Button type="submit" variant="primary" loading={busy} disabled={!projectId}>
-          Copy icon
+          Copy Icon
         </Button>
       </DialogFooter>
     </form>

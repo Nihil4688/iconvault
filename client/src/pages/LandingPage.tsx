@@ -3,12 +3,12 @@ import { FolderTree, Layers, Lock, ShieldCheck, type LucideIcon } from "lucide-r
 
 const FEATURES: Array<{ title: string; text: string; Icon: LucideIcon }> = [
   {
-    title: "Organize projects and folders",
+    title: "Organize Projects and Folders",
     text: "Keep icons organized in projects and nested folders. Quickly find assets with search, tags, and a structured library.",
     Icon: FolderTree,
   },
   {
-    title: "Clean, secure and optimized",
+    title: "Clean, Secure and Optimized",
     text: "Uploaded SVGs are sanitized and optimized automatically. Track size reductions and keep version history for easy rollback.",
     Icon: ShieldCheck,
   },
@@ -18,7 +18,7 @@ const FEATURES: Array<{ title: string; text: string; Icon: LucideIcon }> = [
     Icon: Layers,
   },
   {
-    title: "Private or public libraries",
+    title: "Private or Public Libraries",
     text: "Keep projects private or share public icon libraries that teams and communities can reuse.",
     Icon: Lock,
   },
@@ -27,7 +27,7 @@ const FEATURES: Array<{ title: string; text: string; Icon: LucideIcon }> = [
 export default function LandingPage({ onSignIn }: { onSignIn: () => void }) {
   return (
     <>
-      <main id="main" className="pt-[57px]">
+      <main id="main" className="pt-14.25">
         <section aria-labelledby="landing-title" className="bg-linear-to-b from-primary/10 to-transparent">
           <div className="mx-auto max-w-3xl px-4 py-16 text-center sm:py-24">
             <h1 id="landing-title" className="text-3xl font-bold tracking-tight text-foreground sm:text-5xl">
@@ -42,7 +42,7 @@ export default function LandingPage({ onSignIn }: { onSignIn: () => void }) {
                 onClick={onSignIn}
                 className="rounded-xl bg-primary px-6 py-3 text-base font-semibold text-primary-foreground shadow-sm transition-opacity hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
               >
-                Sign in to get started
+                Sign in to Get Started
               </button>
               <p className="text-sm text-muted-foreground">Use your Google or Microsoft account. No separate password.</p>
             </div>
@@ -51,7 +51,7 @@ export default function LandingPage({ onSignIn }: { onSignIn: () => void }) {
 
         <section aria-labelledby="landing-features" className="mx-auto max-w-5xl px-4 pb-16 sm:pb-24">
           <h2 id="landing-features" className="sr-only">
-            What you can do
+            What You Can Do
           </h2>
           <ul className="grid gap-4 sm:grid-cols-2">
             {FEATURES.map(({ title, text, Icon }) => (

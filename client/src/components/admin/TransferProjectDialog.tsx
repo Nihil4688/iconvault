@@ -17,7 +17,7 @@ type TransferProjectDialogProps = {
 
 export default function TransferProjectDialog({ open, onClose, ...rest }: TransferProjectDialogProps) {
   return (
-    <Dialog open={open} onClose={onClose} title="Transfer ownership" description="Move this project to another user." size="md">
+    <Dialog open={open} onClose={onClose} title="Transfer Ownership" description="Move this project to another user." size="md">
       <TransferForm onClose={onClose} {...rest} />
     </Dialog>
   );
@@ -53,8 +53,8 @@ function TransferForm({ project, onClose, onTransferred }: Omit<TransferProjectD
       <p className="text-sm">
         <span className="font-medium">{project.name}</span> is owned by {project.owner.displayName}.
       </p>
-      <SelectField label="New owner" value={target} onChange={(event) => setTarget(event.target.value)} hint={users.loading && !users.data ? "Loading users…" : undefined}>
-        <option value="">Choose a user</option>
+      <SelectField label="New Owner" value={target} onChange={(event) => setTarget(event.target.value)} hint={users.loading && !users.data ? "Loading users…" : undefined}>
+        <option value="">Choose a User</option>
         {candidates.map((user) => (
           <option key={user.id} value={user.id}>
             {user.displayName} ({user.email})

@@ -22,7 +22,7 @@ type BulkBarProps = {
 
 export default function BulkBar({ count, canEdit, busy, generate, generating = false, onMove, onTag, onOptimize, onGenerate, onDownload, onDelete, onClear }: BulkBarProps) {
   return (
-    <section aria-label="Selected icons" className="sticky bottom-4 z-20 mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-border bg-popover p-2 text-popover-foreground shadow-lg">
+    <section aria-label="Selected Icons" className="sticky bottom-4 z-20 mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-border bg-popover p-2 text-popover-foreground shadow-lg">
       <p role="status" className="px-2 text-sm font-medium">
         {pluralize(count, "icon")} selected
       </p>
@@ -53,7 +53,7 @@ export default function BulkBar({ count, canEdit, busy, generate, generating = f
         )}
       </div>
       <Button size="sm" variant="ghost" className="ml-auto" icon={<X aria-hidden="true" className="h-4 w-4" />} onClick={onClear}>
-        Clear selection
+        Clear Selection
       </Button>
     </section>
   );

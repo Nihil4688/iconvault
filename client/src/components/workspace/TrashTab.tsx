@@ -72,11 +72,11 @@ export default function TrashTab() {
         <div role="alert" className="mt-4 rounded-xl border border-destructive/40 p-6 text-center">
           <p className="font-medium text-destructive">{trash.error.message}</p>
           <Button className="mt-3" onClick={trash.reload}>
-            Try again
+            Try Again
           </Button>
         </div>
       ) : trash.loading && !trash.data ? (
-        <ul aria-busy="true" aria-label="Loading trash" className="mt-4 space-y-2">
+        <ul aria-busy="true" aria-label="Loading Trash" className="mt-4 space-y-2">
           {Array.from({ length: 4 }, (_, i) => (
             <li key={i} className="h-14 animate-pulse rounded-xl bg-muted" />
           ))}
@@ -84,7 +84,7 @@ export default function TrashTab() {
       ) : icons.length === 0 ? (
         <div className="mt-4 rounded-xl border border-dashed border-border p-10 text-center">
           <Trash2 aria-hidden="true" className="mx-auto h-8 w-8 text-muted-foreground" />
-          <p className="mt-2 text-base font-semibold">The trash is empty.</p>
+          <p className="mt-2 text-base font-semibold">The trash Is empty.</p>
         </div>
       ) : (
         <>
@@ -94,10 +94,10 @@ export default function TrashTab() {
             </p>
             <div className="flex gap-2">
               <Button icon={<RotateCcw aria-hidden="true" className="h-4 w-4" />} onClick={restoreAll} disabled={busy}>
-                Restore all
+                Restore All
               </Button>
               <Button variant="destructive" icon={<Trash2 aria-hidden="true" className="h-4 w-4" />} onClick={() => setPending({ kind: "all" })} disabled={busy}>
-                Empty trash
+                Empty Trash
               </Button>
             </div>
           </div>
@@ -117,8 +117,8 @@ export default function TrashTab() {
                 <Button size="sm" onClick={() => restoreOne(icon)} disabled={busy} aria-label={`Restore ${icon.name}`}>
                   Restore
                 </Button>
-                <Button size="sm" variant="destructive" onClick={() => setPending({ kind: "one", icon })} disabled={busy} aria-label={`Delete forever: ${icon.name}`}>
-                  Delete forever
+                <Button size="sm" variant="destructive" onClick={() => setPending({ kind: "one", icon })} disabled={busy} aria-label={`Delete Forever: ${icon.name}`}>
+                  Delete Forever
                 </Button>
               </li>
             ))}
@@ -129,9 +129,9 @@ export default function TrashTab() {
 
       <ConfirmDialog
         open={pending !== null}
-        title={pending?.kind === "one" ? `Delete “${pending.icon.name}” forever?` : "Empty the trash?"}
+        title={pending?.kind === "one" ? `Delete “${pending.icon.name}” Forever?` : "Empty the Trash?"}
         message={pending?.kind === "one" ? "This icon and its saved versions will be removed for good. This cannot be undone." : `This permanently deletes ${pluralize(trash.data?.total ?? icons.length, "icon")} and their saved versions. This cannot be undone.`}
-        confirmLabel={pending?.kind === "one" ? "Delete forever" : "Empty trash"}
+        confirmLabel={pending?.kind === "one" ? "Delete Forever" : "Empty Trash"}
         destructive
         onClose={() => setPending(null)}
         onConfirm={async () => {

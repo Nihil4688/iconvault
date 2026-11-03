@@ -18,7 +18,7 @@ type BulkTransferDialogProps = {
 
 export default function BulkTransferDialog({ open, onClose, ...rest }: BulkTransferDialogProps) {
   return (
-    <Dialog open={open} onClose={onClose} title="Transfer projects" description="Move the chosen projects to another user." size="md">
+    <Dialog open={open} onClose={onClose} title="Transfer Projects" description="Move the chosen projects to another user." size="md">
       <Form onClose={onClose} {...rest} />
     </Dialog>
   );
@@ -56,8 +56,8 @@ function Form({ projects, onClose, onDone }: Omit<BulkTransferDialogProps, "open
         <span className="font-medium">{pluralize(projects.length, "project")}</span> will move: {projects.slice(0, 4).map((project) => project.name).join(", ")}
         {projects.length > 4 ? ` and ${projects.length - 4} more` : ""}.
       </p>
-      <SelectField label="New owner" value={target} onChange={(event) => setTarget(event.target.value)} hint={users.loading && !users.data ? "Loading users…" : undefined}>
-        <option value="">Choose a user</option>
+      <SelectField label="New Owner" value={target} onChange={(event) => setTarget(event.target.value)} hint={users.loading && !users.data ? "Loading users…" : undefined}>
+        <option value="">Choose a User</option>
         {candidates.map((user) => (
           <option key={user.id} value={user.id}>
             {user.displayName} ({user.email})

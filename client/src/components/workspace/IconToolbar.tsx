@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import { cn } from "../../lib/cn";
 import { ICON_COLORS, MAX_ICON_SIZE, MIN_ICON_SIZE, clampIconSize, type IconAppearance } from "../../lib/iconAppearance";
 import type { Surface } from "../../lib/previewSurface";
+import DropdownSelect from "../ui/DropdownSelect";
 import MoreMenu from "./MoreMenu";
 import UploadButton from "./UploadButton";
 
@@ -45,10 +46,10 @@ export default function IconToolbar({ search, onSearch, sort, onSort, view, onVi
   return (
     <div className="space-y-3">
       <fieldset disabled={disabled} className={cn("flex min-w-0 flex-wrap items-center gap-4 border-0 p-0", disabled && "opacity-50")}>
-        <legend className="sr-only">Icon browsing controls</legend>
+        <legend className="sr-only">Icon Browsing Controls</legend>
         <div className="relative min-w-48 max-w-2xl flex-1">
           <label htmlFor="icon-search" className="sr-only">
-            Search icons
+            Search Icons
           </label>
           <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <input
@@ -56,30 +57,30 @@ export default function IconToolbar({ search, onSearch, sort, onSort, view, onVi
             type="search"
             value={search}
             onChange={(event) => onSearch(event.target.value)}
-            placeholder="Search by name or tag"
+            placeholder="Search by Name or Tag"
             autoComplete="off"
-            className="h-9 w-full rounded-lg border border-input bg-background pl-9 pr-3 text-sm placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
+            className="h-9 w-full rounded-lg border border-input bg-background pl-9 pr-3 text-sm placeholder:text-muted-foreground focus:shadow-[0_0_0_3px_rgba(21,85,224,0.5)] focus:outline-none"
           />
         </div>
-        <div role="group" aria-label="Icon toolbar actions" className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-2">
+        <div role="group" aria-label="Icon Toolbar Actions" className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-2">
           <fieldset disabled={appearanceDisabled} aria-describedby="appearance-scope-help" className={cn("flex items-center gap-2 border-0 p-0", appearanceDisabled && "opacity-50")}>
-            <legend className="sr-only">Folder appearance</legend>
-            <div role="group" aria-label="Icon size" className="flex h-9 items-center gap-2 rounded-lg border border-input bg-background px-2">
-              <button type="button" aria-label="Smaller icons" disabled={appearance.size <= MIN_ICON_SIZE} onClick={() => onAppearance({ size: clampIconSize(appearance.size - 4) })} className="inline-flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:text-foreground disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-ring">
+            <legend className="sr-only">Folder Appearance</legend>
+            <div role="group" aria-label="Icon Size" className="flex h-9 items-center gap-2 rounded-lg border border-input bg-background px-2">
+              <button type="button" aria-label="Smaller Icons" disabled={appearance.size <= MIN_ICON_SIZE} onClick={() => onAppearance({ size: clampIconSize(appearance.size - 4) })} className="inline-flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:text-foreground disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-ring">
                 <Minus aria-hidden="true" className="h-4 w-4" />
               </button>
-              <input type="range" aria-label="Icon size in pixels" min={MIN_ICON_SIZE} max={MAX_ICON_SIZE} step={2} value={appearance.size} onChange={(event) => onAppearance({ size: clampIconSize(Number(event.target.value)) })} className="w-20 accent-[hsl(var(--primary))]" />
-              <button type="button" aria-label="Larger icons" disabled={appearance.size >= MAX_ICON_SIZE} onClick={() => onAppearance({ size: clampIconSize(appearance.size + 4) })} className="inline-flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:text-foreground disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-ring">
+              <input type="range" aria-label="Icon Size in Pixels" min={MIN_ICON_SIZE} max={MAX_ICON_SIZE} step={2} value={appearance.size} onChange={(event) => onAppearance({ size: clampIconSize(Number(event.target.value)) })} className="w-20 accent-[hsl(var(--primary))]" />
+              <button type="button" aria-label="Larger Icons" disabled={appearance.size >= MAX_ICON_SIZE} onClick={() => onAppearance({ size: clampIconSize(appearance.size + 4) })} className="inline-flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:text-foreground disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-ring">
                 <Plus aria-hidden="true" className="h-4 w-4" />
               </button>
               <output className="w-10 text-right font-mono text-xs text-muted-foreground">{appearance.size}px</output>
             </div>
-            <div role="group" aria-label="Icon colour" className="flex h-9 items-center gap-2 rounded-lg border border-input bg-background px-3">
+            <div role="group" aria-label="Icon Colour" className="flex h-9 items-center gap-2 rounded-lg border border-input bg-background px-3">
               {ICON_COLORS.map((color) => (
-                <button key={color.value} type="button" aria-label={color.label} title={appearance.color === color.value ? `${color.label} (click again for the default colour)` : color.label} aria-pressed={appearance.color === color.value} onClick={() => onAppearance({ color: appearance.color === color.value ? "" : color.value })} className={cn(swatch, appearance.color === color.value && "ring-2 ring-primary ring-offset-2 ring-offset-background")} style={{ backgroundColor: color.value }} />
+                <button key={color.value} type="button" aria-label={color.label} title={appearance.color === color.value ? `${color.label} (Click Again for the Default Colour)` : color.label} aria-pressed={appearance.color === color.value} onClick={() => onAppearance({ color: appearance.color === color.value ? "" : color.value })} className={cn(swatch, appearance.color === color.value && "ring-2 ring-primary ring-offset-2 ring-offset-background")} style={{ backgroundColor: color.value }} />
               ))}
-              <label className={cn(swatch, "relative cursor-pointer overflow-hidden has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ring", appearance.color !== "" && !ICON_COLORS.some((color) => color.value === appearance.color) && "ring-2 ring-primary ring-offset-2 ring-offset-background")} style={{ background: "conic-gradient(#ef4444, #f59e0b, #10b981, #3b82f6, #8b5cf6, #ef4444)" }} title="More colours">
-                <span className="sr-only">More colours</span>
+              <label className={cn(swatch, "relative cursor-pointer overflow-hidden has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ring", appearance.color !== "" && !ICON_COLORS.some((color) => color.value === appearance.color) && "ring-2 ring-primary ring-offset-2 ring-offset-background")} style={{ background: "conic-gradient(#ef4444, #f59e0b, #10b981, #3b82f6, #8b5cf6, #ef4444)" }} title="More Colours">
+                <span className="sr-only">More Colours</span>
                 <input type="color" value={appearance.color || "#3b82f6"} onChange={(event) => onAppearance({ color: event.target.value })} className="absolute inset-0 h-full w-full cursor-pointer opacity-0" />
               </label>
             </div>
@@ -87,16 +88,16 @@ export default function IconToolbar({ search, onSearch, sort, onSort, view, onVi
           <p id="appearance-scope-help" className={cn("text-xs text-muted-foreground", !appearanceDisabled && "sr-only")}>
             {appearanceDisabled ? "Select a folder to customize its icons." : appearanceScope === "all" ? "Changes apply to all icons." : "Changes apply only to icons in this folder."}
           </p>
-          <label className="relative inline-flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-lg border border-input bg-background text-muted-foreground transition-colors hover:bg-accent hover:text-foreground has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-1 has-[:focus-visible]:outline-ring" title={`Sort: ${SORT_LABELS[sort]}`}>
+          <DropdownSelect
+            label="Sort By"
+            value={sort}
+            options={(Object.keys(SORT_LABELS) as IconSort[]).map((value) => ({ value, label: SORT_LABELS[value] }))}
+            onChange={(value) => onSort(value as IconSort)}
+            title={`Sort: ${SORT_LABELS[sort]}`}
+            triggerClassName="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-input bg-background text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
+          >
             <ArrowUpDown aria-hidden="true" className="h-4 w-4" />
-            <select aria-label="Sort by" value={sort} onChange={(event) => onSort(event.target.value as IconSort)} className="absolute inset-0 h-full w-full cursor-pointer opacity-0">
-              {(Object.keys(SORT_LABELS) as IconSort[]).map((value) => (
-                <option key={value} value={value}>
-                  {SORT_LABELS[value]}
-                </option>
-              ))}
-            </select>
-          </label>
+          </DropdownSelect>
           <MoreMenu surface={surface} onSurface={onSurface} />
           <div role="group" aria-label="View" className="inline-flex h-9 items-center rounded-lg border border-input bg-muted p-0.5">
             {(

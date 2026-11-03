@@ -2,9 +2,11 @@
 import { AxiosError, type InternalAxiosRequestConfig } from "axios";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import * as folders from "./folders";
+import * as fonts from "./fonts";
 import { ApiError, http } from "./http";
 import * as icons from "./icons";
 import * as projects from "./projects";
+import * as sprites from "./sprites";
 
 type Reply = { status?: number; data?: unknown; headers?: Record<string, string> };
 
@@ -251,5 +253,27 @@ describe("icons API", () => {
     expect(icons.filenameFromDisposition("attachment; filename=plain.svg", "x")).toBe("plain.svg");
     expect(icons.filenameFromDisposition(undefined, "fallback.svg")).toBe("fallback.svg");
     expect(icons.filenameFromDisposition("inline", "fallback.svg")).toBe("fallback.svg");
+  });
+});
+
+describe("build download APIs", () => {
+  it("sends a font's selected-build save choice only when provided", async () => {
+    const calls = intercept();
+    const input = { scope: "selected" as const, iconIds: ["icon-1"], formats: ["woff2" as const], fontName: "Icons" };
+
+    await fonts.downloadFont("p1", input, false);
+    expect(sent(last(calls))).toEqual({ ...input, saveAsVersion: false });
+
+    await fonts.downloadFont("p1", input);
+    expect(sent(last(calls))).toEqual(input);
+  });
+
+  it("sends the sprite version choice with the stored build upload", async () => {
+    const calls = intercept();
+    await sprites.uploadSpriteBuild("p1", new Blob(["zip"]), { mode: "symbol", iconCount: 2, scope: "selected", saveAsVersion: true });
+
+    const form = last(calls).data as FormData;
+    expect(form.get("scope")).toBe("selected");
+    expect(form.get("saveAsVersion")).toBe("true");
   });
 });

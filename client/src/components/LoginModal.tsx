@@ -141,7 +141,7 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
         <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
           <LockIcon className="w-8 h-8 text-primary" strokeWidth={1.5} />
         </div>
-        <h2 className="text-2xl font-bold text-card-foreground mb-2">Sign in</h2>
+        <h2 className="text-2xl font-bold text-card-foreground mb-2">Sign In</h2>
         <p className="text-sm text-muted-foreground mb-6">
           Use your Google or Microsoft account to continue.
         </p>

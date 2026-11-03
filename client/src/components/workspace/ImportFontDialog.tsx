@@ -22,7 +22,7 @@ type ImportFontDialogProps = {
 
 export default function ImportFontDialog({ open, onClose, ...rest }: ImportFontDialogProps) {
   return (
-    <Dialog open={open} onClose={onClose} title="Import a font" description="Turn the glyphs of an existing icon font into icons in this project." size="lg">
+    <Dialog open={open} onClose={onClose} title="Import a Font" description="Turn the glyphs of an existing icon font into icons in this project." size="lg">
       <ImportFontForm onClose={onClose} {...rest} />
     </Dialog>
   );
@@ -118,7 +118,7 @@ export function ImportFontForm({ projectId, folders, defaultFolderId, onClose, o
           </div>
         </div>
         {result.errors.length > 0 && (
-          <ul aria-label="Glyphs that could not be imported" className="max-h-40 divide-y divide-border overflow-y-auto rounded-lg border border-border text-sm">
+          <ul aria-label="Glyphs That Could Not Be Imported" className="max-h-40 divide-y divide-border overflow-y-auto rounded-lg border border-border text-sm">
             {result.errors.map((item, index) => (
               <li key={`${item.file}-${index}`} className="px-3 py-2">
                 <span className="font-medium">{item.file}</span>
@@ -141,13 +141,13 @@ export function ImportFontForm({ projectId, folders, defaultFolderId, onClose, o
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <label htmlFor="import-font-file" className="mb-1 block text-sm font-medium">
-            Font file
+            Font File
           </label>
           <input id="import-font-file" type="file" accept=".ttf,.otf,.woff,.woff2,.svg,font/*,image/svg+xml" onChange={chooseFont} disabled={busy} className="block w-full text-sm file:mr-3 file:rounded-lg file:border file:border-input file:bg-background file:px-3 file:py-1.5 file:text-sm file:font-medium" />
         </div>
         <div>
           <label htmlFor="import-font-map" className="mb-1 block text-sm font-medium">
-            Names (optional)
+            Names (Optional)
           </label>
           <input id="import-font-map" type="file" accept=".css,.json,text/css,application/json" onChange={chooseMapping} disabled={busy} className="block w-full text-sm file:mr-3 file:rounded-lg file:border file:border-input file:bg-background file:px-3 file:py-1.5 file:text-sm file:font-medium" />
           <p className="mt-1 text-xs text-muted-foreground">A CSS file with rules like .icon-home:before, or a JSON map, gives the icons real names.</p>
@@ -170,27 +170,27 @@ export function ImportFontForm({ projectId, folders, defaultFolderId, onClose, o
 
       <label className="flex cursor-pointer items-center gap-2 text-sm">
         <input type="checkbox" checked={privateUseOnly} onChange={(event) => togglePrivateUse(event.target.checked)} disabled={busy} className="h-4 w-4 accent-[hsl(var(--primary))]" />
-        Only icon characters (the Private Use Area; turn off to import every glyph, letters too)
+        Only Icon Characters (the Private Use Area; Turn off to Import Every Glyph, Letters Too)
       </label>
 
       <div className="grid gap-3 sm:grid-cols-2">
         <SelectField label="Folder" value={folderId} onChange={(event) => setFolderId(event.target.value)}>
-          <option value="">Uncategorized (project root)</option>
+          <option value="">Uncategorized (Project Root)</option>
           {folderOptions.map((folder) => (
             <option key={folder.id} value={folder.id}>
               {`${"  ".repeat(folder.depth)}${folder.name}`}
             </option>
           ))}
         </SelectField>
-        <SelectField label="If an icon with that name exists" value={strategy} onChange={(event) => setStrategy(event.target.value as DuplicateStrategy)}>
-          <option value="rename">Keep both (add a number)</option>
-          <option value="replace">Replace it (the old one is kept as a version)</option>
+        <SelectField label="If an Icon with That Name Exists" value={strategy} onChange={(event) => setStrategy(event.target.value as DuplicateStrategy)}>
+          <option value="rename">Keep Both (Add a Number)</option>
+          <option value="replace">Replace It (the Old One Is Kept as a Version)</option>
           <option value="skip">Skip</option>
         </SelectField>
       </div>
       <label className="flex cursor-pointer items-center gap-2 text-sm">
         <input type="checkbox" checked={optimize} onChange={(event) => setOptimize(event.target.checked)} className="h-4 w-4 accent-[hsl(var(--primary))]" />
-        Optimize to make the icons smaller
+        Optimize to Make the Icons Smaller
       </label>
 
       {error && (

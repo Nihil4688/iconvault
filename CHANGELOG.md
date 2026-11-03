@@ -931,3 +931,10 @@ The visible name is now **IconVault**: the header, browser tab title, landing pa
 - Add more test users or publish the Google app if others need access; configure Microsoft sign-in if wanted.
 - ~~Initialize Git~~ Done in Phase 0. Still open: add a remote and push if wanted.
 - All eight planned phases are done. What is left is in the Not tested, or open lists (above all Phase 8): a real sign-in with your `ADMIN_EMAILS`, a VoiceOver pass, choosing production rate limits and `CORS_ORIGINS`, adding a Git remote, and rotating the database password and `SESSION_SECRET` if they were ever shared.
+
+## 2026-11-03: Choose whether to version selected builds
+
+- When an editor downloads a font or sprite built from selected icons in a private project, a themed dialog offers **Download only** or **Save version & download**.
+- Saving creates a new history version even when its contents match an earlier selected build. Downloading without saving leaves build history unchanged.
+- Whole-project and folder downloads retain their existing automatic history behavior; viewer downloads and public selected-build behavior are unchanged.
+- The font and sprite history panels now explain that only saved versions appear there.

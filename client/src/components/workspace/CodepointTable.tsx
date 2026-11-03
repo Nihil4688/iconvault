@@ -29,19 +29,19 @@ export default function CodepointTable({ glyphs, family, canEdit, busy, onSave, 
               Preview
             </th>
             <th scope="col" className="px-3 py-2 font-medium">
-              Icon name
+              Icon Name
             </th>
             <th scope="col" className="px-3 py-2 font-medium">
               Slug
             </th>
             <th scope="col" className="px-3 py-2 font-medium">
-              Assigned hex codepoint
+              Assigned Hex Codepoint
             </th>
             <th scope="col" className="px-3 py-2 font-medium">
-              CSS entity
+              CSS Entity
             </th>
             <th scope="col" className="px-3 py-2 font-medium">
-              CSS class
+              CSS Class
             </th>
           </tr>
         </thead>
@@ -150,7 +150,7 @@ function Row({ glyph, family, canEdit, busy, onSave, onCopyClass }: { glyph: Fon
       <td className="px-3 py-2">
         <span className="inline-flex items-center gap-1.5">
           <span className="max-w-48 truncate font-mono text-xs">{glyph.className}</span>
-          <button type="button" onClick={() => onCopyClass(glyph.className)} aria-label={`Copy class ${glyph.className}`} className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring">
+          <button type="button" onClick={() => onCopyClass(glyph.className)} aria-label={`Copy Class ${glyph.className}`} className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground focus-visible:outline-2 focus-visible:outline-ring">
             <Copy aria-hidden="true" className="h-3.5 w-3.5" />
           </button>
         </span>

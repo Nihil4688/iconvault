@@ -9,6 +9,7 @@ import ConfirmDialog from "./ConfirmDialog";
 import Dialog from "./Dialog";
 import DialogFooter from "./DialogFooter";
 import SvgPreview from "./SvgPreview";
+import { RadioCardGroup } from "./RadioCardGroup";
 
 describe("Button", () => {
   it("shows a spinner and refuses clicks while loading", async () => {
@@ -156,6 +157,35 @@ describe("Dialog", () => {
     await userEvent.click(screen.getByRole("button", { name: "Open it" }));
     await userEvent.click(screen.getByLabelText("Name"));
     expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+});
+
+describe("RadioCardGroup", () => {
+  it("uses the whole card as the hidden radio's focus target without changing its interaction", async () => {
+    const onChange = vi.fn();
+    render(
+      <RadioCardGroup
+        legend="Who Can See It"
+        name="visibility"
+        value="private"
+        onChange={onChange}
+        options={[
+          { value: "private", label: "Private", description: "Only you." },
+          { value: "public", label: "Public", description: "Others can look at it." },
+        ]}
+      />,
+    );
+
+    const publicOption = screen.getByRole("radio", { name: /Public/ });
+    const card = publicOption.closest("label");
+
+    expect(card).toHaveClass("relative");
+    expect(publicOption).toHaveClass("absolute", "inset-0", "opacity-0");
+    expect(publicOption).toHaveAttribute("type", "radio");
+
+    await userEvent.click(publicOption);
+    expect(onChange).toHaveBeenCalledWith("public");
+    expect(publicOption).toHaveFocus();
   });
 });
 

@@ -69,7 +69,7 @@ export default function UserMenu({ user, onSignOut }: { user: CurrentUser; onSig
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}
-        aria-label={`Account menu for ${user.displayName || user.email}`}
+        aria-label={`Account Menu for ${user.displayName || user.email}`}
         onClick={() => setOpen((value) => !value)}
         className="flex h-9 items-center gap-2 rounded-full border border-border bg-card py-1 pl-1 pr-2 text-sm text-foreground transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
       >
@@ -94,12 +94,12 @@ export default function UserMenu({ user, onSignOut }: { user: CurrentUser; onSig
           <div className="border-t border-border pt-1">
             <Link to="/account/tokens" role="menuitem" onClick={() => setOpen(false)} className={menuItemClass}>
               <KeyRound aria-hidden="true" className="h-4 w-4" />
-              API tokens
+              API Tokens
             </Link>
             {user.role === "admin" && (
               <Link to="/admin" role="menuitem" onClick={() => setOpen(false)} className={menuItemClass}>
                 <Users aria-hidden="true" className="h-4 w-4" />
-                Manage users
+                Manage Users
               </Link>
             )}
             <button
@@ -113,7 +113,7 @@ export default function UserMenu({ user, onSignOut }: { user: CurrentUser; onSig
               className={menuItemClass}
             >
               <LogOut aria-hidden="true" className="h-4 w-4" />
-              Sign out
+              Sign Out
             </button>
           </div>
         </div>

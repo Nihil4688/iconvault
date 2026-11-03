@@ -36,7 +36,7 @@ type UploadDialogProps = {
 
 export default function UploadDialog({ open, onClose, ...rest }: UploadDialogProps) {
   return (
-    <Dialog open={open} onClose={onClose} title="Add icons" description="Upload icons, paste SVG code, or copy icons from another project." size="lg">
+    <Dialog open={open} onClose={onClose} dismissOnBackdrop={false} title="Add Icons" description="Upload icons, paste SVG code, or copy icons from another project." size="lg">
       <UploadForm onClose={onClose} {...rest} />
     </Dialog>
   );
@@ -213,8 +213,8 @@ function UploadForm({ projectId, prefix, folders, defaultFolderId, onClose, onUp
           </div>
         </div>
         {summary.errors.length > 0 && (
-          <section aria-label="Files that could not be added">
-            <h3 className="text-sm font-semibold">Could not be added</h3>
+          <section aria-label="Files That Could Not Be Added">
+            <h3 className="text-sm font-semibold">Could Not Be Added</h3>
             <ul className="mt-1 max-h-48 divide-y divide-border overflow-y-auto rounded-lg border border-border text-sm">
               {summary.errors.map((item, index) => (
                 <li key={`${item.file}-${index}`} className="px-3 py-2">
@@ -226,7 +226,7 @@ function UploadForm({ projectId, prefix, folders, defaultFolderId, onClose, onUp
           </section>
         )}
         {summary.skipped.length > 0 && (
-          <section aria-label="Skipped icons">
+          <section aria-label="Skipped Icons">
             <h3 className="text-sm font-semibold">Skipped</h3>
             <ul className="mt-1 max-h-32 overflow-y-auto text-sm text-muted-foreground">
               {summary.skipped.map((item, index) => (
@@ -249,23 +249,23 @@ function UploadForm({ projectId, prefix, folders, defaultFolderId, onClose, onUp
   const options = (
     <div className="mt-4 grid gap-3 sm:grid-cols-2">
       <SelectField label="Folder" value={folderId} onChange={(event) => setFolderId(event.target.value)} hint={tab === "files" ? "A ZIP's folders are created inside it." : undefined}>
-        <option value="">Uncategorized (project root)</option>
+        <option value="">Uncategorized (Project Root)</option>
         {folderOptions.map((folder) => (
           <option key={folder.id} value={folder.id}>
             {`${"  ".repeat(folder.depth)}${folder.name}`}
           </option>
         ))}
       </SelectField>
-      <SelectField label="If an icon with that name exists" value={strategy} onChange={(event) => setStrategy(event.target.value as DuplicateStrategy)}>
-        <option value="rename">Keep both (add a number)</option>
-        <option value="replace">Replace it (the old one is kept as a version)</option>
+      <SelectField label="If an Icon with That Name Exists" value={strategy} onChange={(event) => setStrategy(event.target.value as DuplicateStrategy)}>
+        <option value="rename">Keep Both (Add a Number)</option>
+        <option value="replace">Replace It (the Old One Is Kept as a Version)</option>
         <option value="skip">Skip</option>
       </SelectField>
       <TextField label="Tags" value={tagText} autoComplete="off" hint="Optional, separated by commas." onChange={(event) => setTagText(event.target.value)} />
       <div className="self-end pb-2">
         <label className="flex cursor-pointer items-center gap-2 text-sm">
           <input type="checkbox" checked={optimize} onChange={(event) => setOptimize(event.target.checked)} className="h-4 w-4 accent-[hsl(var(--primary))]" />
-          Optimize to make the files smaller
+          Optimize to Make the Files Smaller
         </label>
         <p className="mt-1 text-xs text-muted-foreground">Turn on to reduce file size; uploads may take longer.</p>
       </div>
@@ -280,7 +280,7 @@ function UploadForm({ projectId, prefix, folders, defaultFolderId, onClose, onUp
 
   return (
     <Tabs
-      label="How to add icons"
+      label="How to Add Icons"
       value={tab}
       onChange={(next) => {
         setTab(next);
@@ -288,8 +288,8 @@ function UploadForm({ projectId, prefix, folders, defaultFolderId, onClose, onUp
         setNotice(null);
       }}
       tabs={[
-        { value: "files", label: "Upload files" },
-        { value: "paste", label: "Paste SVG code" },
+        { value: "files", label: "Upload Files" },
+        { value: "paste", label: "Paste SVG Code" },
         { value: "copy", label: "From Another Project" },
       ]}
     >
@@ -314,7 +314,7 @@ function UploadForm({ projectId, prefix, folders, defaultFolderId, onClose, onUp
               accept=".svg,.zip,.metrop,.ttf,.otf,.woff,.woff2,image/svg+xml,application/zip,font/*"
               className="sr-only"
               tabIndex={-1}
-              aria-label="Choose files"
+              aria-label="Choose Files"
               data-testid="file-input"
               onChange={(event) => {
                 addFiles(Array.from(event.target.files ?? []));
@@ -322,12 +322,12 @@ function UploadForm({ projectId, prefix, folders, defaultFolderId, onClose, onUp
               }}
             />
             <Button size="sm" onClick={() => inputRef.current?.click()}>
-              Choose files
+              Choose Files
             </Button>
           </div>
 
           {problems.length > 0 && (
-            <ul aria-label="Files not accepted" className="mt-3 space-y-1 text-sm text-destructive">
+            <ul aria-label="Files Not Accepted" className="mt-3 space-y-1 text-sm text-destructive">
               {problems.map((problem, index) => (
                 <li key={`${problem.file}-${index}`}>
                   {problem.file}: {problem.message}
@@ -337,7 +337,7 @@ function UploadForm({ projectId, prefix, folders, defaultFolderId, onClose, onUp
           )}
 
           {files.length > 0 && (
-            <ul aria-label="Files to add" className="mt-3 max-h-40 divide-y divide-border overflow-y-auto rounded-lg border border-border text-sm">
+            <ul aria-label="Files to Add" className="mt-3 max-h-40 divide-y divide-border overflow-y-auto rounded-lg border border-border text-sm">
               {files.map((file) => (
                 <li key={`${file.name}-${file.size}-${file.lastModified}`} className="flex items-center gap-2 px-3 py-1.5">
                   <span className="min-w-0 flex-1 truncate">{file.name}</span>
@@ -370,7 +370,7 @@ function UploadForm({ projectId, prefix, folders, defaultFolderId, onClose, onUp
         <form onSubmit={pasteCodeSubmit} noValidate>
           <div className="space-y-3">
             <TextField label="Name" value={pasteName} placeholder="Pasted icon" maxLength={100} autoComplete="off" onChange={(event) => setPasteName(event.target.value)} />
-            <TextAreaField label="SVG code" value={pasteCode} rows={8} spellCheck={false} className="font-mono text-xs" placeholder='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">…</svg>' onChange={(event) => setPasteCode(event.target.value)} />
+            <TextAreaField label="SVG Code" value={pasteCode} rows={8} spellCheck={false} className="font-mono text-xs" placeholder='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">…</svg>' onChange={(event) => setPasteCode(event.target.value)} />
           </div>
           {options}
           {notice && (
@@ -384,7 +384,7 @@ function UploadForm({ projectId, prefix, folders, defaultFolderId, onClose, onUp
               Cancel
             </Button>
             <Button type="submit" variant="primary" loading={busy}>
-              Add icon
+              Add Icon
             </Button>
           </DialogFooter>
         </form>

@@ -370,15 +370,35 @@ describe("the page layout and options", () => {
 describe("the sprite build history", () => {
   it("does not make another version when the same icons are built after changing from selected to whole-project scope", async () => {
     setup({}, { iconIds: ["home", "star"] });
-    await userEvent.click(await screen.findByRole("button", { name: "Download sprite ZIP" }));
+    await userEvent.click(await screen.findByRole("button", { name: /Download Sprite ZIP/i }));
+    await userEvent.click(screen.getByRole("button", { name: "Save version & download" }));
     await waitFor(() => expect(spritesApi.uploadSpriteBuild).toHaveBeenCalledTimes(1));
     const firstFingerprint = vi.mocked(spritesApi.uploadSpriteBuild).mock.calls[0]![2].fingerprint;
 
     await userEvent.click(screen.getByRole("radio", { name: /^Whole project/ }));
-    await userEvent.click(screen.getByRole("button", { name: "Download sprite ZIP" }));
+    await userEvent.click(screen.getByRole("button", { name: /Download Sprite ZIP/i }));
     await waitFor(() => expect(spritesApi.uploadSpriteBuild).toHaveBeenCalledTimes(2));
 
     expect(vi.mocked(spritesApi.uploadSpriteBuild).mock.calls[1]![2].fingerprint).toBe(firstFingerprint);
+  });
+
+  it("downloads selected icons without adding a sprite version when requested", async () => {
+    setup({}, { iconIds: ["home", "star"] });
+    await userEvent.click(await screen.findByRole("button", { name: /Download Sprite ZIP/i }));
+    expect(screen.getByRole("dialog", { name: "Save this sprite build as a version?" })).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Download only" }));
+
+    await waitFor(() => expect(zip.triggerBrowserDownload).toHaveBeenCalled());
+    expect(spritesApi.uploadSpriteBuild).not.toHaveBeenCalled();
+  });
+
+  it("saves selected icons to sprite history when the version option is chosen", async () => {
+    setup({}, { iconIds: ["home", "star"] });
+    await userEvent.click(await screen.findByRole("button", { name: /Download Sprite ZIP/i }));
+    await userEvent.click(screen.getByRole("button", { name: "Save version & download" }));
+
+    await waitFor(() => expect(spritesApi.uploadSpriteBuild).toHaveBeenCalledWith("p1", expect.any(Blob), expect.objectContaining({ scope: "selected", saveAsVersion: true })));
   });
 
   it("uses a new fingerprint when the sprite content changes", async () => {

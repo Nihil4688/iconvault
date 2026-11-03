@@ -25,11 +25,11 @@ export function RadioCardGroup<T extends string>({ legend, name, value, onChange
           <label
             key={option.value}
             className={cn(
-              "flex cursor-pointer gap-3 rounded-xl border border-input bg-background p-3 text-sm transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-1 has-[:focus-visible]:outline-ring has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-60",
+              "relative flex cursor-pointer gap-3 rounded-xl border border-input bg-background p-3 text-sm transition-colors has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-1 has-[:focus-visible]:outline-ring has-[:disabled]:cursor-not-allowed has-[:disabled]:opacity-60",
               value === option.value ? "border-primary bg-primary/5 ring-1 ring-primary" : "hover:bg-accent",
             )}
           >
-            <input type="radio" name={name} value={option.value} checked={value === option.value} onChange={() => onChange(option.value)} className="sr-only" />
+            <input type="radio" name={name} value={option.value} checked={value === option.value} onChange={() => onChange(option.value)} className="absolute inset-0 opacity-0" />
             {option.icon && <span className="mt-0.5 text-muted-foreground">{option.icon}</span>}
             <span>
               <span className="block font-medium text-foreground">{option.label}</span>

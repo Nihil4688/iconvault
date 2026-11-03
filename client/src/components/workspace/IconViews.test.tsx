@@ -145,7 +145,8 @@ describe("IconToolbar", () => {
     const { onSearch, onSort, onSurface, onView } = setup();
     await userEvent.type(screen.getByRole("searchbox", { name: "Search icons" }), "ar");
     expect(onSearch).toHaveBeenLastCalledWith("r");
-    await userEvent.selectOptions(screen.getByLabelText("Sort by"), "name");
+    await userEvent.click(screen.getByRole("button", { name: "Sort by: Newest" }));
+    await userEvent.click(screen.getByRole("menuitemradio", { name: "Name A–Z" }));
     expect(onSort).toHaveBeenCalledWith("name");
     await userEvent.click(screen.getByRole("button", { name: "More" }));
     await userEvent.click(screen.getByRole("menuitemradio", { name: "Checkerboard" }));
@@ -210,7 +211,8 @@ describe("IconToolbar", () => {
     const { onSort } = setup();
     expect(screen.getByTitle("Sort: Newest")).toBeInTheDocument();
     expect(screen.queryByText("Newest", { selector: "span" })).not.toBeInTheDocument();
-    await userEvent.selectOptions(screen.getByLabelText("Sort by"), "largest");
+    await userEvent.click(screen.getByRole("button", { name: "Sort by: Newest" }));
+    await userEvent.click(screen.getByRole("menuitemradio", { name: "Largest" }));
     expect(onSort).toHaveBeenCalledWith("largest");
   });
 

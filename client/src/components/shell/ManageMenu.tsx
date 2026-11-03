@@ -78,8 +78,8 @@ export default function ManageMenu() {
         <ChevronDown aria-hidden="true" className={cn("h-3.5 w-3.5 transition-transform", open && "rotate-180")} />
       </button>
       {open && (
-        <div ref={menuRef} id={menuId} role="menu" aria-label="Admin tools" onKeyDown={onMenuKeyDown} className="absolute right-0 top-full z-50 mt-2 w-72 max-w-[calc(100vw-2rem)] rounded-2xl border border-border bg-popover p-1.5 text-popover-foreground shadow-xl">
-          <p className="border-b border-border px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Admin tools</p>
+        <div ref={menuRef} id={menuId} role="menu" aria-label="Admin Tools" onKeyDown={onMenuKeyDown} className="absolute right-0 top-full z-50 mt-2 w-72 max-w-[calc(100vw-2rem)] rounded-2xl border border-border bg-popover p-1.5 text-popover-foreground shadow-xl">
+          <p className="border-b border-border px-3 py-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">Admin Tools</p>
           {ITEMS.map(({ to, label, hint, icon: Icon, tone }) => (
             <Link key={to} to={to} role="menuitem" onClick={() => setOpen(false)} className="mt-1 flex items-start gap-3 rounded-xl p-2.5 transition-colors hover:bg-accent focus-visible:bg-accent focus-visible:outline-none">
               <span className={cn("flex h-8 w-8 shrink-0 items-center justify-center rounded-lg", tone)}>

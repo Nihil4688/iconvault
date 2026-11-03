@@ -23,6 +23,7 @@ import { SelectField, TextField } from "../ui/Fields";
 import CodepointTable from "./CodepointTable";
 import FontHistory from "./FontHistory";
 import IconChecklistDialog from "./IconChecklistDialog";
+import SaveBuildVersionDialog from "./SaveBuildVersionDialog";
 
 const FORMATS: { value: FontFormat; label: string; hint: string }[] = [
   { value: "woff2", label: "WOFF2", hint: "smallest, all modern browsers" },
@@ -68,6 +69,8 @@ export default function FontTab() {
   const [building, setBuilding] = useState(false);
   const [fontCodepointOverrides, setFontCodepointOverrides] = useState<Record<string, string>>({});
   const [downloading, setDownloading] = useState(false);
+  const [saveVersionPromptOpen, setSaveVersionPromptOpen] = useState(false);
+  const [downloadAction, setDownloadAction] = useState<"download" | "save" | null>(null);
   const [error, setError] = useState<string | null>(null);
   // A font that was just built on the Icons screen ("Build font" on the bulk bar) is shown at once, without building it again.
   const [result, setResult] = useState<{ build: FontBuildResult; family: string; loaded: boolean } | null>(() => (handed?.built ? peekCachedBuild(project.id) : null));
@@ -180,19 +183,30 @@ export default function FontTab() {
     }
   }
 
-  async function download() {
+  function requestDownload() {
+    if (canEdit && project.visibility === "private" && scopeKind === "selected") {
+      setSaveVersionPromptOpen(true);
+      return;
+    }
+    void download();
+  }
+
+  async function download(saveAsVersion?: boolean) {
     const input = options();
     if (typeof input === "string") return setError(input);
     setDownloading(true);
+    setDownloadAction(saveAsVersion ? "save" : "download");
     try {
-      const { blob, filename } = await downloadFont(project.id, input);
+      const { blob, filename } = saveAsVersion === undefined ? await downloadFont(project.id, input) : await downloadFont(project.id, input, saveAsVersion);
       triggerBrowserDownload(blob, filename);
-      // The server keeps an editor's download in the history.
-      if (canEdit) setHistoryVersion((value) => value + 1);
+      // Non-selected editor downloads continue to be saved automatically.
+      if (canEdit && (scopeKind !== "selected" || saveAsVersion === true)) setHistoryVersion((value) => value + 1);
+      setSaveVersionPromptOpen(false);
     } catch (err) {
       showToast(err instanceof Error ? err.message : "Could not download the font.", "error");
     } finally {
       setDownloading(false);
+      setDownloadAction(null);
     }
   }
 
@@ -245,9 +259,9 @@ export default function FontTab() {
   }, [signature, inScope]);
   // The three actions sit in the project bar (like Upload icons on the Icons screen); without a bar they show above the settings.
   const actions = (
-    <div role="group" aria-label="Font actions" className="flex flex-wrap items-center gap-2">
-      <Button variant="primary" className="h-9" icon={<Download aria-hidden="true" className="h-4 w-4" />} onClick={download} loading={downloading} disabled={!result || building || signature !== displayedBuildSignature}>
-        Download font
+    <div role="group" aria-label="Font Actions" className="flex flex-wrap items-center gap-2">
+      <Button variant="primary" className="h-9" icon={<Download aria-hidden="true" className="h-4 w-4" />} onClick={requestDownload} loading={downloading} disabled={!result || building || signature !== displayedBuildSignature}>
+        Download Font
       </Button>
       <Button className="h-9" icon={<Copy aria-hidden="true" className="h-4 w-4" />} onClick={copyEmbeddedCss} disabled={!built}>
         Copy CSS
@@ -272,7 +286,7 @@ export default function FontTab() {
               onClick={() => void runBuild()}
               disabled={building}
             >
-              Try again
+              Try Again
             </button>
           </p>
         )}
@@ -287,7 +301,7 @@ export default function FontTab() {
           <section aria-labelledby="font-scope" className="space-y-4">
             <fieldset>
               <legend id="font-scope" className={columnHeading}>
-                1. Scope selection
+                1. Scope Selection
               </legend>
               <div className="mt-3 space-y-2 text-sm">
                 <label className="flex cursor-pointer items-center gap-2">
@@ -308,7 +322,7 @@ export default function FontTab() {
                     onChange={() => setScopeKind("folder")}
                     className="h-4 w-4 accent-[hsl(var(--primary))]"
                   />
-                  Selected folder
+                  Selected Folder
                 </label>
                 {scopeKind === "folder" && (
                   <SelectField
@@ -317,7 +331,7 @@ export default function FontTab() {
                     value={folderChoice}
                     onChange={(event) => setFolderChoice(event.target.value)}
                   >
-                    <option value="">Choose a folder…</option>
+                    <option value="">Choose a Folder…</option>
                     {folderOptions.map((folder) => (
                       <option key={folder.id} value={folder.id}>
                         {`${"  ".repeat(folder.depth)}${folder.name} (${pluralize(totalIconCount(folder), "icon")})`}
@@ -353,7 +367,7 @@ export default function FontTab() {
                 </span>
                 <span
                   className="text-primary"
-                  aria-label={`${inScope} of ${project.iconCount} icons included`}
+                  aria-label={`${inScope} of ${project.iconCount} Icons Included`}
                 >
                   {inScope} / {project.iconCount}
                 </span>
@@ -367,17 +381,17 @@ export default function FontTab() {
                 size="sm"
                 onClick={() => setChoosing(true)}
               >
-                Review / edit checklist
+                Review / Edit Checklist
               </Button>
             </div>
           </section>
 
           <section aria-labelledby="font-css" className="space-y-3">
             <h2 id="font-css" className={columnHeading}>
-              2. Font &amp; CSS settings
+              2. Font &amp; CSS Settings
             </h2>
             <TextField
-              label="Font name"
+              label="Font Name"
               value={fontName}
               maxLength={50}
               autoComplete="off"
@@ -385,7 +399,7 @@ export default function FontTab() {
             />
             <div className="grid gap-3 sm:grid-cols-2">
               <TextField
-                label="Class prefix"
+                label="Class Prefix"
                 value={prefix}
                 maxLength={20}
                 autoComplete="off"
@@ -393,7 +407,7 @@ export default function FontTab() {
                 onChange={(event) => setPrefix(event.target.value)}
               />
               <TextField
-                label="Base class"
+                label="Base Class"
                 value={baseClass}
                 maxLength={30}
                 autoComplete="off"
@@ -435,7 +449,7 @@ export default function FontTab() {
             />
             <fieldset>
               <legend id="font-formats" className="text-sm font-semibold">
-                Export formats
+                Export Formats
               </legend>
               <p className="mt-1 text-xs text-muted-foreground">
                 Choose the font file formats to include in the generated
@@ -467,7 +481,7 @@ export default function FontTab() {
       </form>
 
       {built && (
-        <section aria-label="Built font" className="mt-6 space-y-4">
+        <section aria-label="Built Font" className="mt-6 space-y-4">
           <p role="status" className="text-sm">
             <span className="font-semibold">
               {pluralize(built.iconCount, "icon")}
@@ -489,8 +503,8 @@ export default function FontTab() {
           {built.warnings.length > 0 && (
             <details className="rounded-lg border border-amber-500/40 bg-muted px-3 py-2 text-sm">
               <summary className="cursor-pointer font-medium">
-                {pluralize(built.warnings.length, "icon warning")}: some icons
-                may not convert cleanly
+                {pluralize(built.warnings.length, "icon warning")}: Some Icons
+                May Not Convert Cleanly
               </summary>
               <ul className="mt-2 space-y-1">
                 {built.warnings.map((warning, index) => (
@@ -520,7 +534,7 @@ export default function FontTab() {
             <div className="flex flex-wrap items-start justify-between gap-2">
               <div>
                 <h3 id="font-mapping" className="text-base font-semibold">
-                  Stable Unicode codepoints mapping
+                  Stable Unicode Codepoints Mapping
                 </h3>
                 <p className="mt-0.5 text-sm text-muted-foreground">
                   Each icon keeps its character when the font is rebuilt, so CSS
@@ -533,7 +547,7 @@ export default function FontTab() {
               {built.codepoints.length > 10 && (
                 <input
                   type="search"
-                  aria-label="Filter characters"
+                  aria-label="Filter Characters"
                   placeholder="Filter"
                   value={filter}
                   onChange={(event) => setFilter(event.target.value)}
@@ -590,6 +604,17 @@ export default function FontTab() {
           selection.set(iconIds);
           setScopeKind("selected");
           setChoosing(false);
+        }}
+      />
+      <SaveBuildVersionDialog
+        open={saveVersionPromptOpen}
+        kind="font"
+        iconCount={result?.build.iconCount ?? chosen?.length ?? 0}
+        busyAction={downloadAction}
+        onDownloadOnly={() => void download(false)}
+        onSaveVersion={() => void download(true)}
+        onClose={() => {
+          if (!downloading) setSaveVersionPromptOpen(false);
         }}
       />
     </div>

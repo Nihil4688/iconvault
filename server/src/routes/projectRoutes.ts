@@ -4,7 +4,7 @@ import { Router } from "express";
 import multer from "multer";
 import { BadRequestError } from "../lib/errors.js";
 import { actorOf, loadProject, parseObjectId, sendDownload } from "../lib/http.js";
-import { buildFontSchema, createProjectSchema, spriteBuildFieldsSchema, listProjectsQuerySchema, updateProjectSchema } from "../lib/validation.js";
+import { buildFontDownloadSchema, buildFontSchema, createProjectSchema, spriteBuildFieldsSchema, listProjectsQuerySchema, updateProjectSchema } from "../lib/validation.js";
 import { heavyLimit } from "../middleware/rateLimit.js";
 import { requireDb } from "../middleware/requireDb.js";
 import { requireUser } from "../middleware/requireUser.js";
@@ -153,7 +153,7 @@ router.post("/:projectId/font/build", heavyLimit, async (req, res) => {
 router.post("/:projectId/font/download", heavyLimit, async (req, res) => {
   const actor = actorOf(req);
   const project = await loadProject(actor, req.params.projectId, "view");
-  const input = buildFontSchema.parse(req.body ?? {});
+  const { saveAsVersion, ...input } = buildFontDownloadSchema.parse(req.body ?? {});
   const icons = await iconsForFont(project._id, input);
   const build = await buildFont(project._id, icons, input);
   const zip = zipFontBuild(build);
@@ -161,9 +161,10 @@ router.post("/:projectId/font/download", heavyLimit, async (req, res) => {
   // are otherwise recorded once per package fingerprint; rebuilding without package changes adds nothing.
   const outputOptions = (({ scope: _scope, folderId: _folderId, iconIds: _iconIds, ...options }: typeof input) => options)(input);
   const fingerprint = createHash("sha256").update(JSON.stringify({ input: outputOptions, icons, css: build.css, codepoints: build.codepoints })).digest("hex");
-  const keep = canEdit(actor, project) && !(project.visibility === "public" && input.scope === "selected");
+  const keep = canEdit(actor, project) && !(project.visibility === "public" && input.scope === "selected") && !(input.scope === "selected" && saveAsVersion === false);
   // Editors' downloads are kept in the build history (best effort: a failure here must not lose the download).
-  const stored = keep ? await recordFontBuild(project._id, actor.id, build, input.formats, zip, fingerprint).catch(() => false) : false;
+  const storedFingerprint = input.scope === "selected" && saveAsVersion === true ? undefined : fingerprint;
+  const stored = keep ? await recordFontBuild(project._id, actor.id, build, input.formats, zip, storedFingerprint).catch(() => false) : false;
   await recordRequestActivity(req, project, {
     actionDone: "build",
     entityType: "project",
@@ -214,7 +215,12 @@ router.post("/:projectId/sprite/builds", heavyLimit, spriteUpload.single("bundle
     res.status(201).json({ kept: false });
     return;
   }
-  const build = await recordSpriteBuild(project._id, actor.id, { mode: fields.mode, iconCount: fields.iconCount, fingerprint: fields.fingerprint }, req.file.buffer);
+  if (fields.scope === "selected" && fields.saveAsVersion === false) {
+    res.status(201).json({ kept: false });
+    return;
+  }
+  const fingerprint = fields.scope === "selected" && fields.saveAsVersion === true ? undefined : fields.fingerprint;
+  const build = await recordSpriteBuild(project._id, actor.id, { mode: fields.mode, iconCount: fields.iconCount, fingerprint }, req.file.buffer);
   if (build) {
     await recordRequestActivity(req, project, {
       actionDone: "build",
