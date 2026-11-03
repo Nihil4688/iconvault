@@ -233,6 +233,7 @@ describe("sections", () => {
     expect(await screen.findByText("The trash is empty.")).toBeInTheDocument();
     expect(screen.queryByRole("navigation", { name: "Folders" })).not.toBeInTheDocument();
     expect(screen.getByTestId("where")).toHaveTextContent("/projects/p1/trash");
+    expect(screen.getByRole("heading", { name: "Trash" }).closest("section")?.parentElement?.parentElement?.parentElement).toHaveClass("overflow-hidden");
 
     await userEvent.click(screen.getByRole("link", { name: "Project Settings" }));
     expect(await screen.findByRole("heading", { name: "Danger zone" })).toBeInTheDocument();

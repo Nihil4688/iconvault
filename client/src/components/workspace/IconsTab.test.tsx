@@ -93,6 +93,15 @@ describe("showing icons", () => {
     expect(within(card("Gamma")).queryByText("Stroke")).not.toBeInTheDocument();
   });
 
+  it("places the background control opposite Select all with even vertical spacing", async () => {
+    setup();
+    await screen.findByRole("button", { name: "Open Alpha" });
+    const selectAll = screen.getByRole("checkbox", { name: "Select all 3 shown" });
+    const more = screen.getByRole("button", { name: "Preview background" });
+    expect(selectAll.parentElement?.parentElement).toBe(more.parentElement?.parentElement);
+    expect(more.parentElement?.parentElement).toHaveClass("justify-between", "py-2");
+  });
+
   it("asks for the newest first, 200 at a time, for the whole project", async () => {
     setup();
     await screen.findByRole("button", { name: "Open Alpha" });

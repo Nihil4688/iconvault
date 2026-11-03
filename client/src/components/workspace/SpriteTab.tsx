@@ -297,16 +297,18 @@ export default function SpriteTab() {
               </h3>
               {built.ids.length > 10 && <input type="search" aria-label="Filter Symbol IDs" placeholder="Filter ids" value={filter} onChange={(event) => setFilter(event.target.value)} className="h-9 rounded-lg border border-input bg-background px-3 text-sm" />}
             </div>
-            <ul className="mt-2 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-              {shownIds.slice(0, MAX_LISTED_IDS).map((id) => (
-                <li key={id}>
-                  <button type="button" onClick={() => copyAndToast(snippetFor(built.mode, id, `${fileName}.svg`), `the code for ${id}`)} aria-label={`Copy Code for ${id}`} className="flex w-full items-center justify-between gap-2 rounded-lg border border-border px-3 py-1.5 text-left font-mono text-xs hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring">
-                    <span className="truncate">{id}</span>
-                    <Copy aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                  </button>
-                </li>
-              ))}
-            </ul>
+            <div className="mt-2 h-[40vh] min-h-64 overflow-y-auto rounded-xl border border-border py-3 pl-3">
+              <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                {shownIds.slice(0, MAX_LISTED_IDS).map((id) => (
+                  <li key={id}>
+                    <button type="button" onClick={() => copyAndToast(snippetFor(built.mode, id, `${fileName}.svg`), `the code for ${id}`)} aria-label={`Copy Code for ${id}`} className="flex w-full items-center justify-between gap-2 rounded-lg border border-border px-3 py-1.5 text-left font-mono text-xs hover:bg-muted focus-visible:outline-2 focus-visible:outline-ring">
+                      <span className="truncate">{id}</span>
+                      <Copy aria-hidden="true" className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
             {shownIds.length > MAX_LISTED_IDS && <p className="mt-2 text-sm text-muted-foreground">Showing the first {MAX_LISTED_IDS} of {shownIds.length}. Use the filter to find others.</p>}
             {shownIds.length === 0 && <p className="mt-2 text-sm text-muted-foreground">No ids match “{filter}”.</p>}
           </section>

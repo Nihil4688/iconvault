@@ -3,9 +3,7 @@ import { ArrowUpDown, LayoutGrid, List, Minus, Plus, Search } from "lucide-react
 import { createPortal } from "react-dom";
 import { cn } from "../../lib/cn";
 import { ICON_COLORS, MAX_ICON_SIZE, MIN_ICON_SIZE, clampIconSize, type IconAppearance } from "../../lib/iconAppearance";
-import type { Surface } from "../../lib/previewSurface";
 import DropdownSelect from "../ui/DropdownSelect";
-import MoreMenu from "./MoreMenu";
 import UploadButton from "./UploadButton";
 
 export type IconSort = "newest" | "oldest" | "name" | "name-desc" | "largest";
@@ -18,8 +16,6 @@ type IconToolbarProps = {
   onSort: (sort: IconSort) => void;
   view: IconView;
   onView: (view: IconView) => void;
-  surface: Surface;
-  onSurface: (surface: Surface) => void;
   appearance: IconAppearance;
   onAppearance: (change: Partial<IconAppearance>) => void;
   appearanceScope: "all" | "folder";
@@ -33,7 +29,7 @@ type IconToolbarProps = {
 
 const SORT_LABELS: Record<IconSort, string> = { newest: "Newest", oldest: "Oldest", name: "Name A–Z", "name-desc": "Name Z–A", largest: "Largest" };
 
-export default function IconToolbar({ search, onSearch, sort, onSort, view, onView, surface, onSurface, appearance, onAppearance, appearanceScope, actionsHost, canAdd, onUpload, disabled = false, appearanceDisabled = false }: IconToolbarProps) {
+export default function IconToolbar({ search, onSearch, sort, onSort, view, onView, appearance, onAppearance, appearanceScope, actionsHost, canAdd, onUpload, disabled = false, appearanceDisabled = false }: IconToolbarProps) {
 
 
   const actions = (
@@ -47,7 +43,7 @@ export default function IconToolbar({ search, onSearch, sort, onSort, view, onVi
     <div className="space-y-3">
       <fieldset disabled={disabled} className={cn("flex min-w-0 flex-wrap items-center gap-4 border-0 p-0", disabled && "opacity-50")}>
         <legend className="sr-only">Icon Browsing Controls</legend>
-        <div className="relative min-w-48 max-w-2xl flex-1">
+        <div className="relative min-w-48 max-w-xs flex-1">
           <label htmlFor="icon-search" className="sr-only">
             Search Icons
           </label>
@@ -98,7 +94,6 @@ export default function IconToolbar({ search, onSearch, sort, onSort, view, onVi
           >
             <ArrowUpDown aria-hidden="true" className="h-4 w-4" />
           </DropdownSelect>
-          <MoreMenu surface={surface} onSurface={onSurface} />
           <div role="group" aria-label="View" className="inline-flex h-9 items-center rounded-lg border border-input bg-muted p-0.5">
             {(
               [
