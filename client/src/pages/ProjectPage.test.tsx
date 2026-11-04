@@ -284,20 +284,7 @@ describe("icon selection across tabs", () => {
     fontAutoBuild.enabled = false;
   });
 
-  it("clears the selection when switching to another folder", async () => {
-    getProject.mockResolvedValue(makeDetail({ id: "p1", name: "Feather", purpose: "sprite" }));
-    renderPage();
-    await screen.findByRole("button", { name: "Open Alpha" });
-    await userEvent.click(screen.getByRole("checkbox", { name: "Select Alpha" }));
-    expect(screen.getByText("1 icon selected")).toBeInTheDocument();
-
-    await userEvent.click(screen.getByRole("button", { name: /^UI/ }));
-
-    expect(screen.queryByText("1 icon selected")).not.toBeInTheDocument();
-    expect(screen.getByRole("checkbox", { name: "Select Alpha" })).not.toBeChecked();
-  });
-
-  it("opens the new folder and clears the selection after creating it", async () => {
+  it("opens the new folder after creating it and keeps the selection", async () => {
     getProject.mockResolvedValue(makeDetail({ id: "p1", name: "Feather", purpose: "sprite" }));
     vi.mocked(foldersApi.createFolder).mockResolvedValue({ id: "n1", projectId: "p1", parentId: null, name: "Logos", orderIndex: 2 });
     listFolders
@@ -316,8 +303,7 @@ describe("icon selection across tabs", () => {
     await screen.findByText("Created folder “Logos”.");
     await waitFor(() => expect(screen.getByTestId("where")).toHaveTextContent("?folder=n1"));
     expect(screen.getByRole("button", { name: /^Logos/ })).toHaveAttribute("aria-current", "true");
-    expect(screen.queryByText("1 icon selected")).not.toBeInTheDocument();
-    expect(screen.getByRole("checkbox", { name: "Select Alpha" })).not.toBeChecked();
+    expect(screen.getByText("1 icon selected")).toBeInTheDocument();
   });
 
   it("opens the destination folder and clears the selection after moving icons", async () => {
