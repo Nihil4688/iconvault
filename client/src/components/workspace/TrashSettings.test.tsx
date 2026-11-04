@@ -63,7 +63,8 @@ describe("Trash", () => {
     expect(screen.getByRole("region", { name: "Trash" })).toHaveClass("h-full", "min-h-0");
     const list = screen.getByText("Alpha").closest("ul");
     expect(list).not.toHaveClass("flex-1");
-    expect(list).toHaveClass("max-h-[40vh]", "overflow-y-auto");
+    expect(list).toHaveClass("min-h-0", "shrink", "overflow-y-auto");
+    expect(list).not.toHaveClass("max-h-[50vh]");
   });
 
   it("says the trash is empty", async () => {

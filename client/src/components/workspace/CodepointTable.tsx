@@ -25,22 +25,22 @@ export default function CodepointTable({ glyphs, family, canEdit, busy, onSave, 
         <caption className="sr-only">Stable Unicode codepoints mapping</caption>
         <thead className="bg-muted text-xs text-muted-foreground">
           <tr>
-            <th scope="col" className="w-16 px-3 py-2 font-medium">
+            <th scope="col" className="sticky top-0 z-10 w-16 bg-muted px-3 py-2 font-medium">
               Preview
             </th>
-            <th scope="col" className="px-3 py-2 font-medium">
+            <th scope="col" className="sticky top-0 z-10 bg-muted px-3 py-2 font-medium">
               Icon Name
             </th>
-            <th scope="col" className="px-3 py-2 font-medium">
+            <th scope="col" className="sticky top-0 z-10 bg-muted px-3 py-2 font-medium">
               Slug
             </th>
-            <th scope="col" className="px-3 py-2 font-medium">
+            <th scope="col" className="sticky top-0 z-10 bg-muted px-3 py-2 font-medium">
               Assigned Hex Codepoint
             </th>
-            <th scope="col" className="px-3 py-2 font-medium">
+            <th scope="col" className="sticky top-0 z-10 bg-muted px-3 py-2 font-medium">
               CSS Entity
             </th>
-            <th scope="col" className="px-3 py-2 font-medium">
+            <th scope="col" className="sticky top-0 z-10 bg-muted px-3 py-2 font-medium">
               CSS Class
             </th>
           </tr>

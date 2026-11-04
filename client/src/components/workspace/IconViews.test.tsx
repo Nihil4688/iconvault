@@ -84,8 +84,9 @@ describe("IconList", () => {
     setup();
     expect(screen.getByRole("table", { name: "Icons" })).toBeInTheDocument();
     // The scroll box must be positioned, or the table's hidden text widens the page on a phone.
-    expect(screen.getByRole("table", { name: "Icons" }).parentElement).toHaveClass("relative", "overflow-x-auto");
+    expect(screen.getByRole("table", { name: "Icons" }).parentElement).toHaveClass("relative", "min-h-0", "max-h-full", "w-full", "flex-none", "overflow-auto");
     expect(screen.getAllByRole("columnheader").map((h) => h.textContent)).toEqual(["Select", "Preview", "Name", "Folder", "Size", "Tags", "Updated"]);
+    expect(screen.getByRole("columnheader", { name: "Name" }).closest("thead")?.firstElementChild?.firstElementChild).toHaveClass("sticky", "top-0");
     expect(screen.getAllByRole("row")).toHaveLength(3);
   });
 
@@ -240,14 +241,15 @@ describe("MoreMenu", () => {
     expect(more).toHaveAttribute("aria-expanded", "false");
     await userEvent.click(more);
     const menu = screen.getByRole("menu", { name: "Preview background options" });
-    expect(menu).toHaveClass("w-[min(32rem,calc(100vw-2rem))]");
-    expect(menu.querySelector(".grid")).toHaveClass("grid-cols-4");
+    expect(menu).toHaveClass("w-[min(14rem,calc(100vw-2rem))]", "p-3");
+    expect(menu).toHaveClass("flex", "flex-col");
     const options = within(menu).getAllByRole("menuitemradio");
-    expect(options.map((item) => [item.textContent, item.getAttribute("aria-checked")])).toEqual([["Match theme", "false"], ["Light", "true"], ["Dark", "false"], ["Transparent", "false"]]);
-    expect(options[0]).toHaveClass("flex-col");
+    expect(options.map((item) => [item.textContent, item.getAttribute("aria-checked")])).toEqual([["Match Theme", "false"], ["Light", "true"], ["Dark", "false"], ["Transparent", "false"]]);
+    expect(options[0]).toHaveClass("w-full", "flex-row", "justify-start", "min-h-14", "text-sm", "px-2", "py-2");
     expect(options[1]).toHaveClass("border-primary", "bg-primary/5");
-    expect(options[1]).toHaveClass("min-h-24");
-    expect(options[1].querySelector('[aria-hidden="true"]')).toHaveClass("h-12", "w-12");
+    expect(options[0]).not.toHaveClass("border-primary", "border-border");
+    expect(options[1].querySelector('[aria-hidden="true"]')).toHaveClass("h-10", "w-10", "rounded-full");
+    expect(options[1].querySelector(".absolute")).toHaveClass("right-0", "-top-1", "z-20");
     await userEvent.click(within(menu).getByRole("menuitemradio", { name: "Dark" }));
     expect(onSurface).toHaveBeenCalledWith("dark");
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
@@ -259,11 +261,11 @@ describe("MoreMenu", () => {
     const more = screen.getByRole("button", { name: "Preview background" });
     more.focus();
     await userEvent.keyboard("{ArrowDown}");
-    await waitFor(() => expect(screen.getByRole("menuitemradio", { name: "Match theme" })).toHaveFocus());
+    await waitFor(() => expect(screen.getByRole("menuitemradio", { name: "Match Theme" })).toHaveFocus());
     await userEvent.keyboard("{End}");
     expect(screen.getByRole("menuitemradio", { name: "Transparent" })).toHaveFocus();
     await userEvent.keyboard("{ArrowDown}");
-    expect(screen.getByRole("menuitemradio", { name: "Match theme" })).toHaveFocus();
+    expect(screen.getByRole("menuitemradio", { name: "Match Theme" })).toHaveFocus();
     await userEvent.keyboard("{Escape}");
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
     expect(more).toHaveFocus();
