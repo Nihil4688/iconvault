@@ -69,6 +69,9 @@ export default function IconsTab() {
   const icons = useResource(`icons:${filterKey}:${limit}:${iconsVersion}`, () => listIcons(project.id, params));
   const shown = icons.data?.icons ?? [];
   const total = icons.data?.total ?? 0;
+  const selectedIds = new Set(selection.ids);
+  const shownIds = new Set(shown.map((icon) => icon.id));
+  const selectedShown = shown.reduce((count, icon) => count + Number(selectedIds.has(icon.id)), 0);
   // Keep selection stable across list refreshes; a completed action or "Clear selection" explicitly consumes it.
   const currentFolderId = selectedFolder === "all" || selectedFolder === "root" ? null : selectedFolder;
 
@@ -192,7 +195,13 @@ export default function IconsTab() {
         ) : (
           <div className="flex min-h-0 flex-1 flex-col">
             <div className="flex shrink-0 items-center justify-between py-2 pr-7">
-              <SelectAllBar loaded={shown.length} selected={selection.size} onSelectAll={(checked) => (checked ? selection.selectAll(shown.map((icon) => icon.id)) : selection.clear())} />
+              <SelectAllBar
+                loaded={shown.length}
+                selected={selectedShown}
+                onSelectAll={(checked) =>
+                  selection.set(checked ? [...new Set([...selectedIds, ...shownIds])] : selection.ids.filter((id) => !shownIds.has(id)))
+                }
+              />
               <MoreMenu surface={surface} onSurface={setSurface} disabled={noIconsInScope} />
             </div>
             <div className={`min-h-0 flex-1 pr-3 ${view === "list" ? "flex flex-col" : "overflow-y-auto pb-24 pl-1 pr-3 pt-1"}`}>

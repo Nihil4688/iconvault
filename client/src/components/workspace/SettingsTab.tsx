@@ -249,8 +249,24 @@ export default function SettingsTab() {
       />
       <ConfirmDialog
         open={deleting}
-        title={`Delete “${project.name}”?`}
-        message={`This permanently deletes the project with its ${pluralize(project.iconCount, "icon")}, folders and history. This cannot be undone.`}
+        size="md"
+        title= "Delete Project"
+        message={
+          <>
+            <div>
+              <p className="pb-3">Are you sure you want to permanently delete <span className="font-semibold">“{project.name}”</span>? This action cannot be undone.</p>
+              <div>
+                <div className="list-disc space-y-1">
+                  Deleting this project will permanently remove
+                  <span className="font-semibold"> {
+                    pluralize(project.iconCount ?? 0, "icon")
+                  }</span> and all folders associated with it.
+                </div>
+              </div>
+              <p></p>
+            </div>
+          </>
+        }
         confirmLabel="Delete Project"
         destructive
         onClose={() => setDeleting(false)}

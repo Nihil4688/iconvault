@@ -351,6 +351,50 @@ describe("selection", () => {
     expect(screen.queryByText("3 icons selected")).not.toBeInTheDocument();
   });
 
+  it("scopes select-all state and toggling to the current folder", async () => {
+    const uiIcons = [
+      makeIcon({ id: "ui-a", name: "UI Alpha", folderId: "ui" }),
+      makeIcon({ id: "ui-b", name: "UI Beta", folderId: "ui" }),
+    ];
+    const assetIcons = [
+      makeIcon({ id: "asset-a", name: "Asset Alpha", folderId: "assets" }),
+      makeIcon({ id: "asset-b", name: "Asset Beta", folderId: "assets" }),
+    ];
+    listIcons.mockImplementation((_id, params = {}) => Promise.resolve(reply(params.folderId === "ui" ? uiIcons : assetIcons)));
+    const { rerender } = setup({
+      folderList: {
+        folders: [makeFolder({ id: "ui", name: "UI" }), makeFolder({ id: "assets", name: "Assets" })],
+        uncategorizedCount: 0,
+      },
+      selectedFolder: "ui",
+    });
+
+    await screen.findByRole("button", { name: "Open UI Alpha" });
+    await userEvent.click(screen.getByRole("checkbox", { name: "Select UI Alpha" }));
+    expect(screen.getByRole("checkbox", { name: /select all 2 shown/i })).toHaveProperty("indeterminate", true);
+
+    rerender({ selectedFolder: "assets" });
+    await screen.findByRole("button", { name: "Open Asset Alpha" });
+    const selectAll = screen.getByRole("checkbox", { name: /select all 2 shown/i });
+    expect(selectAll).not.toBeChecked();
+    expect(selectAll).toHaveProperty("indeterminate", false);
+
+    await userEvent.click(selectAll);
+    expect(screen.getByText("3 icons selected")).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "Select Asset Alpha" })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Select Asset Beta" })).toBeChecked();
+
+    await userEvent.click(selectAll);
+    expect(screen.getByText("1 icon selected")).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "Select Asset Alpha" })).not.toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Select Asset Beta" })).not.toBeChecked();
+
+    rerender({ selectedFolder: "ui" });
+    await screen.findByRole("button", { name: "Open UI Alpha" });
+    expect(screen.getByRole("checkbox", { name: "Select UI Alpha" })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: /select all 2 shown/i })).toHaveProperty("indeterminate", true);
+  });
+
   it("keeps the selection when the list is refreshed", async () => {
     const { rerender } = setup();
     await screen.findByRole("button", { name: "Open Alpha" });
