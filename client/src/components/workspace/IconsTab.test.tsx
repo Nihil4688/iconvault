@@ -292,11 +292,15 @@ describe("search, sort and view", () => {
     await screen.findByRole("button", { name: "Open Alpha" });
     await userEvent.click(screen.getByRole("button", { name: "List view" }));
     expect(screen.getByRole("table", { name: "Icons" })).toBeInTheDocument();
-    expect(window.localStorage.getItem("iconView")).toBe("list");
+    const table = screen.getByRole("table", { name: "Icons" });
+    expect(table.parentElement).toHaveClass("min-h-0", "flex-1", "overflow-auto");
+    expect(table.parentElement?.parentElement).toHaveClass("min-h-0", "flex-1", "flex");
+    expect(table.parentElement?.parentElement).not.toHaveClass("pb-24");
+    expect(window.localStorage.getItem("project:p1:iconView")).toBe("list");
   });
 
   it("starts in the saved view and background", async () => {
-    window.localStorage.setItem("iconView", "list");
+    window.localStorage.setItem("project:p1:iconView", "list");
     window.localStorage.setItem("iconSurface", "dark");
     setup();
     expect(await screen.findByRole("table", { name: "Icons" })).toBeInTheDocument();
@@ -633,7 +637,7 @@ describe("opening an icon", () => {
   });
 
   it("opens from the table view too", async () => {
-    window.localStorage.setItem("iconView", "list");
+    window.localStorage.setItem("project:p1:iconView", "list");
     vi.mocked(iconsApi.getIcon).mockResolvedValue({ ...makeIcon({ id: "a", name: "Alpha", slug: "alpha" }), svg: "<svg viewBox='0 0 1 1'/>", versions: [] });
     setup();
     await userEvent.click(await screen.findByRole("button", { name: "Alpha" }));

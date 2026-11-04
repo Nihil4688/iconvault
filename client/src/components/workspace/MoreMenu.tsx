@@ -81,9 +81,9 @@ export default function MoreMenu({ surface, onSurface, disabled = false }: { sur
         <ChevronDown aria-hidden="true" className="h-3 w-3" />
       </button>
       {open && (
-        <div ref={menuRef} id={menuId} role="menu" aria-label="Preview background options" onKeyDown={onMenuKeyDown} className="absolute right-0 top-full z-30 mt-2 w-[min(32rem,calc(100vw-2rem))] rounded-xl border border-border bg-popover p-3 text-popover-foreground shadow-lg sm:p-4">
-          <p className="relative z-10 pb-2 text-sm font-semibold">Preview Background</p>
-          <div className="relative z-10 grid grid-cols-4 gap-2">
+        <div ref={menuRef} id={menuId} role="menu" aria-label="Preview background options" onKeyDown={onMenuKeyDown} className="absolute right-0 top-full z-30 mt-2 flex w-[min(12rem,calc(100vw-2rem))] flex-col rounded-xl border border-border bg-popover p-3 text-popover-foreground shadow-lg">
+          <p className="pb-2 text-sm font-semibold">Preview Background</p>
+          <div className="flex flex-col gap-1">
             {SURFACES.map((value) => {
               const selected = surface === value;
               const backgroundClass = value === "dark" ? "bg-neutral-900" : value === "light" ? "bg-white" : value === "theme" ? "bg-background" : "";
@@ -104,20 +104,18 @@ export default function MoreMenu({ surface, onSurface, disabled = false }: { sur
                     triggerRef.current?.focus();
                   }}
                   className={cn(
-                    "relative flex min-h-24 min-w-0 flex-col items-center justify-center gap-1 rounded-lg border p-1.5 text-xs font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring",
-                    selected ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border",
+                    "relative flex min-h-14 w-full flex-row items-center justify-start gap-3 rounded-lg border px-2 py-2 text-left text-sm font-medium text-foreground transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring",
+                    selected ? "border-primary bg-primary/5" : "border-transparent",
                   )}
                 >
-                  {value === "theme" ? (
-                    <span aria-hidden="true" className="flex h-16 w-16 shrink-0 items-center justify-center">
-                      <span className={cn("h-12 w-12 rounded-lg border border-border", backgroundClass)} style={backgroundStyle} />
-                    </span>
-                  ) : (
-                    <span aria-hidden="true" className={cn("h-12 w-12 shrink-0 rounded-lg border border-border", backgroundClass)} style={backgroundStyle} />
-                  )}
-                  {SURFACE_LABELS[value]}
+                  <span
+                    aria-hidden="true"
+                    className={cn("h-10 w-10 shrink-0 rounded-full border-2", selected ? "border-primary" : "border-border", backgroundClass)}
+                    style={backgroundStyle}
+                  />
+                  <span>{SURFACE_LABELS[value]}</span>
                   {selected && (
-                    <span className="absolute right-2 top-2 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
+                    <span aria-hidden="true" className="absolute -top-2 -right-2 z-20 flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm">
                       <Check aria-hidden="true" className="h-3 w-3" />
                     </span>
                   )}

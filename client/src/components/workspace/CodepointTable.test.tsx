@@ -22,7 +22,9 @@ describe("what it shows", () => {
   it("is a table with a caption and named columns, one row per glyph", () => {
     setup();
     const table = screen.getByRole("table", { name: "Stable Unicode codepoints mapping" });
-    expect(within(table).getAllByRole("columnheader").map((h) => h.textContent)).toEqual(["Preview", "Icon name", "Slug", "Assigned hex codepoint", "CSS entity", "CSS class"]);
+    const headers = within(table).getAllByRole("columnheader");
+    expect(headers.map((h) => h.textContent)).toEqual(["Preview", "Icon Name", "Slug", "Assigned Hex Codepoint", "CSS Entity", "CSS Class"]);
+    expect(headers.every((header) => header.classList.contains("sticky") && header.classList.contains("top-0") && header.classList.contains("bg-muted"))).toBe(true);
     expect(within(table).getAllByRole("row")).toHaveLength(3);
     expect(screen.getByText("add-square")).toBeInTheDocument();
   });

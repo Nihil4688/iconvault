@@ -24,30 +24,30 @@ type IconListProps = {
 export default function IconList({ icons, folders, isSelected, surface, appearanceForFolder, canDrag, dragIds, onToggle, onOpen }: IconListProps) {
   return (
     // `relative` matters: the table holds visually hidden (absolutely positioned) text, which would otherwise escape this scroll box and widen the whole page on a phone.
-    <div className="relative overflow-x-auto rounded-xl border border-border">
+    <div className="relative min-h-0 max-h-full w-full flex-none overflow-auto rounded-xl border border-border mb-6">
       <table className="w-full min-w-xl text-left text-sm">
         <caption className="sr-only">Icons</caption>
         <thead className="bg-muted text-xs text-muted-foreground">
           <tr>
-            <th scope="col" className="w-10 px-3 py-2">
+            <th scope="col" className="sticky top-0 z-10 w-10 bg-muted px-3 py-2">
               <span className="sr-only">Select</span>
             </th>
-            <th scope="col" className="w-14 px-1 py-2">
+            <th scope="col" className="sticky top-0 z-10 w-14 bg-muted px-1 py-2">
               <span className="sr-only">Preview</span>
             </th>
-            <th scope="col" className="px-3 py-2 font-medium">
+            <th scope="col" className="sticky top-0 z-10 bg-muted px-3 py-2 font-medium">
               Name
             </th>
-            <th scope="col" className="px-3 py-2 font-medium">
+            <th scope="col" className="sticky top-0 z-10 bg-muted px-3 py-2 font-medium">
               Folder
             </th>
-            <th scope="col" className="px-3 py-2 font-medium">
+            <th scope="col" className="sticky top-0 z-10 bg-muted px-3 py-2 font-medium">
               Size
             </th>
-            <th scope="col" className="px-3 py-2 font-medium">
+            <th scope="col" className="sticky top-0 z-10 bg-muted px-3 py-2 font-medium">
               Tags
             </th>
-            <th scope="col" className="px-3 py-2 font-medium">
+            <th scope="col" className="sticky top-0 z-10 bg-muted px-3 py-2 font-medium">
               Updated
             </th>
           </tr>
