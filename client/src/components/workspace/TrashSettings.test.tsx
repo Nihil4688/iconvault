@@ -1,7 +1,7 @@
 // Tests for the Trash and Settings sections: listing, restoring (with notes about changes), deleting for good, emptying, editing, archiving and deleting a project, and the read-only views.
 import { render, renderHook, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { createMemoryRouter, Link, RouterProvider } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "../../api/http";
 import * as iconsApi from "../../api/icons";
@@ -30,18 +30,11 @@ function setup(node: React.ReactNode, over: Partial<WorkspaceContextValue> = {})
   const { result } = renderHook(() => useSelection("p1"));
   const selection = result.current;
   const value: WorkspaceContextValue = { project: makeDetail({ id: "p1", name: "Feather", iconCount: 3 }), folderList: { folders: [], uncategorizedCount: 0 }, selectedFolder: "all", iconsVersion: 0, selection, ...fns, ...over };
-  render(
-    <MemoryRouter initialEntries={["/projects/p1/x"]}>
-      <ToastProvider>
-        <WorkspaceContext.Provider value={value}>
-          <Routes>
-            <Route path="/" element={<p>Dashboard</p>} />
-            <Route path="/projects/p1/x" element={node} />
-          </Routes>
-        </WorkspaceContext.Provider>
-      </ToastProvider>
-    </MemoryRouter>,
-  );
+  const router = createMemoryRouter([
+    { path: "/", element: <p>Dashboard</p> },
+    { path: "/projects/p1/x", element: <WorkspaceContext.Provider value={value}>{node}</WorkspaceContext.Provider> },
+  ], { initialEntries: ["/projects/p1/x"] });
+  render(<ToastProvider><RouterProvider router={router} /></ToastProvider>);
   return { ...fns, selection };
 }
 
@@ -201,6 +194,64 @@ describe("Settings", () => {
     await userEvent.type(screen.getByLabelText("Project name"), "!");
     await userEvent.click(screen.getByRole("button", { name: "Save settings" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Could not save.");
+  });
+
+  it("asks before leaving settings with unsaved changes and lets the user stay or discard", async () => {
+    setup(<><SettingsTab /><Link to="/">Leave Settings</Link></>);
+    await userEvent.type(screen.getByLabelText("Project Name"), "!");
+
+    await userEvent.click(screen.getByRole("link", { name: "Leave Settings" }));
+    expect(await screen.findByRole("dialog", { name: "Unsaved changes" })).toBeInTheDocument();
+    expect(screen.queryByText("Dashboard")).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Stay" }));
+    expect(screen.queryByRole("dialog", { name: "Unsaved changes" })).not.toBeInTheDocument();
+    expect(screen.getByLabelText("Project Name")).toHaveValue("Feather!");
+
+    await userEvent.click(screen.getByRole("link", { name: "Leave Settings" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Discard Changes" }));
+    expect(await screen.findByText("Dashboard")).toBeInTheDocument();
+    expect(projectsApi.updateProject).not.toHaveBeenCalled();
+    const event = new Event("beforeunload", { cancelable: true });
+    window.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(false);
+  });
+
+  it("does not interrupt navigation when settings are clean", async () => {
+    setup(<><SettingsTab /><Link to="/">Leave Settings</Link></>);
+    await userEvent.click(screen.getByRole("link", { name: "Leave Settings" }));
+    expect(await screen.findByText("Dashboard")).toBeInTheDocument();
+    expect(screen.queryByRole("dialog", { name: "Unsaved changes" })).not.toBeInTheDocument();
+  });
+
+  it("saves changes before continuing to another route when requested", async () => {
+    vi.mocked(projectsApi.updateProject).mockResolvedValue(makeDetail({ id: "p1", name: "Feather!" }));
+    setup(<><SettingsTab /><Link to="/">Leave Settings</Link></>);
+    await userEvent.type(screen.getByLabelText("Project Name"), "!");
+    await userEvent.click(screen.getByRole("link", { name: "Leave Settings" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Save Changes" }));
+    expect(await screen.findByText("Dashboard")).toBeInTheDocument();
+    expect(projectsApi.updateProject).toHaveBeenCalledWith("p1", expect.objectContaining({ name: "Feather!" }));
+  });
+
+  it("keeps navigation blocked when saving changes fails", async () => {
+    vi.mocked(projectsApi.updateProject).mockRejectedValue(new ApiError("Could not save.", 500));
+    setup(<><SettingsTab /><Link to="/">Leave Settings</Link></>);
+    await userEvent.type(screen.getByLabelText("Project Name"), "!");
+    await userEvent.click(screen.getByRole("link", { name: "Leave Settings" }));
+    const dialog = await screen.findByRole("dialog", { name: "Unsaved changes" });
+    await userEvent.click(within(dialog).getByRole("button", { name: "Save Changes" }));
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent("Could not save.");
+    expect(screen.queryByText("Dashboard")).not.toBeInTheDocument();
+  });
+
+  it("warns before the browser unloads while settings are dirty", async () => {
+    setup(<SettingsTab />);
+    await userEvent.type(screen.getByLabelText("Project Name"), "!");
+    const event = new Event("beforeunload", { cancelable: true });
+
+    window.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(true);
   });
 
   it("marks a project as a draft", async () => {

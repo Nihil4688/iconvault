@@ -1,17 +1,19 @@
-// The table view of icons: select, preview, name (opens it), folder, size, tags and when it changed. Rows can be dragged onto folders like cards.
-import type { FolderItem, IconItem } from "../../api/types";
+// The table view of icons: select, preview, name (opens it), project-specific identifier and folder. Rows can be dragged onto folders like cards.
+import type { FolderItem, IconItem, ProjectPurpose } from "../../api/types";
 import { setDraggedIcons } from "../../lib/dragIcons";
 import { cn } from "../../lib/cn";
 import { folderPath } from "../../lib/folderTree";
-import { formatBytes, formatRelative } from "../../lib/format";
 import type { IconAppearance } from "../../lib/iconAppearance";
 import { iconWarnings } from "../../lib/iconInfo";
+import { symbolId } from "../../lib/spriteBuild";
 import { surfaceClass, surfaceStyle, type Surface } from "../../lib/previewSurface";
 import SvgPreview from "../ui/SvgPreview";
 
 type IconListProps = {
   icons: IconItem[];
   folders: FolderItem[];
+  purpose: ProjectPurpose;
+  idPrefix: string;
   isSelected: (id: string) => boolean;
   surface: Surface;
   appearanceForFolder: (folderId: string | null) => IconAppearance;
@@ -21,7 +23,7 @@ type IconListProps = {
   onOpen: (icon: IconItem) => void;
 };
 
-export default function IconList({ icons, folders, isSelected, surface, appearanceForFolder, canDrag, dragIds, onToggle, onOpen }: IconListProps) {
+export default function IconList({ icons, folders, purpose, idPrefix, isSelected, surface, appearanceForFolder, canDrag, dragIds, onToggle, onOpen }: IconListProps) {
   return (
     // `relative` matters: the table holds visually hidden (absolutely positioned) text, which would otherwise escape this scroll box and widen the whole page on a phone.
     <div className="relative min-h-0 max-h-full w-full flex-none overflow-auto rounded-xl border border-border mb-6">
@@ -39,16 +41,10 @@ export default function IconList({ icons, folders, isSelected, surface, appearan
               Name
             </th>
             <th scope="col" className="sticky top-0 z-10 bg-muted px-3 py-2 font-medium">
+              {purpose === "sprite" ? "ID" : "Codepoint"}
+            </th>
+            <th scope="col" className="sticky top-0 z-10 bg-muted px-3 py-2 font-medium">
               Folder
-            </th>
-            <th scope="col" className="sticky top-0 z-10 bg-muted px-3 py-2 font-medium">
-              Size
-            </th>
-            <th scope="col" className="sticky top-0 z-10 bg-muted px-3 py-2 font-medium">
-              Tags
-            </th>
-            <th scope="col" className="sticky top-0 z-10 bg-muted px-3 py-2 font-medium">
-              Updated
             </th>
           </tr>
         </thead>
@@ -77,10 +73,10 @@ export default function IconList({ icons, folders, isSelected, surface, appearan
                   </button>
                   {warnings.length > 0 && <span className="ml-2 text-xs text-amber-700 dark:text-amber-400">{warnings.join(", ")}</span>}
                 </td>
+                <td className="break-all px-3 py-2 font-mono text-xs text-muted-foreground">
+                  {purpose === "sprite" ? symbolId(idPrefix, icon.slug) : icon.codepoint ? `U+${icon.codepoint}` : "—"}
+                </td>
                 <td className="px-3 py-2 text-muted-foreground">{folderPath(folders, icon.folderId)}</td>
-                <td className="px-3 py-2 text-muted-foreground">{formatBytes(icon.byteSize)}</td>
-                <td className="px-3 py-2 text-muted-foreground">{icon.tags.join(", ")}</td>
-                <td className="px-3 py-2 text-muted-foreground">{formatRelative(icon.updatedAt)}</td>
               </tr>
             );
           })}
