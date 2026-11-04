@@ -84,7 +84,7 @@ export default function ActionMenu({ label, actions, className }: ActionMenuProp
         <MoreVertical aria-hidden="true" className="h-4 w-4" />
       </button>
       {open && (
-        <div ref={menuRef} id={menuId} role="menu" aria-label={label} className="absolute right-0 top-full z-30 mt-1 min-w-44 rounded-xl border border-border bg-popover p-1 text-popover-foreground shadow-lg">
+        <div ref={menuRef} id={menuId} role="menu" aria-label={label} className="absolute right-0 top-full z-30 mt-1 min-w-44 w-max rounded-xl border border-border bg-popover p-1 text-popover-foreground shadow-lg">
           {actions.map((action) => (
             <button
               key={action.label}
@@ -97,7 +97,7 @@ export default function ActionMenu({ label, actions, className }: ActionMenuProp
                 action.onSelect();
               }}
               className={cn(
-                "flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition-colors hover:bg-accent focus-visible:bg-accent focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50",
+                "flex min-w-8 w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-sm transition-colors hover:bg-accent focus-visible:bg-accent focus-visible:outline-none disabled:pointer-events-none disabled:opacity-50",
                 action.destructive ? "text-destructive" : "text-foreground",
               )}
             >

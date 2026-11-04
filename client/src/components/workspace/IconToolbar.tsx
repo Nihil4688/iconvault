@@ -1,8 +1,8 @@
 // Controls above the icon list: folder-specific preview size and colour, sort (an icon with a menu), a More menu (preview background) and grid or list view in one row, with search first, the "select all" checkbox  and (for editors) the Upload icons menu, which can be placed into the project header.
-import { ArrowUpDown, LayoutGrid, List, Minus, Plus, Search } from "lucide-react";
+import { ArrowUpDown, Check, LayoutGrid, List, Minus, Plus, Search } from "lucide-react";
 import { createPortal } from "react-dom";
 import { cn } from "../../lib/cn";
-import { ICON_COLORS, MAX_ICON_SIZE, MIN_ICON_SIZE, clampIconSize, type IconAppearance } from "../../lib/iconAppearance";
+import { ICON_COLORS, ICON_SIZES, stepIconSize, type IconAppearance } from "../../lib/iconAppearance";
 import DropdownSelect from "../ui/DropdownSelect";
 import UploadButton from "./UploadButton";
 
@@ -62,20 +62,28 @@ export default function IconToolbar({ search, onSearch, sort, onSort, view, onVi
           <fieldset disabled={appearanceDisabled} aria-describedby="appearance-scope-help" className={cn("flex items-center gap-2 border-0 p-0", appearanceDisabled && "opacity-50")}>
             <legend className="sr-only">Folder Appearance</legend>
             <div role="group" aria-label="Icon Size" className="flex h-9 items-center gap-2 rounded-lg border border-input bg-background px-2">
-              <button type="button" aria-label="Smaller Icons" disabled={appearance.size <= MIN_ICON_SIZE} onClick={() => onAppearance({ size: clampIconSize(appearance.size - 4) })} className="inline-flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:text-foreground disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-ring">
+              <button type="button" aria-label="Smaller Icons" disabled={appearance.size <= ICON_SIZES[0]} onClick={() => onAppearance({ size: stepIconSize(appearance.size, -1) })} className="inline-flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:text-foreground disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-ring">
                 <Minus aria-hidden="true" className="h-4 w-4" />
               </button>
-              <input type="range" aria-label="Icon Size in Pixels" min={MIN_ICON_SIZE} max={MAX_ICON_SIZE} step={2} value={appearance.size} onChange={(event) => onAppearance({ size: clampIconSize(Number(event.target.value)) })} className="w-20 accent-[hsl(var(--primary))]" />
-              <button type="button" aria-label="Larger Icons" disabled={appearance.size >= MAX_ICON_SIZE} onClick={() => onAppearance({ size: clampIconSize(appearance.size + 4) })} className="inline-flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:text-foreground disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-ring">
+              <input type="range" aria-label="Icon Size in Pixels" min={0} max={ICON_SIZES.length - 1} step={1} value={ICON_SIZES.findIndex((size) => size === appearance.size)} onChange={(event) => onAppearance({ size: ICON_SIZES[Number(event.target.value)] })} className="w-20 accent-[hsl(var(--primary))]" />
+              <button type="button" aria-label="Larger Icons" disabled={appearance.size >= ICON_SIZES[ICON_SIZES.length - 1]} onClick={() => onAppearance({ size: stepIconSize(appearance.size, 1) })} className="inline-flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:text-foreground disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-ring">
                 <Plus aria-hidden="true" className="h-4 w-4" />
               </button>
               <output className="w-10 text-right font-mono text-xs text-muted-foreground">{appearance.size}px</output>
             </div>
             <div role="group" aria-label="Icon Colour" className="flex h-9 items-center gap-2 rounded-lg border border-input bg-background px-3">
+              <span
+                role="img"
+                aria-label={`Selected icon color: ${appearance.color || "default"}`}
+                className={cn(swatch, "flex items-center justify-center ring-2 ring-primary ring-offset-2 ring-offset-background")}
+                style={{ backgroundColor: appearance.color || "hsl(var(--foreground))" }}
+              >
+              </span>
+              <span aria-hidden="true" className="h-6 border-l border-border" />
               {ICON_COLORS.map((color) => (
-                <button key={color.value} type="button" aria-label={color.label} title={appearance.color === color.value ? `${color.label} (Click Again for the Default Colour)` : color.label} aria-pressed={appearance.color === color.value} onClick={() => onAppearance({ color: appearance.color === color.value ? "" : color.value })} className={cn(swatch, appearance.color === color.value && "ring-2 ring-primary ring-offset-2 ring-offset-background")} style={{ backgroundColor: color.value }} />
+                <button key={color.value} type="button" aria-label={color.label} title={appearance.color === color.value ? `${color.label} (Click Again for the Default Colour)` : color.label} aria-pressed={appearance.color === color.value} onClick={() => onAppearance({ color: appearance.color === color.value ? "" : color.value })} className={swatch} style={{ backgroundColor: color.value }} />
               ))}
-              <label className={cn(swatch, "relative cursor-pointer overflow-hidden has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ring", appearance.color !== "" && !ICON_COLORS.some((color) => color.value === appearance.color) && "ring-2 ring-primary ring-offset-2 ring-offset-background")} style={{ background: "conic-gradient(#ef4444, #f59e0b, #10b981, #3b82f6, #8b5cf6, #ef4444)" }} title="More Colours">
+              <label className={cn(swatch, "relative cursor-pointer overflow-hidden has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ring")} style={{ background: "conic-gradient(#ef4444, #f59e0b, #10b981, #3b82f6, #8b5cf6, #ef4444)" }} title="More Colours">
                 <span className="sr-only">More Colours</span>
                 <input type="color" value={appearance.color || "#3b82f6"} onChange={(event) => onAppearance({ color: event.target.value })} className="absolute inset-0 h-full w-full cursor-pointer opacity-0" />
               </label>

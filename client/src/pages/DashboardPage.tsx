@@ -296,7 +296,7 @@ export default function DashboardPage() {
                     .filter((group) => group.items.length > 0)
                     .map((group) => (
                       <section key={group.key} aria-labelledby={`group-${group.key}`}>
-                        <h3 id={`group-${group.key}`} className="mb-2 flex items-center gap-2 text-sm font-bold text-foreground uppercase tracking-wide">
+                        <h3 id={`group-${group.key}`} className="mb-3 flex items-center gap-2 text-sm font-bold text-foreground uppercase tracking-wide">
                           {group.icon}
                           {group.title}
                           <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium normal-case tracking-normal">{group.items.length}</span>
