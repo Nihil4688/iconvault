@@ -212,7 +212,7 @@ export default function IconsTab() {
                 ))}
               </ul>
             ) : (
-              <IconList icons={shown} folders={folderList.folders} isSelected={selection.has} surface={surface} appearanceForFolder={appearanceForFolder} canDrag={canEdit} dragIds={(id) => (selection.has(id) ? selection.ids : [id])} onToggle={selection.toggle} onOpen={(icon) => setOpenId(icon.id)} />
+              <IconList icons={shown} folders={folderList.folders} purpose={project.purpose} idPrefix={project.prefix} isSelected={selection.has} surface={surface} appearanceForFolder={appearanceForFolder} canDrag={canEdit} dragIds={(id) => (selection.has(id) ? selection.ids : [id])} onToggle={selection.toggle} onOpen={(icon) => setOpenId(icon.id)} />
             )}
             {total > shown.length && (
               <div className="mt-4 text-center">
