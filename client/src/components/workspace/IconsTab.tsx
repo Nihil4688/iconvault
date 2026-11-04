@@ -38,7 +38,7 @@ const MAX_SHOWN = 1000;
 type Dialog = "add" | "move" | "tag" | "delete" | null;
 
 export default function IconsTab() {
-  const { project, folderList, selectedFolder, refreshProject, refreshFolders, refreshIcons, iconsVersion, actionsSlot, selection } = useWorkspace();
+  const { project, folderList, selectedFolder, selectFolder, refreshProject, refreshFolders, refreshIcons, iconsVersion, actionsSlot, selection } = useWorkspace();
   const { showToast } = useToast();
   const navigate = useNavigate();
   const canEdit = project.access.canEdit;
@@ -264,6 +264,7 @@ export default function IconsTab() {
           const result = await batchMoveIcons(project.id, selection.ids, folderId);
           selection.clear();
           refreshAll();
+          selectFolder(folderId ?? "root");
           showToast(`Moved ${pluralize(result.matched, "icon")}.`, "success");
         }}
       />
