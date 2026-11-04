@@ -215,129 +215,129 @@ export default function DashboardPage() {
       </div>
 
       <div role="region" aria-label="Project Results" className="min-h-0 flex-1 overflow-y-auto p-6">
-      {showIcons && (
-        <section aria-labelledby="icon-results-title">
-          <h2 id="icon-results-title" className="text-lg font-semibold">
-            Icons Matching “{search}”
-          </h2>
-          <div role="status" aria-live="polite" className="mt-1 text-sm text-muted-foreground">
-            {iconResults.error ? <span className="text-destructive">{iconResults.error.message}</span> : iconResults.loading && !iconResults.data ? "Searching…" : pluralize(iconResults.data?.total ?? 0, "icon") + " found"}
-          </div>
-          {(iconResults.data?.icons.length ?? 0) > 0 && (
-            <ul className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {iconResults.data?.icons.map((icon) => (
-                <li key={icon.id} className="flex items-center gap-3 rounded-xl border border-border bg-card p-3">
-                  <SvgPreview svg={icon.svg ?? ""} size={36} className="rounded-md bg-muted p-1.5" />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold">{icon.name}</p>
-                    {icon.project && (
-                      <div className="flex min-w-0 items-center gap-2">
-                        <Link to={`/projects/${icon.project.id}`} className="min-w-0 truncate rounded-sm text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline focus-visible:outline-2 focus-visible:outline-ring">
-                          {icon.project.name}
-                        </Link>
-                        <PurposeBadge purpose={icon.project.purpose} />
-                      </div>
-                    )}
-                  </div>
-                  <Button size="sm" onClick={() => setCopying(icon)} aria-label={`Copy ${icon.name} to a Project`}>
-                    Copy
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-      )}
-
-      <section aria-labelledby="projects-title" className={showIcons ? "mt-8" : ""}>
         {showIcons && (
-          <h2 id="projects-title" className="mb-3 text-lg font-semibold">
-            Projects
-          </h2>
-        )}
-        {!showIcons && (
-          <h2 id="projects-title" className="sr-only">
-            Project List
-          </h2>
-        )}
-
-        {projects.error && !projects.data ? (
-          <div role="alert" className="rounded-xl border border-destructive/40 bg-card p-6 text-center">
-            <p className="font-medium text-destructive">{projects.error.message}</p>
-            <Button className="mt-3" onClick={projects.reload}>
-              Try Again
-            </Button>
-          </div>
-        ) : projects.loading && !projects.data ? (
-          <ul aria-busy="true" aria-label="Loading Projects" className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-            {Array.from({ length: 10 }, (_, i) => (
-              <li key={i} className="h-28 animate-pulse rounded-xl border border-border bg-muted" />
-            ))}
-          </ul>
-        ) : list.length === 0 ? (
-          <div className="rounded-2xl border border-dashed border-border p-10 text-center">
-            <p className="text-base font-semibold">{filtersActive ? "No projects match." : "You have no projects yet."}</p>
-            <p className="mt-1 text-sm text-muted-foreground">{filtersActive ? "Try a different search or filter." : "Create a project to start collecting icons."}</p>
-            {!filtersActive && (
-              <Button variant="primary" className="mt-4" onClick={() => setForm({ mode: "create" })}>
-                New Project
-              </Button>
-            )}
-          </div>
-        ) : (
-          <>
-            {scope === "all" ? (
-              // Private and Public projects each get their own section.
-              <div className="space-y-8">
-                {([
-                  { key: "private", title: "Private", icon: <Lock aria-hidden="true" className="h-4 w-4 font-bold" />, items: privateList },
-                  { key: "public", title: "Public", icon: <Globe aria-hidden="true" className="h-4 w-4 font-bold" />, items: publicList },
-                ] as const)
-                  .filter((group) => group.items.length > 0)
-                  .map((group) => (
-                    <section key={group.key} aria-labelledby={`group-${group.key}`}>
-                      <h3 id={`group-${group.key}`} className="mb-2 flex items-center gap-2 text-sm font-bold text-foreground uppercase tracking-wide">
-                        {group.icon}
-                        {group.title}
-                        <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium normal-case tracking-normal">{group.items.length}</span>
-                      </h3>
-                      {renderCards(
-                        expandedSections[group.key]
-                          ? group.items
-                          : group.items.slice(0, initialProjectsPerSection),
-                      )}
-                      {group.items.length > initialProjectsPerSection && (
-                        <div className="flex justify-center">
-                        <Button
-                          variant="outline-primary"
-                          className="mt-3 gap-2 border-primary/20 bg-primary/5"
-                          onClick={() => setExpandedSections((expanded) => ({ ...expanded, [group.key]: !expanded[group.key] }))}
-                        >
-                          {expandedSections[group.key] ? (
-                            <>
-                              Show Less Projects
-                              <ChevronUp aria-hidden="true" className="h-4 w-4" />
-                            </>
-                          ) : (
-                            <>
-                              Show {group.items.length - initialProjectsPerSection} More{" "}
-                              {group.items.length - initialProjectsPerSection === 1 ? "project" : "projects"}
-                              <ChevronDown aria-hidden="true" className="h-4 w-4" />
-                            </>
-                          )}
-                        </Button>
+          <section aria-labelledby="icon-results-title">
+            <h2 id="icon-results-title" className="text-lg font-semibold">
+              Icons Matching “{search}”
+            </h2>
+            <div role="status" aria-live="polite" className="mt-1 text-sm text-muted-foreground">
+              {iconResults.error ? <span className="text-destructive">{iconResults.error.message}</span> : iconResults.loading && !iconResults.data ? "Searching…" : pluralize(iconResults.data?.total ?? 0, "icon") + " found"}
+            </div>
+            {(iconResults.data?.icons.length ?? 0) > 0 && (
+              <ul className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {iconResults.data?.icons.map((icon) => (
+                  <li key={icon.id} className="flex items-center gap-3 rounded-xl border border-border bg-card p-3">
+                    <SvgPreview svg={icon.svg ?? ""} size={36} className="rounded-md bg-muted p-1.5" />
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-semibold">{icon.name}</p>
+                      {icon.project && (
+                        <div className="flex min-w-0 items-center gap-2">
+                          <Link to={`/projects/${icon.project.id}`} className="min-w-0 truncate rounded-sm text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline focus-visible:outline-2 focus-visible:outline-ring">
+                            {icon.project.name}
+                          </Link>
+                          <PurposeBadge purpose={icon.project.purpose} />
                         </div>
                       )}
-                    </section>
-                  ))}
-              </div>
-            ) : (
-              renderCards(list)
+                    </div>
+                    <Button size="sm" onClick={() => setCopying(icon)} aria-label={`Copy ${icon.name} to a Project`}>
+                      Copy
+                    </Button>
+                  </li>
+                ))}
+              </ul>
             )}
-            {(projects.data?.total ?? 0) > list.length && <p className="mt-4 text-center text-sm text-muted-foreground">Showing the first {list.length} of {projects.data?.total} projects. Use the search to narrow them down.</p>}
-          </>
+          </section>
         )}
-      </section>
+
+        <section aria-labelledby="projects-title" className={showIcons ? "mt-8" : ""}>
+          {showIcons && (
+            <h2 id="projects-title" className="mb-3 text-lg font-semibold">
+              Projects
+            </h2>
+          )}
+          {!showIcons && (
+            <h2 id="projects-title" className="sr-only">
+              Project List
+            </h2>
+          )}
+
+          {projects.error && !projects.data ? (
+            <div role="alert" className="rounded-xl border border-destructive/40 bg-card p-6 text-center">
+              <p className="font-medium text-destructive">{projects.error.message}</p>
+              <Button className="mt-3" onClick={projects.reload}>
+                Try Again
+              </Button>
+            </div>
+          ) : projects.loading && !projects.data ? (
+            <ul aria-busy="true" aria-label="Loading Projects" className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+              {Array.from({ length: 10 }, (_, i) => (
+                <li key={i} className="h-28 animate-pulse rounded-xl border border-border bg-muted" />
+              ))}
+            </ul>
+          ) : list.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-border p-10 text-center">
+              <p className="text-base font-semibold">{filtersActive ? "No projects match." : "You have no projects yet."}</p>
+              <p className="mt-1 text-sm text-muted-foreground">{filtersActive ? "Try a different search or filter." : "Create a project to start collecting icons."}</p>
+              {!filtersActive && (
+                <Button variant="primary" className="mt-4" onClick={() => setForm({ mode: "create" })}>
+                  New Project
+                </Button>
+              )}
+            </div>
+          ) : (
+            <>
+              {scope === "all" ? (
+                // Private and Public projects each get their own section.
+                <div className="space-y-8">
+                  {([
+                    { key: "private", title: "Private", icon: <Lock aria-hidden="true" className="h-4 w-4 font-bold" />, items: privateList },
+                    { key: "public", title: "Public", icon: <Globe aria-hidden="true" className="h-4 w-4 font-bold" />, items: publicList },
+                  ] as const)
+                    .filter((group) => group.items.length > 0)
+                    .map((group) => (
+                      <section key={group.key} aria-labelledby={`group-${group.key}`}>
+                        <h3 id={`group-${group.key}`} className="mb-2 flex items-center gap-2 text-sm font-bold text-foreground uppercase tracking-wide">
+                          {group.icon}
+                          {group.title}
+                          <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium normal-case tracking-normal">{group.items.length}</span>
+                        </h3>
+                        {renderCards(
+                          expandedSections[group.key]
+                            ? group.items
+                            : group.items.slice(0, initialProjectsPerSection),
+                        )}
+                        {group.items.length > initialProjectsPerSection && (
+                          <div className="flex justify-center">
+                            <Button
+                              variant="outline-primary"
+                              className="mt-3 gap-2 border-primary/20 bg-primary/5"
+                              onClick={() => setExpandedSections((expanded) => ({ ...expanded, [group.key]: !expanded[group.key] }))}
+                            >
+                              {expandedSections[group.key] ? (
+                                <>
+                                  Show Less Projects
+                                  <ChevronUp aria-hidden="true" className="h-4 w-4" />
+                                </>
+                              ) : (
+                                <>
+                                  Show {group.items.length - initialProjectsPerSection} More{" "}
+                                  {group.items.length - initialProjectsPerSection === 1 ? "project" : "projects"}
+                                  <ChevronDown aria-hidden="true" className="h-4 w-4" />
+                                </>
+                              )}
+                            </Button>
+                          </div>
+                        )}
+                      </section>
+                    ))}
+                </div>
+              ) : (
+                renderCards(list)
+              )}
+              {(projects.data?.total ?? 0) > list.length && <p className="mt-4 text-center text-sm text-muted-foreground">Showing the first {list.length} of {projects.data?.total} projects. Use the search to narrow them down.</p>}
+            </>
+          )}
+        </section>
       </div>
 
       <ProjectFormDialog
@@ -352,8 +352,24 @@ export default function DashboardPage() {
       />
       <ConfirmDialog
         open={deleting !== null}
-        title={`Delete “${deleting?.name ?? ""}”?`}
-        message={`This permanently deletes the project with its ${pluralize(deleting?.iconCount ?? 0, "icon")}, folders and history. This cannot be undone.`}
+        title="Delete Project"
+        size="md"
+        message={
+          <>
+            <div>
+              <p className="pb-3">Are you sure you want to permanently delete <span className="font-semibold">“{deleting?.name}”</span>? This action cannot be undone.</p>
+              <div>
+                <div className="list-disc space-y-1">
+                  Deleting this project will permanently remove
+                  <span className="font-semibold"> {
+                    pluralize(deleting?.iconCount ?? 0, "icon")
+                  }</span> and all folders associated with it.
+                </div>
+              </div>
+              <p></p>
+            </div>
+          </>
+        }
         confirmLabel="Delete Project"
         destructive
         onClose={() => setDeleting(null)}

@@ -204,6 +204,34 @@ describe("ConfirmDialog", () => {
     expect(await screen.findByText("closed")).toBeInTheDocument();
   });
 
+  it("renders structured confirmation content outside a paragraph wrapper", () => {
+    render(
+      <ConfirmDialog
+        open
+        title="Delete project?"
+        message={
+          <>
+            <p>Are you sure you want to delete this project?</p>
+            <p>This will permanently remove:</p>
+            <ul>
+              <li>18 icons and all associated folders</li>
+              <li>Complete project history</li>
+            </ul>
+            <p>This action cannot be undone.</p>
+          </>
+        }
+        confirmLabel="Delete"
+        destructive
+        onConfirm={() => {}}
+        onClose={() => {}}
+      />,
+    );
+
+    expect(screen.getByText("Are you sure you want to delete this project?").tagName).toBe("P");
+    expect(screen.getByRole("list").closest("p")).toBeNull();
+    expect(screen.getAllByRole("listitem")).toHaveLength(2);
+  });
+
   it("shows a failure inside the dialog and stays open", async () => {
     render(<Confirm onConfirm={() => Promise.reject(new Error("Server said no."))} />);
     await userEvent.click(screen.getByRole("button", { name: "Delete" }));
