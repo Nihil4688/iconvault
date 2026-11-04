@@ -96,7 +96,7 @@ export default function DropdownSelect({ label, value, options, onChange, childr
         className={cn(
           triggerClassName,
           "group",
-          open && "shadow-[0_0_0_3px_rgba(21,85,224,0.5)]",
+          open && "shadow-[0_0_0_3px_rgba(21,85,224,0.2)] border-[#1555E0]",
         )}
       >
         {children}

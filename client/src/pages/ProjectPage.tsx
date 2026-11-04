@@ -172,8 +172,9 @@ export default function ProjectPage() {
                     canEdit={project.data.access.canEdit}
                     // A failure is thrown to the dialog, which shows it; only successes are announced here.
                     onCreate={async (parentId, name) => {
-                      await createFolder(projectId, { name, parentId });
+                      const folder = await createFolder(projectId, { name, parentId });
                       folders.reload();
+                      selectFolder(folder.id);
                       showToast(`Created folder “${name}”.`, "success");
                     }}
                     onRename={async (folder, name) => {

@@ -162,7 +162,7 @@ export default function DashboardPage() {
             onChange={(event) => setSearchText(event.target.value)}
             placeholder="Search Projects and Icons"
             autoComplete="off"
-            className="h-9 w-full rounded-lg border border-input bg-background pl-9 pr-3 text-sm placeholder:text-muted-foreground focus:shadow-[0_0_0_3px_rgba(21,85,224,0.5)] focus:outline-none"
+            className="h-9 w-full rounded-lg border border-input bg-background pl-9 pr-3 text-sm placeholder:text-muted-foreground focus:border-[#1555E0] focus:shadow-[0_0_0_3px_rgba(21,85,224,0.2)] focus:outline-none"
           />
         </div>
 

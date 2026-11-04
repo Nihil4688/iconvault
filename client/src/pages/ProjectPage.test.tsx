@@ -284,6 +284,45 @@ describe("icon selection across tabs", () => {
     fontAutoBuild.enabled = false;
   });
 
+  it("opens the new folder after creating it and keeps the selection", async () => {
+    getProject.mockResolvedValue(makeDetail({ id: "p1", name: "Feather", purpose: "sprite" }));
+    vi.mocked(foldersApi.createFolder).mockResolvedValue({ id: "n1", projectId: "p1", parentId: null, name: "Logos", orderIndex: 2 });
+    listFolders
+      .mockResolvedValueOnce({ folders: [ui, arrows], uncategorizedCount: 4 })
+      .mockResolvedValueOnce({ folders: [ui, arrows, makeFolder({ id: "n1", name: "Logos" })], uncategorizedCount: 4 });
+    renderPage();
+    await screen.findByRole("button", { name: "Open Alpha" });
+    await userEvent.click(screen.getByRole("checkbox", { name: "Select Alpha" }));
+    expect(screen.getByText("1 icon selected")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /^New folder$/i }));
+    await screen.findByRole("heading", { name: "New Folder" });
+    await userEvent.type(screen.getByRole("textbox", { name: /folder/i }), "Logos");
+    await userEvent.click(screen.getByRole("button", { name: /^Create folder$/i }));
+
+    await screen.findByText("Created folder “Logos”.");
+    await waitFor(() => expect(screen.getByTestId("where")).toHaveTextContent("?folder=n1"));
+    expect(screen.getByRole("button", { name: /^Logos/ })).toHaveAttribute("aria-current", "true");
+    expect(screen.getByText("1 icon selected")).toBeInTheDocument();
+  });
+
+  it("opens the destination folder and clears the selection after moving icons", async () => {
+    getProject.mockResolvedValue(makeDetail({ id: "p1", name: "Feather", purpose: "sprite" }));
+    vi.mocked(iconsApi.batchMoveIcons).mockResolvedValue({ requested: 1, matched: 1 });
+    renderPage();
+    await screen.findByRole("button", { name: "Open Alpha" });
+    await userEvent.click(screen.getByRole("checkbox", { name: "Select Alpha" }));
+    await userEvent.click(screen.getByRole("button", { name: "Move" }));
+
+    const dialog = screen.getByRole("dialog", { name: "Move 1 icon" });
+    await userEvent.selectOptions(within(dialog).getByLabelText("Move Into"), "ui");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Move" }));
+
+    await waitFor(() => expect(screen.getByTestId("where")).toHaveTextContent("?folder=ui"));
+    expect(screen.getByRole("button", { name: /^UI/ })).toHaveAttribute("aria-current", "true");
+    expect(screen.queryByText("1 icon selected")).not.toBeInTheDocument();
+  });
+
   it("keeps the selection when the user moves between Trash, Project Settings and the Icons tab without building anything", async () => {
     getProject.mockResolvedValue(makeDetail({ id: "p1", name: "Feather", purpose: "sprite" }));
     renderPage();
