@@ -100,9 +100,9 @@ export default function FolderTree({ folders, uncategorizedCount, uncategorizedN
             <ActionMenu
               label={`Actions for Folder ${node.name}`}
               actions={[
-                { label: "New Subfolder", icon: <FolderPlus aria-hidden="true" className="h-4 w-4" />, onSelect: () => setDialog({ kind: "create", parent: node }) },
+                { label: "Create New Subfolder", icon: <FolderPlus aria-hidden="true" className="h-4 w-4" />, onSelect: () => setDialog({ kind: "create", parent: node }) },
                 { label: "Rename", icon: <Pencil aria-hidden="true" className="h-4 w-4" />, onSelect: () => setDialog({ kind: "rename", folder: node }) },
-                { label: "Move To…", icon: <FolderInput aria-hidden="true" className="h-4 w-4" />, onSelect: () => setDialog({ kind: "move", folder: node }) },
+                { label: "Move Folder", icon: <FolderInput aria-hidden="true" className="h-4 w-4" />, onSelect: () => setDialog({ kind: "move", folder: node }) },
                 { label: "Delete", icon: <Trash2 aria-hidden="true" className="h-4 w-4" />, onSelect: () => setDialog({ kind: "delete", folder: node }), destructive: true },
               ]}
             />

@@ -2,6 +2,7 @@
 import { Archive, ArchiveRestore, Copy, Pencil, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import type { ProjectSummary } from "../../api/types";
+import { useAuth } from "../../context/AuthContext";
 import { pluralize } from "../../lib/format";
 import ActionMenu, { type MenuAction } from "../ui/ActionMenu";
 import Badge from "../ui/Badge";
@@ -19,7 +20,9 @@ export type ProjectCardActions = {
 type ProjectCardProps = ProjectCardActions & { project: ProjectSummary; currentUserId: string };
 
 export default function ProjectCard({ project, currentUserId, onEdit, onDuplicate, onToggleArchive, onDelete }: ProjectCardProps) {
+  const { currentUser } = useAuth();
   const mine = project.owner.id === currentUserId;
+  const showCreator = project.visibility === "public" || currentUser?.role === "admin";
   const actions: MenuAction[] = [
     { label: "Duplicate", icon: <Copy aria-hidden="true" className="h-4 w-4" />, onSelect: () => onDuplicate(project) },
   ];
@@ -34,7 +37,7 @@ export default function ProjectCard({ project, currentUserId, onEdit, onDuplicat
   }
 
   return (
-    <li className="relative flex flex-col gap-2.5 rounded-xl border border-border bg-card p-3.5 text-card-foreground shadow-sm transition-shadow focus-within:shadow-md hover:shadow-md">
+    <li className="relative flex flex-col gap-2.5 rounded-xl border border-border bg-card p-3.5 text-card-foreground shadow-sm hover:border-primary/60 transition-all duration-200 hover:shadow-xl hover:-translate-y-1">
       <div className="flex justify-between">
         <div className="flex flex-wrap items-center gap-1.5">
           <PurposeBadge purpose={project.purpose} />
@@ -76,9 +79,11 @@ export default function ProjectCard({ project, currentUserId, onEdit, onDuplicat
           </p>
         )}
       </div>
-      <p className="truncate pt-0.5 text-[11px] text-muted-foreground">
-        Created by <span className="font-medium text-foreground">{mine ? "You" : project.owner.displayName}</span>
-      </p>
+      {showCreator && (
+        <p className="truncate pt-0.5 text-[11px] text-muted-foreground">
+          Created by <span className="font-medium text-foreground">{mine ? "You" : project.owner.displayName}</span>
+        </p>
+      )}
     </li>
   );
 }

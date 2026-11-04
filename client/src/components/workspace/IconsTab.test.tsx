@@ -93,6 +93,49 @@ describe("showing icons", () => {
     expect(within(card("Gamma")).queryByText("Stroke")).not.toBeInTheDocument();
   });
 
+  it("limits icon size choices to the supported pixel sizes", async () => {
+    setup();
+    await screen.findByRole("button", { name: "Open Alpha" });
+
+    const slider = screen.getByRole("slider", { name: "Icon Size in Pixels" });
+    expect(slider).toHaveAttribute("min", "0");
+    expect(slider).toHaveAttribute("max", "9");
+    expect(slider).toHaveAttribute("step", "1");
+    expect(screen.getByText("40px")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Smaller Icons" }));
+    expect(screen.getByText("32px")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Larger Icons" }));
+    expect(screen.getByText("40px")).toBeInTheDocument();
+
+    for (const [index, size] of [12, 16, 20, 24, 32, 40, 48, 64, 80, 96].entries()) {
+      fireEvent.change(slider, { target: { value: String(index) } });
+      expect(screen.getByText(`${size}px`)).toBeInTheDocument();
+    }
+  });
+
+  it("shows the selected color preview before a separator and keeps selection styling on the preview", async () => {
+    setup();
+    await screen.findByRole("button", { name: "Open Alpha" });
+
+    const colorGroup = screen.getByRole("group", { name: "Icon Colour" });
+    const preview = within(colorGroup).getByRole("img", { name: "Selected icon color: default" });
+    expect(preview).toHaveClass("h-5", "w-5", "ring-2");
+    expect(preview.querySelector("svg")).toBeInTheDocument();
+    expect(colorGroup.querySelector('[aria-hidden="true"].border-l')).toBeInTheDocument();
+    expect(within(colorGroup).getByRole("button", { name: "White" })).toHaveClass("h-5", "w-5");
+    expect(within(colorGroup).getByRole("button", { name: "White" })).not.toHaveClass("ring-2");
+
+    await userEvent.click(within(colorGroup).getByRole("button", { name: "Blue" }));
+    const bluePreview = within(colorGroup).getByRole("img", { name: "Selected icon color: #3b82f6" });
+    expect(bluePreview).toHaveClass("ring-2");
+    expect(bluePreview).toHaveStyle({ backgroundColor: "#3b82f6" });
+    expect(within(colorGroup).getByRole("button", { name: "Blue" })).not.toHaveClass("ring-2");
+
+    fireEvent.change(within(colorGroup).getByLabelText("More Colours"), { target: { value: "#f65a8a" } });
+    expect(within(colorGroup).getByRole("img", { name: "Selected icon color: #f65a8a" })).toHaveStyle({ backgroundColor: "#f65a8a" });
+  });
+
   it("places the background control opposite Select all with even vertical spacing", async () => {
     setup();
     await screen.findByRole("button", { name: "Open Alpha" });
