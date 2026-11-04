@@ -232,6 +232,7 @@ export default function IconsTab() {
         <BulkBar
           count={selection.size}
           canEdit={canEdit}
+          canMoveAndTag={selectedFolder !== "all"}
           busy={busy || building}
           generating={building}
           onMove={() => setDialog("move")}

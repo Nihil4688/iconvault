@@ -416,6 +416,21 @@ describe("selection", () => {
     expect(screen.queryByText("3 icons selected")).not.toBeInTheDocument();
   });
 
+  it("hides Move and Tag in All Icons but keeps them available in a folder", async () => {
+    const { rerender } = setup({ selectedFolder: "all" });
+    await screen.findByRole("button", { name: "Open Alpha" });
+    await userEvent.click(screen.getByRole("checkbox", { name: "Select Alpha" }));
+
+    expect(screen.queryByRole("button", { name: "Move" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Tag" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Optimize" })).toBeInTheDocument();
+
+    rerender({ selectedFolder: "ui" });
+    await screen.findByRole("button", { name: "Open Alpha" });
+    expect(screen.getByRole("button", { name: "Move" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Tag" })).toBeInTheDocument();
+  });
+
   it("scopes select-all state and toggling to the current folder", async () => {
     const uiIcons = [
       makeIcon({ id: "ui-a", name: "UI Alpha", folderId: "ui" }),

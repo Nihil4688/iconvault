@@ -6,6 +6,7 @@ import { Button } from "../ui/Button";
 type BulkBarProps = {
   count: number;
   canEdit: boolean;
+  canMoveAndTag: boolean;
   busy: boolean;
   onMove: () => void;
   onTag: () => void;
@@ -20,14 +21,14 @@ type BulkBarProps = {
   onClear: () => void;
 };
 
-export default function BulkBar({ count, canEdit, busy, generate, generating = false, onMove, onTag, onOptimize, onGenerate, onDownload, onDelete, onClear }: BulkBarProps) {
+export default function BulkBar({ count, canEdit, canMoveAndTag, busy, generate, generating = false, onMove, onTag, onOptimize, onGenerate, onDownload, onDelete, onClear }: BulkBarProps) {
   return (
     <section aria-label="Selected Icons" className="sticky bottom-4 z-20 mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-border bg-popover p-2 text-popover-foreground shadow-lg">
       <p role="status" className="px-2 text-sm font-medium">
         {pluralize(count, "icon")} selected
       </p>
       <div className="flex flex-wrap items-center gap-1.5">
-        {canEdit && (
+        {canEdit && canMoveAndTag && (
           <>
             <Button size="sm" disabled={busy} icon={<FolderInput aria-hidden="true" className="h-4 w-4" />} onClick={onMove}>
               Move
@@ -35,10 +36,12 @@ export default function BulkBar({ count, canEdit, busy, generate, generating = f
             <Button size="sm" disabled={busy} icon={<Tag aria-hidden="true" className="h-4 w-4" />} onClick={onTag}>
               Tag
             </Button>
-            <Button size="sm" disabled={busy} icon={<Sparkles aria-hidden="true" className="h-4 w-4" />} onClick={onOptimize}>
-              Optimize
-            </Button>
           </>
+        )}
+        {canEdit && (
+          <Button size="sm" disabled={busy} icon={<Sparkles aria-hidden="true" className="h-4 w-4" />} onClick={onOptimize}>
+            Optimize
+          </Button>
         )}
         <Button size="sm" variant="primary" disabled={busy} loading={generating} icon={<Hammer aria-hidden="true" className="h-4 w-4" />} onClick={onGenerate}>
           {generate === "font" ? "Build font" : "Build sprite"}

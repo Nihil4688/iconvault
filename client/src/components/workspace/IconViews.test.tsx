@@ -362,7 +362,7 @@ describe("useIconAppearance", () => {
 
 describe("BulkBar", () => {
   function setup(over: Partial<React.ComponentProps<typeof BulkBar>> = {}) {
-    const props = { count: 3, canEdit: true, busy: false, generate: "sprite" as const, onMove: vi.fn(), onTag: vi.fn(), onOptimize: vi.fn(), onGenerate: vi.fn(), onDownload: vi.fn(), onDelete: vi.fn(), onClear: vi.fn(), ...over };
+    const props = { count: 3, canEdit: true, canMoveAndTag: true, busy: false, generate: "sprite" as const, onMove: vi.fn(), onTag: vi.fn(), onOptimize: vi.fn(), onGenerate: vi.fn(), onDownload: vi.fn(), onDelete: vi.fn(), onClear: vi.fn(), ...over };
     render(<BulkBar {...props} />);
     return props;
   }
