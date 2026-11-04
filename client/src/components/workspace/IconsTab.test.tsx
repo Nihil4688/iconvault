@@ -102,6 +102,13 @@ describe("showing icons", () => {
     expect(more.parentElement?.parentElement).toHaveClass("justify-between", "py-2");
   });
 
+  it("keeps the first icon card's selection ring clear of the scroll area's top and left edges", async () => {
+    setup();
+    await screen.findByRole("button", { name: "Open Alpha" });
+    const grid = card("Alpha").closest("ul");
+    expect(grid?.parentElement).toHaveClass("pt-1", "pl-1");
+  });
+
   it("asks for the newest first, 200 at a time, for the whole project", async () => {
     setup();
     await screen.findByRole("button", { name: "Open Alpha" });

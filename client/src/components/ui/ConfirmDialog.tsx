@@ -1,19 +1,21 @@
 // Asks the user to confirm an action, usually a destructive one. The confirm button shows a spinner while the action runs and the dialog cannot be dismissed meanwhile; a failure is shown inside the dialog and nothing closes.
 import { useState } from "react";
+import type { ReactNode } from "react";
 import { Button } from "./Button";
 import Dialog from "./Dialog";
 
 type ConfirmDialogProps = {
   open: boolean;
   title: string;
-  message: string;
+  message: ReactNode;
   confirmLabel: string;
   destructive?: boolean;
+  size?: "sm" | "md" | "lg";
   onConfirm: () => Promise<void> | void;
   onClose: () => void;
 };
 
-export default function ConfirmDialog({ open, title, message, confirmLabel, destructive = false, onConfirm, onClose }: ConfirmDialogProps) {
+export default function ConfirmDialog({ open, title, message, confirmLabel, destructive = false, size = "sm", onConfirm, onClose }: ConfirmDialogProps) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -41,7 +43,7 @@ export default function ConfirmDialog({ open, title, message, confirmLabel, dest
       open={open}
       onClose={close}
       title={title}
-      size="sm"
+      size={size}
       dismissOnBackdrop={!busy}
       footer={
         <>
@@ -54,7 +56,7 @@ export default function ConfirmDialog({ open, title, message, confirmLabel, dest
         </>
       }
     >
-      <p className="text-sm text-foreground">{message}</p>
+      {typeof message === "string" ? <p className="text-sm text-foreground">{message}</p> : <div className="text-sm text-foreground">{message}</div>}
       {error && (
         <p role="alert" className="mt-3 text-sm font-medium text-destructive">
           {error}

@@ -195,7 +195,7 @@ export default function IconsTab() {
               <SelectAllBar loaded={shown.length} selected={selection.size} onSelectAll={(checked) => (checked ? selection.selectAll(shown.map((icon) => icon.id)) : selection.clear())} />
               <MoreMenu surface={surface} onSurface={setSurface} disabled={noIconsInScope} />
             </div>
-            <div className={`min-h-0 flex-1 pr-3 ${view === "list" ? "flex flex-col" : "overflow-y-auto pb-24"}`}>
+            <div className={`min-h-0 flex-1 pr-3 ${view === "list" ? "flex flex-col" : "overflow-y-auto pb-24 pl-1 pr-3 pt-1"}`}>
             {view === "grid" ? (
               <ul className={`grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5 ${icons.loading ? "opacity-60" : ""}`}>
                 {shown.map((icon) => (
