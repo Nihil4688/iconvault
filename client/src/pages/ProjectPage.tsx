@@ -53,12 +53,13 @@ export default function ProjectPage() {
   const onIconsSection = /^\/projects\/[^/]+\/?$/.test(location.pathname);
   const onTrashSection = /^\/projects\/[^/]+\/trash\/?$/.test(location.pathname);
 
-  function selectFolder(selection: FolderSelection) {
+  function selectFolder(folder: FolderSelection) {
+    if (folder !== selectedFolder) selection.clear();
     setParams(
       (previous) => {
         const next = new URLSearchParams(previous);
-        if (selection === "all") next.delete("folder");
-        else next.set("folder", selection);
+        if (folder === "all") next.delete("folder");
+        else next.set("folder", folder);
         return next;
       },
       { replace: false },
@@ -173,6 +174,7 @@ export default function ProjectPage() {
                     // A failure is thrown to the dialog, which shows it; only successes are announced here.
                     onCreate={async (parentId, name) => {
                       await createFolder(projectId, { name, parentId });
+                      selection.clear();
                       folders.reload();
                       showToast(`Created folder “${name}”.`, "success");
                     }}

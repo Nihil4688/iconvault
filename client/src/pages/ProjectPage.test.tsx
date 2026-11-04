@@ -284,6 +284,37 @@ describe("icon selection across tabs", () => {
     fontAutoBuild.enabled = false;
   });
 
+  it("clears the selection when switching to another folder", async () => {
+    getProject.mockResolvedValue(makeDetail({ id: "p1", name: "Feather", purpose: "sprite" }));
+    renderPage();
+    await screen.findByRole("button", { name: "Open Alpha" });
+    await userEvent.click(screen.getByRole("checkbox", { name: "Select Alpha" }));
+    expect(screen.getByText("1 icon selected")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /^UI/ }));
+
+    expect(screen.queryByText("1 icon selected")).not.toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "Select Alpha" })).not.toBeChecked();
+  });
+
+  it("clears the selection after creating a folder", async () => {
+    getProject.mockResolvedValue(makeDetail({ id: "p1", name: "Feather", purpose: "sprite" }));
+    vi.mocked(foldersApi.createFolder).mockResolvedValue({ id: "n1", projectId: "p1", parentId: null, name: "Logos", orderIndex: 2 });
+    renderPage();
+    await screen.findByRole("button", { name: "Open Alpha" });
+    await userEvent.click(screen.getByRole("checkbox", { name: "Select Alpha" }));
+    expect(screen.getByText("1 icon selected")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: /^New folder$/i }));
+    await screen.findByRole("heading", { name: "New Folder" });
+    await userEvent.type(screen.getByRole("textbox", { name: /folder/i }), "Logos");
+    await userEvent.click(screen.getByRole("button", { name: /^Create folder$/i }));
+
+    await screen.findByText("Created folder “Logos”.");
+    expect(screen.queryByText("1 icon selected")).not.toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "Select Alpha" })).not.toBeChecked();
+  });
+
   it("keeps the selection when the user moves between Trash, Project Settings and the Icons tab without building anything", async () => {
     getProject.mockResolvedValue(makeDetail({ id: "p1", name: "Feather", purpose: "sprite" }));
     renderPage();
