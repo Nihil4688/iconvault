@@ -63,10 +63,12 @@ export default function TrashTab() {
   return (
     <div className="mx-auto flex h-full min-h-0 w-full max-w-5xl flex-col">
       <section aria-labelledby="trash-heading" className="flex h-full min-h-0 flex-col rounded-2xl border border-border bg-card p-5 shadow-sm sm:p-6">
-      <h2 id="trash-heading" className="text-lg font-bold">
-        Trash
-      </h2>
-      <p className="mt-1 text-sm text-muted-foreground">Icons in the trash are hidden from the project but can be brought back until you delete them for good.</p>
+      <header className="shrink-0">
+        <h2 id="trash-heading" className="text-lg font-bold">
+          Trash
+        </h2>
+        <p className="mt-1 text-sm text-muted-foreground">Icons in the trash are hidden from the project but can be brought back until you delete them for good.</p>
+      </header>
 
       {trash.error && !trash.data ? (
         <div role="alert" className="mt-4 rounded-xl border border-destructive/40 p-6 text-center">
@@ -76,7 +78,7 @@ export default function TrashTab() {
           </Button>
         </div>
       ) : trash.loading && !trash.data ? (
-        <ul aria-busy="true" aria-label="Loading Trash" className="mt-4 space-y-2">
+        <ul aria-busy="true" aria-label="Loading Trash" className="mt-4 min-h-0 shrink space-y-2 overflow-y-auto">
           {Array.from({ length: 4 }, (_, i) => (
             <li key={i} className="h-14 animate-pulse rounded-xl bg-muted" />
           ))}
@@ -88,7 +90,7 @@ export default function TrashTab() {
         </div>
       ) : (
         <>
-          <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+          <div className="mt-4 flex shrink-0 flex-wrap items-center justify-between gap-2">
             <p role="status" className="text-sm font-medium">
               {pluralize(trash.data?.total ?? icons.length, "icon")} in the trash
             </p>
@@ -101,7 +103,7 @@ export default function TrashTab() {
               </Button>
             </div>
           </div>
-          <ul className="mt-3 max-h-[50vh] overflow-y-auto divide-y divide-border rounded-xl border border-border">
+          <ul className="mt-3 min-h-0 shrink overflow-y-auto divide-y divide-border rounded-xl border border-border">
             {icons.map((icon) => (
               <li key={icon.id} className="flex flex-wrap items-center gap-3 px-3 py-2">
                 <span className="flex h-10 w-10 items-center justify-center rounded-md bg-muted">
