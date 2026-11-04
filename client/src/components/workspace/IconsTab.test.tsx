@@ -299,6 +299,28 @@ describe("search, sort and view", () => {
     expect(window.localStorage.getItem("project:p1:iconView")).toBe("list");
   });
 
+  it("shows a sprite ID column instead of size, tags, or updated", async () => {
+    window.localStorage.setItem("project:p1:iconView", "list");
+    listIcons.mockResolvedValue(reply([makeIcon({ id: "internal-record-id", name: "Chart", slug: "add-chart-element" })]));
+    setup({ project: makeDetail({ id: "p1", prefix: "gunas" }) });
+
+    const table = await screen.findByRole("table", { name: "Icons" });
+    expect(within(table).getAllByRole("columnheader").map((header) => header.textContent?.trim())).toEqual(["Select", "Preview", "Name", "ID", "Folder"]);
+    expect(within(table).getByText("gunas-add-chart-element")).toBeInTheDocument();
+    expect(within(table).queryByText("internal-record-id")).not.toBeInTheDocument();
+  });
+
+  it("shows a codepoint column instead of ID in a font project", async () => {
+    window.localStorage.setItem("project:p1:iconView", "list");
+    listIcons.mockResolvedValue(reply([makeIcon({ id: "font-icon", name: "Glyph", codepoint: "E123" })]));
+    setup({ project: makeDetail({ id: "p1", purpose: "font" }) });
+
+    const table = await screen.findByRole("table", { name: "Icons" });
+    expect(within(table).getAllByRole("columnheader").map((header) => header.textContent?.trim())).toEqual(["Select", "Preview", "Name", "Codepoint", "Folder"]);
+    expect(within(table).getByText("U+E123")).toBeInTheDocument();
+    expect(within(table).queryByText("font-icon")).not.toBeInTheDocument();
+  });
+
   it("starts in the saved view and background", async () => {
     window.localStorage.setItem("project:p1:iconView", "list");
     window.localStorage.setItem("iconSurface", "dark");

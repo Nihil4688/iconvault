@@ -1,7 +1,7 @@
 // Accessibility checks (axe) over every main screen and dialog, rendered with realistic data. This catches missing labels, bad roles, broken ARIA, duplicate ids, empty buttons and links, and heading problems. It does not replace trying the screens with a keyboard and a screen reader.
 import { cleanup, fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { createMemoryRouter, MemoryRouter, RouterProvider } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as adminApi from "../api/admin";
 import * as foldersApi from "../api/folders";
@@ -40,15 +40,8 @@ const icons = [makeIcon({ id: "i1", name: "Home", slug: "home", svg: SVG, hasStr
 const folders = [makeFolder({ id: "ui", name: "UI", iconCount: 2 }), makeFolder({ id: "arrows", name: "Arrows", parentId: "ui", iconCount: 1 })];
 
 function renderAt(path: string, node: React.ReactNode, route = path) {
-  return render(
-    <MemoryRouter initialEntries={[path]}>
-      <ToastProvider>
-        <Routes>
-          <Route path={route} element={node} />
-        </Routes>
-      </ToastProvider>
-    </MemoryRouter>,
-  );
+  const router = createMemoryRouter([{ path: route, element: node }], { initialEntries: [path] });
+  return render(<ToastProvider><RouterProvider router={router} /></ToastProvider>);
 }
 const project = (path: string) => renderAt(path, <ProjectPage />, "/projects/:projectId/*");
 const clean = async () => expect(await accessibilityViolations(document.body, { region: false })).toEqual([]);
@@ -228,7 +221,7 @@ describe("project workspace", () => {
 
   it("settings", async () => {
     project("/projects/p1/settings");
-    await screen.findByRole("heading", { name: "Danger zone" });
+    await screen.findByRole("heading", { name: "Danger Zone" });
     await clean();
   });
 

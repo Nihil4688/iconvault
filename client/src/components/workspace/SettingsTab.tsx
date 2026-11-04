@@ -1,7 +1,7 @@
 // The Project Settings section, laid out like Icon Vault's: a card with the project's settings (type shown but fixed, name, description, prefix, accent colour, who can see it) and its primary action, Save settings, at the top; a card to export the whole project; a card of usage snippets to copy; and a danger zone (archive, transfer for admins, delete). Only the owner (or an admin) can change settings; everyone else sees them read-only.
 import { Archive, ArchiveRestore, BookOpen, Copy, Download, FileArchive, Globe, Lock, Save, Trash2, Type, UserCog, Shapes } from "lucide-react";
-import { useId, useState, type FormEvent } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useId, useRef, useState, type FormEvent } from "react";
+import { useBlocker, useNavigate } from "react-router-dom";
 import { deleteProject, exportProject, updateProject } from "../../api/projects";
 import { useAuth } from "../../context/AuthContext";
 import { useToast } from "../../context/ToastContext";
@@ -13,6 +13,7 @@ import { triggerBrowserDownload } from "../../utils/zipBundle";
 import TransferProjectDialog from "../admin/TransferProjectDialog";
 import { Button } from "../ui/Button";
 import ConfirmDialog from "../ui/ConfirmDialog";
+import Dialog from "../ui/Dialog";
 import { TextAreaField, TextField } from "../ui/Fields";
 import { ColorSwatches, RadioCardGroup } from "../ui/RadioCardGroup";
 
@@ -40,26 +41,70 @@ export default function SettingsTab() {
   const [busy, setBusy] = useState(false);
   const [transferring, setTransferring] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [savedValues, setSavedValues] = useState({
+    name: project.name,
+    description: project.description,
+    prefix: project.prefix,
+    color: project.color,
+    visibility: project.visibility,
+  });
+  const bypassNavigation = useRef(false);
 
-  const dirty = name !== project.name || description !== project.description || prefix !== project.prefix || color.toLowerCase() !== project.color.toLowerCase() || visibility !== project.visibility;
+  const dirty = name !== savedValues.name || description !== savedValues.description || prefix !== savedValues.prefix || color.toLowerCase() !== savedValues.color.toLowerCase() || visibility !== savedValues.visibility;
+  const blocker = useBlocker(() => dirty && canManage && !bypassNavigation.current);
   const isFont = project.purpose === "font";
 
-  async function save(event: FormEvent) {
-    event.preventDefault();
+  useEffect(() => {
+    if (!dirty || !canManage) return;
+    const warnBeforeUnload = (event: BeforeUnloadEvent) => {
+      event.preventDefault();
+      event.returnValue = "";
+    };
+    window.addEventListener("beforeunload", warnBeforeUnload);
+    return () => window.removeEventListener("beforeunload", warnBeforeUnload);
+  }, [dirty, canManage]);
+
+  async function saveSettings(): Promise<"saved" | "invalid" | "failed"> {
     const found = validateProjectForm({ name, prefix });
     setErrors(found);
-    if (Object.keys(found).length > 0) return;
+    if (Object.keys(found).length > 0) return "invalid";
     setSaving(true);
     setSaveError(null);
     try {
       const saved = await updateProject(project.id, { name: name.trim(), description: description.trim(), prefix: prefix.trim().toLowerCase(), color, visibility });
+      setName(saved.name);
+      setDescription(saved.description);
+      setPrefix(saved.prefix);
+      setColor(saved.color);
+      setVisibility(saved.visibility);
+      setSavedValues({
+        name: saved.name,
+        description: saved.description,
+        prefix: saved.prefix,
+        color: saved.color,
+        visibility: saved.visibility,
+      });
       refreshProject();
       showToast(`Saved “${saved.name}”.`, "success");
+      return "saved";
     } catch (err) {
       setSaveError(err instanceof Error ? err.message : "Could not save the settings.");
+      return "failed";
     } finally {
       setSaving(false);
     }
+  }
+
+  async function save(event: FormEvent) {
+    event.preventDefault();
+    await saveSettings();
+  }
+
+  async function saveAndContinue() {
+    if (blocker.state !== "blocked") return;
+    const result = await saveSettings();
+    if (result === "saved") blocker.proceed();
+    if (result === "invalid") blocker.reset();
   }
 
   async function toggleArchive() {
@@ -273,9 +318,30 @@ export default function SettingsTab() {
         onConfirm={async () => {
           await deleteProject(project.id);
           showToast(`Deleted “${project.name}”.`, "success");
+          bypassNavigation.current = true;
           navigate("/");
         }}
       />
+      <Dialog
+        open={blocker.state === "blocked"}
+        onClose={() => {
+          if (blocker.state === "blocked" && !saving) blocker.reset();
+        }}
+        title="Unsaved changes"
+        footer={
+          <div className="flex flex-wrap justify-end gap-2">
+            <Button variant="secondary" disabled={saving} onClick={() => blocker.state === "blocked" && blocker.proceed()}>
+              Discard Changes
+            </Button>
+            <Button variant="primary" loading={saving} onClick={() => void saveAndContinue()}>
+              Save Changes
+            </Button>
+          </div>
+        }
+      >
+        {saveError && <p role="alert" className="mb-3 text-sm font-medium text-destructive">{saveError}</p>}
+        <p>You have changes that have not been saved. Would you like to save your changes before leaving this page?</p>
+      </Dialog>
     </div>
   );
 }

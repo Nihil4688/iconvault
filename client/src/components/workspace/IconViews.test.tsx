@@ -72,10 +72,10 @@ describe("IconCard", () => {
 
 describe("IconList", () => {
   const folders = [makeFolder({ id: "ui", name: "UI" }), makeFolder({ id: "ar", name: "Arrows", parentId: "ui" })];
-  const icons = [makeIcon({ id: "i1", name: "Left", folderId: "ar", tags: ["nav", "arrow"], byteSize: 300, hasStroke: true, hasText: true }), makeIcon({ id: "i2", name: "Plain", folderId: null, hasGradient: true })];
+  const icons = [makeIcon({ id: "i1", name: "Left", slug: "arrow-left", folderId: "ar", tags: ["nav", "arrow"], byteSize: 300, hasStroke: true, hasText: true }), makeIcon({ id: "i2", name: "Plain", slug: "plain", folderId: null, hasGradient: true })];
 
   function setup() {
-    const props = { icons, folders, isSelected: (id: string) => id === "i2", surface: "theme" as const, appearanceForFolder: () => DEFAULT_APPEARANCE, canDrag: true, dragIds: (id: string) => [id], onToggle: vi.fn(), onOpen: vi.fn() };
+    const props = { icons, folders, purpose: "sprite" as const, idPrefix: "test-prefix", isSelected: (id: string) => id === "i2", surface: "theme" as const, appearanceForFolder: () => DEFAULT_APPEARANCE, canDrag: true, dragIds: (id: string) => [id], onToggle: vi.fn(), onOpen: vi.fn() };
     render(<IconList {...props} />);
     return props;
   }
@@ -85,17 +85,18 @@ describe("IconList", () => {
     expect(screen.getByRole("table", { name: "Icons" })).toBeInTheDocument();
     // The scroll box must be positioned, or the table's hidden text widens the page on a phone.
     expect(screen.getByRole("table", { name: "Icons" }).parentElement).toHaveClass("relative", "min-h-0", "max-h-full", "w-full", "flex-none", "overflow-auto");
-    expect(screen.getAllByRole("columnheader").map((h) => h.textContent)).toEqual(["Select", "Preview", "Name", "Folder", "Size", "Tags", "Updated"]);
+    expect(screen.getAllByRole("columnheader").map((h) => h.textContent)).toEqual(["Select", "Preview", "Name", "ID", "Folder"]);
     expect(screen.getByRole("columnheader", { name: "Name" }).closest("thead")?.firstElementChild?.firstElementChild).toHaveClass("sticky", "top-0");
     expect(screen.getAllByRole("row")).toHaveLength(3);
   });
 
-  it("shows folder path, size, tags and warnings", () => {
+  it("shows folder path, ID and warnings without size or tags", () => {
     setup();
     const row = screen.getByRole("button", { name: "Left" }).closest("tr") as HTMLElement;
     expect(within(row).getByText("UI / Arrows")).toBeInTheDocument();
-    expect(within(row).getByText("300 B")).toBeInTheDocument();
-    expect(within(row).getByText("nav, arrow")).toBeInTheDocument();
+    expect(within(row).getByText("test-prefix-arrow-left")).toBeInTheDocument();
+    expect(within(row).queryByText("300 B")).not.toBeInTheDocument();
+    expect(within(row).queryByText("nav, arrow")).not.toBeInTheDocument();
     expect(row).not.toHaveTextContent("Stroke");
     expect(row).toHaveTextContent("Text");
     const plain = screen.getByRole("button", { name: "Plain" }).closest("tr") as HTMLElement;
