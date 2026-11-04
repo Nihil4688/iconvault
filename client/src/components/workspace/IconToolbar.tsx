@@ -1,5 +1,5 @@
 // Controls above the icon list: folder-specific preview size and colour, sort (an icon with a menu), a More menu (preview background) and grid or list view in one row, with search first, the "select all" checkbox  and (for editors) the Upload icons menu, which can be placed into the project header.
-import { ArrowUpDown, Check, LayoutGrid, List, Minus, Plus, Search } from "lucide-react";
+import { ArrowUpDown, LayoutGrid, List, Minus, Plus, Search } from "lucide-react";
 import { createPortal } from "react-dom";
 import { cn } from "../../lib/cn";
 import { ICON_COLORS, ICON_SIZES, stepIconSize, type IconAppearance } from "../../lib/iconAppearance";
