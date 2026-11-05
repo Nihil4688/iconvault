@@ -44,7 +44,7 @@ export function folderPath(folders: FolderItem[], id: string | null): string {
 
 // The folder's own icons plus those of every subfolder.
 export function totalIconCount(node: FolderNode): number {
-  return node.iconCount + node.children.reduce((sum, child) => sum + totalIconCount(child), 0);
+  return node.iconCount;
 }
 
 // Every folder id below `id` (not including it), for deciding where a folder may be moved.

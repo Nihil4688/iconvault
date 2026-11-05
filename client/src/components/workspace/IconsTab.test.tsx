@@ -158,12 +158,12 @@ describe("showing icons", () => {
     expect(listIcons).toHaveBeenCalledWith("p1", { sort: "newest", limit: 200 });
   });
 
-  it("asks for a folder and its subfolders, or only the project root", async () => {
+  it("asks for only the selected folder's icons", async () => {
     const { unmount } = render(<span />);
     unmount();
     setup({ selectedFolder: "ui" });
     await screen.findByRole("button", { name: "Open Alpha" });
-    expect(listIcons).toHaveBeenLastCalledWith("p1", { sort: "newest", limit: 200, folderId: "ui", includeSubfolders: true });
+    expect(listIcons).toHaveBeenLastCalledWith("p1", { sort: "newest", limit: 200, folderId: "ui", includeSubfolders: false });
   });
 
   it("asks for uncategorized icons without subfolders", async () => {

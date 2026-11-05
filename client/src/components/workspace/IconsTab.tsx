@@ -63,7 +63,7 @@ export default function IconsTab() {
   const params: ListIconsParams = {
     sort,
     limit,
-    ...(selectedFolder === "all" ? {} : { folderId: selectedFolder, includeSubfolders: selectedFolder !== "root" }),
+    ...(selectedFolder === "all" ? {} : { folderId: selectedFolder, includeSubfolders: false }),
     ...(search ? { search } : {}),
   };
   const icons = useResource(`icons:${filterKey}:${limit}:${iconsVersion}`, () => listIcons(project.id, params));

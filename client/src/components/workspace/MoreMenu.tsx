@@ -75,7 +75,7 @@ export default function MoreMenu({ surface, onSurface, disabled = false }: { sur
         onClick={() => setOpen((value) => !value)}
         onKeyDown={onTriggerKeyDown}
         title="Preview background"
-        className="inline-flex h-9 w-12 items-center justify-center gap-1 rounded-lg border border-input bg-background text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
+        className={cn("inline-flex h-9 w-12 items-center justify-center gap-1 rounded-lg border border-input bg-background text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring", open && "shadow-[0_0_0_3px_rgba(21,85,224,0.2)] border-[#1555E0]")}
       >
         <PanelsTopLeft aria-hidden="true" className="h-4 w-4" />
         <ChevronDown aria-hidden="true" className="h-3 w-3" />
