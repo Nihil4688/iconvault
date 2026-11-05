@@ -90,7 +90,7 @@ router.post("/folders/:folderId/move", async (req, res) => {
   res.json(serialize(moved));
 });
 
-// Deletes the folder and its subfolders; the icons inside are moved to the project root.
+// Deletes the folder and its subfolders; the icons inside are moved to the trash.
 router.delete("/folders/:folderId", async (req, res) => {
   const { folder, project } = await loadFolderForEdit(req);
   const result = await deleteFolder(folder);
@@ -99,7 +99,7 @@ router.delete("/folders/:folderId", async (req, res) => {
     entityType: "folder",
     entityId: folder._id,
     entityName: folder.name,
-    details: { deletedFolders: result.deletedFolders, movedIcons: result.movedIcons, iconsMovedTo: "project root" },
+    details: { deletedFolders: result.deletedFolders, movedIcons: result.movedIcons, iconsMovedTo: "trash" },
   });
   res.json(result);
 });

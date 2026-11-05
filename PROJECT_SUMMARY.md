@@ -74,7 +74,7 @@ Command line `iconvault` ---- personal API token ----> same API (never admin rig
 ### Projects, folders and icons (the Icons screen)
 - Project bar: breadcrumb in the top bar, name (16 px, with an ellipsis), Private/Public and type badges, a pill menu (Icons, Font Builder or Sprite Builder, Project Settings, Trash), and the main buttons.
 - **Upload icons** menu: files or ZIP (drag and drop), from another project, **import an SVG sprite**, **import an icon font**, paste SVG code.
-- Folders: nested, create / rename / move / delete (icons move to Uncategorized), drag icons onto folders; the **Uncategorized** row has its own menu (rename the label, move all to the trash, with Undo).
+- Folders: nested, create / rename / move / delete (icons move to the trash), drag icons onto folders; the **Uncategorized** row has its own menu (rename the label, move all to the trash, with Undo).
 - Icon list: grid or table, search by name or tag, sort, **preview size / colour / style** controls (Natural, Flat, Wireframe; only a preview), preview background (Match theme, Light, Dark, Checkerboard), select all above the list.
 - Icon details panel: name, folder, tags, codepoint (font projects), code editor with live preview, copy as SVG / React / Vue, download, optimize, versions with restore, move to trash.
 - Bulk actions: move, tag, optimize, download, **Build sprite / Build font** from the selection, trash with Undo.
