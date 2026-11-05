@@ -1,4 +1,4 @@
-// Folder rules: names are unique among siblings, a folder can never move into itself or its own subfolder, and deleting a folder moves its icons to the project root instead of deleting them.
+// Folder rules: names are unique among siblings, a folder can never move into itself or its own subfolder, and deleting a folder moves its icons to the trash.
 import mongoose, { type HydratedDocument, type Types } from "mongoose";
 import { BadRequestError, ConflictError } from "../lib/errors.js";
 import { assertFolderRoom } from "../lib/quotas.js";
@@ -109,11 +109,15 @@ export async function moveFolder(
   return folder.save();
 }
 
-// Deletes the folder and all subfolders. Their icons (including trashed ones) are kept and moved to the project root.
+// Deletes the folder and all subfolders. Their icons are kept in the trash with no reference to a deleted folder.
 export async function deleteFolder(folder: FolderDocument): Promise<{ deletedFolders: number; movedIcons: number }> {
   const below = [...(await descendantIds(folder.projectId, folder._id))].map((id) => new mongoose.Types.ObjectId(id));
   const ids = [folder._id, ...below];
-  const moved = await Icon.updateMany({ projectId: folder.projectId, folderId: { $in: ids } }, { $set: { folderId: null } });
+  const moved = await Icon.updateMany(
+    { projectId: folder.projectId, folderId: { $in: ids } },
+    [{ $set: { folderId: null, deletedAt: { $ifNull: ["$deletedAt", new Date()] } } }],
+    { updatePipeline: true },
+  );
   const removed = await Folder.deleteMany({ projectId: folder.projectId, _id: { $in: ids } });
   return { deletedFolders: removed.deletedCount, movedIcons: moved.modifiedCount };
 }

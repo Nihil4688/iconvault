@@ -187,7 +187,7 @@ export default function FolderTree({ folders, uncategorizedCount, uncategorizedN
       <ConfirmDialog
         open={dialog?.kind === "delete"}
         title={`Delete Folder “${dialog?.kind === "delete" ? dialog.folder.name : ""}”?`}
-        message="Its subfolders are deleted too. The icons inside are not deleted: they move to Uncategorized."
+        message="All icons in this folder and its subfolders will be moved to Trash. Are you sure you want to delete this folder? "
         confirmLabel="Delete Folder"
         destructive
         onClose={() => setDialog(null)}

@@ -372,7 +372,7 @@ describe("projects and folders (HTTP, throwaway database)", { skip: hasDatabase 
       assert.match(r.body.error, /does not exist in this project/);
     });
 
-    it("deleting a folder removes its subfolders and moves all their icons to the root", async () => {
+    it("deleting a folder removes its subfolders and moves all their icons to the trash", async () => {
       const p = await makeProject(owner.token, { name: "Deleting" });
       const mk = (name: string, parentId: string | null = null) => h.call(owner.token, "POST", `/api/projects/${p.id}/folders`, { name, parentId });
       const a = await mk("A");
@@ -385,7 +385,9 @@ describe("projects and folders (HTTP, throwaway database)", { skip: hasDatabase 
       const r = await h.call(owner.token, "DELETE", `/api/folders/${a.body.id}`);
       assert.deepEqual(r.body, { deletedFolders: 2, movedIcons: 3 });
       assert.equal(await Icon.countDocuments({ projectId: p.id }), 4, "no icon is deleted");
-      assert.equal(await Icon.countDocuments({ projectId: p.id, folderId: null }), 3);
+      assert.equal(await Icon.countDocuments({ projectId: p.id, deletedAt: null }), 1, "only the icon in the remaining folder stays active");
+      assert.equal(await Icon.countDocuments({ projectId: p.id, deletedAt: { $ne: null } }), 3);
+      assert.equal(await Icon.countDocuments({ projectId: p.id, folderId: null, deletedAt: { $ne: null } }), 3);
       const left = await h.call(owner.token, "GET", `/api/projects/${p.id}/folders`);
       assert.deepEqual(left.body.folders.map((f: any) => f.name), ["Keep"]);
     });
