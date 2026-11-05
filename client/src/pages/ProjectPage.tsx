@@ -1,6 +1,6 @@
 // A project's workspace: header with section links, then the Icons, Trash or Settings section. On the Icons section the folder tree sits beside the content (collapsible on small screens). Loads the project and its folders and shares them, with the selected folder, refresh functions and the shared icon selection, through the workspace context.
 import { ChevronDown, ChevronUp } from "lucide-react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, Navigate, Route, Routes, useLocation, useParams, useSearchParams } from "react-router-dom";
 import { ApiError } from "../api/http";
 import { createFolder, deleteFolder, listFolders, moveFolder, renameFolder } from "../api/folders";
@@ -38,12 +38,9 @@ export default function ProjectPage() {
   const [iconsVersion, setIconsVersion] = useState(0);
   const [foldersOpen, setFoldersOpen] = useState(false);
   const [actionsSlot, setActionsSlot] = useState<HTMLElement | null>(null);
-  const selectionOrigin = useRef<FolderSelection | null>(null);
+  const [selectionOrigin, setSelectionOrigin] = useState<FolderSelection | null>(null);
   // The selection lives here, not inside any tab, so it survives navigating between Icons, Sprite/Font Builder, Trash and Project Settings. It is cleared only when the user clicks "Clear selection" or moves to a different project.
   const selection = useSelection(projectId);
-  useEffect(() => {
-    if (selection.size === 0) selectionOrigin.current = null;
-  }, [selection.size]);
   // Switching to another project starts with no selection; ids from the previous project are not relevant any more.
   useEffect(() => {
     selection.clear();
@@ -104,10 +101,9 @@ export default function ProjectPage() {
     project: project.data,
     folderList,
     selectedFolder,
+    selectionOrigin,
     selectFolder,
-    setSelectionOrigin: (origin) => {
-      selectionOrigin.current = origin;
-    },
+    setSelectionOrigin,
     refreshProject: project.reload,
     refreshFolders: folders.reload,
     iconsVersion,
@@ -176,9 +172,9 @@ export default function ProjectPage() {
                     totalCount={project.data.iconCount}
                     selected={selectedFolder}
                     onSelect={(folder) => {
-                      if (selectedFolder === "all" && folder !== "all" && selectionOrigin.current === "all") {
+                      if (selectedFolder === "all" && folder !== "all" && selectionOrigin === "all") {
                         selection.clear();
-                        selectionOrigin.current = null;
+                        setSelectionOrigin(null);
                       }
                       selectFolder(folder);
                     }}

@@ -14,6 +14,7 @@ type IconCardProps = {
   purpose?: ProjectPurpose;
   idPrefix?: string;
   selected: boolean;
+  selectionDisabled?: boolean;
   surface: Surface;
   appearance: IconAppearance;
   canDrag: boolean;
@@ -23,7 +24,7 @@ type IconCardProps = {
   onOpen: () => void;
 };
 
-export default function IconCard({ icon, purpose = "font", idPrefix = "", selected, surface, appearance, canDrag, dragIds, onToggle, onOpen }: IconCardProps) {
+export default function IconCard({ icon, purpose = "font", idPrefix = "", selected, selectionDisabled = false, surface, appearance, canDrag, dragIds, onToggle, onOpen }: IconCardProps) {
   const warnings = iconWarnings(icon).filter((warning) => warning !== "Stroke" && warning !== "Gradient");
   return (
     <li
@@ -31,8 +32,8 @@ export default function IconCard({ icon, purpose = "font", idPrefix = "", select
       onDragStart={(event) => setDraggedIcons(event.dataTransfer, dragIds())}
       className={cn("group relative rounded-xl border bg-card text-card-foreground transition-shadow hover:shadow-md", selected ? "border-primary ring-2 ring-primary" : "border-border")}
     >
-      <label className="absolute left-2 top-2 z-10 flex h-6 w-6 cursor-pointer items-center justify-center rounded-md bg-card/90 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-ring">
-        <input type="checkbox" checked={selected} onChange={onToggle} aria-label={`Select ${icon.name}`} className="h-4 w-4 accent-[hsl(var(--primary))]" />
+      <label className={`absolute left-2 top-2 z-10 flex h-6 w-6 items-center justify-center rounded-md bg-card/90 has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-ring ${selectionDisabled ? "\!cursor-not-allowed" : "cursor-pointer"}`}>
+        <input type="checkbox" checked={selected} disabled={selectionDisabled} onChange={onToggle} aria-label={`Select ${icon.name}`} className="h-4 w-4 accent-primary" />
       </label>
       <button
         type="button"

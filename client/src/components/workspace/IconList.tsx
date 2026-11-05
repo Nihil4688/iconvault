@@ -15,6 +15,7 @@ type IconListProps = {
   purpose: ProjectPurpose;
   idPrefix: string;
   isSelected: (id: string) => boolean;
+  selectionDisabled?: boolean;
   surface: Surface;
   appearanceForFolder: (folderId: string | null) => IconAppearance;
   canDrag: boolean;
@@ -23,7 +24,7 @@ type IconListProps = {
   onOpen: (icon: IconItem) => void;
 };
 
-export default function IconList({ icons, folders, purpose, idPrefix, isSelected, surface, appearanceForFolder, canDrag, dragIds, onToggle, onOpen }: IconListProps) {
+export default function IconList({ icons, folders, purpose, idPrefix, isSelected, selectionDisabled = false, surface, appearanceForFolder, canDrag, dragIds, onToggle, onOpen }: IconListProps) {
   return (
     // `relative` matters: the table holds visually hidden (absolutely positioned) text, which would otherwise escape this scroll box and widen the whole page on a phone.
     <div className="relative min-h-0 max-h-full w-full flex-none overflow-auto rounded-xl border border-border mb-6">
@@ -60,7 +61,7 @@ export default function IconList({ icons, folders, purpose, idPrefix, isSelected
                 className={cn("border-t border-border", isSelected(icon.id) ? "bg-primary/5" : "hover:bg-accent/50")}
               >
                 <td className="px-3 py-2">
-                  <input type="checkbox" checked={isSelected(icon.id)} onChange={() => onToggle(icon.id)} aria-label={`Select ${icon.name}`} className="h-4 w-4 accent-[hsl(var(--primary))]" />
+                  <input type="checkbox" checked={isSelected(icon.id)} disabled={selectionDisabled} onChange={() => onToggle(icon.id)} aria-label={`Select ${icon.name}`} className="h-4 w-4 accent-[hsl(var(--primary))]" />
                 </td>
                 <td className="px-1 py-1.5">
                   <span className={cn("flex h-10 w-10 items-center justify-center rounded-md", surfaceClass(surface))} style={surfaceStyle(surface)}>

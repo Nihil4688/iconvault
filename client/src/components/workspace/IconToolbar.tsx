@@ -41,7 +41,7 @@ export default function IconToolbar({ search, onSearch, sort, onSort, view, onVi
 
   return (
     <div className="space-y-3">
-      <fieldset disabled={disabled} className={cn("flex min-w-0 flex-wrap items-center gap-4 border-0 p-0", disabled && "opacity-50")}>
+      <fieldset disabled={disabled} className={cn("flex min-w-0 flex-wrap items-center gap-4 border-0 p-0s", disabled && "opacity-50")}>
         <legend className="sr-only">Icon Browsing Controls</legend>
         <div className="relative min-w-48 max-w-xs flex-1">
           <label htmlFor="icon-search" className="sr-only">

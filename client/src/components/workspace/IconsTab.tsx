@@ -38,7 +38,7 @@ const MAX_SHOWN = 1000;
 type Dialog = "add" | "move" | "tag" | "delete" | null;
 
 export default function IconsTab() {
-  const { project, folderList, selectedFolder, selectFolder, setSelectionOrigin, refreshProject, refreshFolders, refreshIcons, iconsVersion, actionsSlot, selection } = useWorkspace();
+  const { project, folderList, selectedFolder, selectionOrigin, selectFolder, setSelectionOrigin, refreshProject, refreshFolders, refreshIcons, iconsVersion, actionsSlot, selection } = useWorkspace();
   const { showToast } = useToast();
   const navigate = useNavigate();
   const canEdit = project.access.canEdit;
@@ -69,19 +69,22 @@ export default function IconsTab() {
   const icons = useResource(`icons:${filterKey}:${limit}:${iconsVersion}`, () => listIcons(project.id, params));
   const shown = icons.data?.icons ?? [];
   const total = icons.data?.total ?? 0;
-  const selectedIds = new Set(selection.ids);
+  const selectionDisabled = selection.size > 0 && selectionOrigin != null && selectionOrigin !== "all" && selectedFolder === "all";
+  const selectedIds = new Set(selectionDisabled ? [] : selection.ids);
   const shownIds = new Set(shown.map((icon) => icon.id));
   const selectedShown = shown.reduce((count, icon) => count + Number(selectedIds.has(icon.id)), 0);
   // Keep selection stable across list refreshes; a completed action or "Clear selection" explicitly consumes it.
   const currentFolderId = selectedFolder === "all" || selectedFolder === "root" ? null : selectedFolder;
 
   function setSelectedIcons(ids: string[]) {
+    if (selectionDisabled) return;
     if (selection.ids.length === 0 && ids.length > 0) setSelectionOrigin?.(selectedFolder);
     else if (ids.length === 0) setSelectionOrigin?.(null);
     selection.set(ids);
   }
 
   function toggleSelectedIcon(id: string) {
+    if (selectionDisabled) return;
     setSelectedIcons(selection.has(id) ? selection.ids.filter((selectedId) => selectedId !== id) : [...selection.ids, id]);
   }
 
@@ -208,6 +211,7 @@ export default function IconsTab() {
               <SelectAllBar
                 loaded={shown.length}
                 selected={selectedShown}
+                disabled={selectionDisabled}
                 onSelectAll={(checked) =>
                   setSelectedIcons(checked ? [...new Set([...selectedIds, ...shownIds])] : selection.ids.filter((id) => !shownIds.has(id)))
                 }
@@ -218,11 +222,11 @@ export default function IconsTab() {
             {view === "grid" ? (
               <ul className={`grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5 ${icons.loading ? "opacity-60" : ""}`}>
                 {shown.map((icon) => (
-                  <IconCard key={icon.id} icon={icon} purpose={project.purpose} idPrefix={project.prefix} selected={selection.has(icon.id)} surface={surface} appearance={appearanceForFolder(icon.folderId)} canDrag={canEdit} dragIds={() => (selection.has(icon.id) ? selection.ids : [icon.id])} onToggle={() => toggleSelectedIcon(icon.id)} onOpen={() => setOpenId(icon.id)} />
+                  <IconCard key={icon.id} icon={icon} purpose={project.purpose} idPrefix={project.prefix} selected={!selectionDisabled && selection.has(icon.id)} selectionDisabled={selectionDisabled} surface={surface} appearance={appearanceForFolder(icon.folderId)} canDrag={canEdit} dragIds={() => (selection.has(icon.id) ? selection.ids : [icon.id])} onToggle={() => toggleSelectedIcon(icon.id)} onOpen={() => setOpenId(icon.id)} />
                 ))}
               </ul>
             ) : (
-              <IconList icons={shown} folders={folderList.folders} purpose={project.purpose} idPrefix={project.prefix} isSelected={selection.has} surface={surface} appearanceForFolder={appearanceForFolder} canDrag={canEdit} dragIds={(id) => (selection.has(id) ? selection.ids : [id])} onToggle={toggleSelectedIcon} onOpen={(icon) => setOpenId(icon.id)} />
+              <IconList icons={shown} folders={folderList.folders} purpose={project.purpose} idPrefix={project.prefix} isSelected={(id) => !selectionDisabled && selection.has(id)} selectionDisabled={selectionDisabled} surface={surface} appearanceForFolder={appearanceForFolder} canDrag={canEdit} dragIds={(id) => (selection.has(id) ? selection.ids : [id])} onToggle={toggleSelectedIcon} onOpen={(icon) => setOpenId(icon.id)} />
             )}
             {total > shown.length && (
               <div className="mt-4 text-center">
