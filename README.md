@@ -98,7 +98,7 @@ Every route needs `Authorization: Bearer <session token>`. Errors are `{ "error"
 | GET / PATCH / DELETE | `/api/projects/:projectId` | Detail with folder and trash counts; update; delete with everything in it (owner or admin) |
 | POST | `/api/projects/:projectId/duplicate` | Copy a project you can see into a new private one you own |
 | GET / POST | `/api/projects/:projectId/folders` | List folders with icon counts; create (`name`, `parentId`) |
-| PATCH / DELETE | `/api/folders/:folderId` | Rename; delete (icons move to the project root) |
+| PATCH / DELETE | `/api/folders/:folderId` | Rename; delete (icons move to the trash) |
 | POST | `/api/folders/:folderId/move` | Move (`parentId`, `orderIndex`); never into itself or a subfolder |
 | GET | `/api/projects/:projectId/icons` | List (query: `folderId` or `root`, `includeSubfolders`, `search`, `tag`, `trash`, `sort`, `page`, `limit`, `svg`) |
 | POST | `/api/projects/:projectId/icons/upload` | Multipart field `files` (SVG and ZIP) plus `folderId`, `strategy` rename/replace/skip, `optimize`, `tags` |
