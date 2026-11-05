@@ -38,7 +38,7 @@ const MAX_SHOWN = 1000;
 type Dialog = "add" | "move" | "tag" | "delete" | null;
 
 export default function IconsTab() {
-  const { project, folderList, selectedFolder, selectFolder, refreshProject, refreshFolders, refreshIcons, iconsVersion, actionsSlot, selection } = useWorkspace();
+  const { project, folderList, selectedFolder, selectFolder, setSelectionOrigin, refreshProject, refreshFolders, refreshIcons, iconsVersion, actionsSlot, selection } = useWorkspace();
   const { showToast } = useToast();
   const navigate = useNavigate();
   const canEdit = project.access.canEdit;
@@ -74,6 +74,16 @@ export default function IconsTab() {
   const selectedShown = shown.reduce((count, icon) => count + Number(selectedIds.has(icon.id)), 0);
   // Keep selection stable across list refreshes; a completed action or "Clear selection" explicitly consumes it.
   const currentFolderId = selectedFolder === "all" || selectedFolder === "root" ? null : selectedFolder;
+
+  function setSelectedIcons(ids: string[]) {
+    if (selection.ids.length === 0 && ids.length > 0) setSelectionOrigin?.(selectedFolder);
+    else if (ids.length === 0) setSelectionOrigin?.(null);
+    selection.set(ids);
+  }
+
+  function toggleSelectedIcon(id: string) {
+    setSelectedIcons(selection.has(id) ? selection.ids.filter((selectedId) => selectedId !== id) : [...selection.ids, id]);
+  }
 
   const refreshAll = () => {
     refreshIcons();
@@ -199,7 +209,7 @@ export default function IconsTab() {
                 loaded={shown.length}
                 selected={selectedShown}
                 onSelectAll={(checked) =>
-                  selection.set(checked ? [...new Set([...selectedIds, ...shownIds])] : selection.ids.filter((id) => !shownIds.has(id)))
+                  setSelectedIcons(checked ? [...new Set([...selectedIds, ...shownIds])] : selection.ids.filter((id) => !shownIds.has(id)))
                 }
               />
               <MoreMenu surface={surface} onSurface={setSurface} disabled={noIconsInScope} />
@@ -208,11 +218,11 @@ export default function IconsTab() {
             {view === "grid" ? (
               <ul className={`grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-5 ${icons.loading ? "opacity-60" : ""}`}>
                 {shown.map((icon) => (
-                  <IconCard key={icon.id} icon={icon} purpose={project.purpose} idPrefix={project.prefix} selected={selection.has(icon.id)} surface={surface} appearance={appearanceForFolder(icon.folderId)} canDrag={canEdit} dragIds={() => (selection.has(icon.id) ? selection.ids : [icon.id])} onToggle={() => selection.toggle(icon.id)} onOpen={() => setOpenId(icon.id)} />
+                  <IconCard key={icon.id} icon={icon} purpose={project.purpose} idPrefix={project.prefix} selected={selection.has(icon.id)} surface={surface} appearance={appearanceForFolder(icon.folderId)} canDrag={canEdit} dragIds={() => (selection.has(icon.id) ? selection.ids : [icon.id])} onToggle={() => toggleSelectedIcon(icon.id)} onOpen={() => setOpenId(icon.id)} />
                 ))}
               </ul>
             ) : (
-              <IconList icons={shown} folders={folderList.folders} purpose={project.purpose} idPrefix={project.prefix} isSelected={selection.has} surface={surface} appearanceForFolder={appearanceForFolder} canDrag={canEdit} dragIds={(id) => (selection.has(id) ? selection.ids : [id])} onToggle={selection.toggle} onOpen={(icon) => setOpenId(icon.id)} />
+              <IconList icons={shown} folders={folderList.folders} purpose={project.purpose} idPrefix={project.prefix} isSelected={selection.has} surface={surface} appearanceForFolder={appearanceForFolder} canDrag={canEdit} dragIds={(id) => (selection.has(id) ? selection.ids : [id])} onToggle={toggleSelectedIcon} onOpen={(icon) => setOpenId(icon.id)} />
             )}
             {total > shown.length && (
               <div className="mt-4 text-center">

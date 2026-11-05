@@ -48,7 +48,7 @@ export default function ProjectCard({ project, currentUserId, onEdit, onDuplicat
 
       <div className="flex items-center gap-2.5">
         <ProjectAvatar name={project.name} color={project.color} className="h-7 w-7 rounded-lg text-xs" />
-        <h3 className="min-w-0 flex-1 truncate text-sm font-semibold">
+        <h3 title={project.name} className="min-w-0 flex-1 truncate text-sm font-semibold">
           <Link to={`/projects/${project.id}`} className="rounded-sm after:absolute after:inset-0 after:rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
             {project.name}
           </Link>
