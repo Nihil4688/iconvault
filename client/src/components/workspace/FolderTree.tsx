@@ -93,7 +93,9 @@ export default function FolderTree({ folders, uncategorizedCount, uncategorizedN
           )}
           <button type="button" onClick={() => onSelect(node.id)} aria-current={isSelected ? "true" : undefined} className={cn(buttonBase, isSelected ? "font-semibold" : "text-foreground")}>
             <Folder aria-hidden="true" className={cn("h-4 w-4 shrink-0", isSelected ? "text-primary" : "text-muted-foreground")} />
-            <span className="truncate">{node.name}</span>
+            <span title={node.name} className="truncate">
+              {node.name}
+            </span>
             <span className="ml-auto shrink-0 text-xs text-muted-foreground">{totalIconCount(node)}</span>
           </button>
           {canEdit && (

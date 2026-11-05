@@ -11,6 +11,7 @@ export type WorkspaceContextValue = {
   folderList: FolderList;
   selectedFolder: FolderSelection;
   selectFolder: (selection: FolderSelection) => void;
+  setSelectionOrigin?: (selection: FolderSelection | null) => void;
   // Reload the project (counts, name) and/or the folders after a change.
   refreshProject: () => void;
   refreshFolders: () => void;
@@ -19,7 +20,7 @@ export type WorkspaceContextValue = {
   refreshIcons: () => void;
   // Where the project header wants the Upload icons button. Absent outside the project page.
   actionsSlot?: HTMLElement | null;
-  // The icons ticked on the Icons screen. Shared across tabs and retained through navigation, folder changes and list refreshes until cleared manually or consumed by a bulk action.
+  // The icons ticked on the Icons screen. Shared across tabs and list refreshes.
   selection: Selection;
 };
 
