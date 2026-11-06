@@ -10,7 +10,7 @@ import { usePersistentChoice } from "../../hooks/usePersistentChoice";
 import { cn } from "../../lib/cn";
 import { copyText } from "../../lib/clipboard";
 import { codepointProblem } from "../../lib/codepoint";
-import { buildFolderTree, flattenFolderTree, folderPath } from "../../lib/folderTree";
+import { folderPath } from "../../lib/folderTree";
 import { formatBytes, formatDate, formatRelative, savingsPercent } from "../../lib/format";
 import { iconWarnings } from "../../lib/iconInfo";
 import { SURFACES, surfaceClass, surfaceStyle } from "../../lib/previewSurface";
@@ -19,9 +19,10 @@ import { parseTags } from "../../lib/upload";
 import { triggerBrowserDownload } from "../../utils/zipBundle";
 import { Button } from "../ui/Button";
 import Dialog from "../ui/Dialog";
-import { SelectField, TextAreaField, TextField } from "../ui/Fields";
+import { TextAreaField, TextField } from "../ui/Fields";
 import SvgPreview from "../ui/SvgPreview";
 import Tabs from "../ui/Tabs";
+import FolderDropdownSelect from "./FolderDropdownSelect";
 
 
 type IconDrawerProps = {
@@ -208,7 +209,6 @@ function DetailsTab({ icon, canEdit, folders, purpose, saved, onSaved }: { icon:
   const [codepoint, setCodepoint] = useState(icon.codepoint ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const options = flattenFolderTree(buildFolderTree(folders));
   const problem = purpose === "font" ? codepointProblem(codepoint) : null;
 
   const patch = {
@@ -244,14 +244,7 @@ function DetailsTab({ icon, canEdit, folders, purpose, saved, onSaved }: { icon:
       {canEdit ? (
         <form onSubmit={submit} noValidate className="space-y-3">
           <TextField label="Name" value={name} maxLength={100} autoComplete="off" onChange={(event) => setName(event.target.value)} hint="Changing the name also changes the icon's id." />
-          <SelectField label="Folder" value={folderId} onChange={(event) => setFolderId(event.target.value)}>
-            <option value="">Uncategorized (Project Root)</option>
-            {options.map((folder) => (
-              <option key={folder.id} value={folder.id}>
-                {`${"  ".repeat(folder.depth)}${folder.name}`}
-              </option>
-            ))}
-          </SelectField>
+          <FolderDropdownSelect label="Folder" value={folderId} folders={folders} onChange={setFolderId} />
           <TextField label="Tags" value={tagText} autoComplete="off" hint="Separated by commas." onChange={(event) => setTagText(event.target.value)} />
           {purpose === "font" && <TextField label="Font Codepoint" value={codepoint} autoComplete="off" spellCheck={false} maxLength={4} className="font-mono" hint="Optional: 4 hex digits from E000 to F8FF, for example E001. Kept the same every time a font is built." error={problem ?? undefined} onChange={(event) => setCodepoint(event.target.value)} />}
           {error && (

@@ -1,11 +1,12 @@
 // Dialogs for folder actions: name a new or renamed folder, and choose a new parent when moving one.
 import { useState, type FormEvent } from "react";
 import type { FolderWithCount } from "../../api/types";
-import { buildFolderTree, descendantIds, flattenFolderTree } from "../../lib/folderTree";
+import { descendantIds } from "../../lib/folderTree";
 import { Button } from "../ui/Button";
 import Dialog from "../ui/Dialog";
 import DialogFooter from "../ui/DialogFooter";
-import { SelectField, TextField } from "../ui/Fields";
+import { TextField } from "../ui/Fields";
+import FolderDropdownSelect from "./FolderDropdownSelect";
 
 type FolderNameDialogProps = {
   open: boolean;
@@ -87,7 +88,7 @@ function MoveForm({ folder, folders, onClose, onSubmit }: { folder: FolderWithCo
   // A folder cannot go into itself or anything inside it.
   const blocked = descendantIds(folders, folder.id);
   blocked.add(folder.id);
-  const options = flattenFolderTree(buildFolderTree(folders)).filter((candidate) => !blocked.has(candidate.id));
+  const destinations = folders.filter((candidate) => !blocked.has(candidate.id));
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -105,14 +106,7 @@ function MoveForm({ folder, folders, onClose, onSubmit }: { folder: FolderWithCo
 
   return (
     <form onSubmit={submit} className="space-y-3">
-      <SelectField label="Move Into" value={parent} onChange={(event) => setParent(event.target.value)} error={error ?? undefined}>
-        <option value="">Project Root</option>
-        {options.map((option) => (
-          <option key={option.id} value={option.id}>
-            {`${"  ".repeat(option.depth)}${option.name}`}
-          </option>
-        ))}
-      </SelectField>
+      <FolderDropdownSelect label="Move Into" rootLabel="Project Root" value={parent} folders={destinations} onChange={setParent} error={error ?? undefined} />
       <DialogFooter>
         <Button variant="secondary" onClick={onClose} disabled={busy}>
           Cancel

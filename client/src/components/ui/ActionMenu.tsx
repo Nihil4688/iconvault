@@ -1,6 +1,7 @@
 // A "more actions" menu button. Opens a list of actions; Arrow keys move between them, Home and End jump, Escape closes and returns focus to the button, and a click outside or tabbing away closes it. Disabled actions are skipped by the keys.
 import { MoreVertical } from "lucide-react";
-import { useEffect, useId, useRef, useState, type ReactNode } from "react";
+import { createPortal } from "react-dom";
+import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { cn } from "../../lib/cn";
 
 export type MenuAction = {
@@ -20,6 +21,8 @@ type ActionMenuProps = {
 
 export default function ActionMenu({ label, actions, className }: ActionMenuProps) {
   const [open, setOpen] = useState(false);
+  const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
+  const [menuPosition, setMenuPosition] = useState<CSSProperties | null>(null);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const menuRef = useRef<HTMLDivElement | null>(null);
@@ -32,11 +35,51 @@ export default function ActionMenu({ label, actions, className }: ActionMenuProp
     items()[0]?.focus();
 
     function onPointerDown(event: MouseEvent) {
-      if (rootRef.current && !rootRef.current.contains(event.target as Node)) setOpen(false);
+      if (!rootRef.current?.contains(event.target as Node) && !menuRef.current?.contains(event.target as Node)) setOpen(false);
     }
     document.addEventListener("mousedown", onPointerDown);
     return () => document.removeEventListener("mousedown", onPointerDown);
   }, [open]);
+
+  useLayoutEffect(() => {
+    if (!open || !portalTarget) return;
+    const updatePosition = () => {
+      const trigger = triggerRef.current;
+      const menu = menuRef.current;
+      if (!trigger || !menu) return;
+
+      const rect = trigger.getBoundingClientRect();
+      const menuRect = menu.getBoundingClientRect();
+      const viewportPadding = 8;
+      const gap = 4;
+      const width = Math.min(menuRect.width, window.innerWidth - viewportPadding * 2);
+      const left = Math.min(Math.max(rect.right - width, viewportPadding), window.innerWidth - width - viewportPadding);
+      const below = window.innerHeight - rect.bottom - viewportPadding - gap;
+      const above = rect.top - viewportPadding - gap;
+      const desiredHeight = Math.min(Math.max(menu.scrollHeight, menuRect.height), 220);
+      const placeBelow = desiredHeight <= below || below >= above;
+      const maxHeight = Math.min(220, Math.max(0, placeBelow ? below : above));
+      const height = Math.min(Math.max(menu.scrollHeight, menuRect.height), maxHeight);
+
+      setMenuPosition({
+        position: "fixed",
+        top: placeBelow ? rect.bottom + gap : Math.max(viewportPadding, rect.top - height - gap),
+        left,
+        maxHeight,
+        maxWidth: `calc(100vw - ${viewportPadding * 2}px)`,
+        overflowY: "auto",
+        visibility: "visible",
+      });
+    };
+
+    updatePosition();
+    window.addEventListener("scroll", updatePosition, true);
+    window.addEventListener("resize", updatePosition);
+    return () => {
+      window.removeEventListener("scroll", updatePosition, true);
+      window.removeEventListener("resize", updatePosition);
+    };
+  }, [open, portalTarget]);
 
   function onKeyDown(event: React.KeyboardEvent) {
     if (!open) return;
@@ -78,13 +121,32 @@ export default function ActionMenu({ label, actions, className }: ActionMenuProp
         aria-controls={open ? menuId : undefined}
         aria-label={label}
         title={label}
-        onClick={() => setOpen((value) => !value)}
+        onClick={() => {
+          if (open) {
+            setOpen(false);
+            return;
+          }
+          setPortalTarget(triggerRef.current?.closest("dialog") ?? document.body);
+          setMenuPosition(null);
+          setOpen(true);
+        }}
         className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
       >
         <MoreVertical aria-hidden="true" className="h-4 w-4" />
       </button>
-      {open && (
-        <div ref={menuRef} id={menuId} role="menu" aria-label={label} className="absolute right-0 top-full z-30 mt-1 min-w-44 w-max rounded-xl border border-border bg-popover p-1 text-popover-foreground shadow-lg">
+      {open && portalTarget && createPortal(
+        <div
+          ref={menuRef}
+          id={menuId}
+          role="menu"
+          aria-label={label}
+          onKeyDown={onKeyDown}
+          onBlur={(event) => {
+            if (!rootRef.current?.contains(event.relatedTarget as Node | null) && !event.currentTarget.contains(event.relatedTarget as Node | null)) setOpen(false);
+          }}
+          style={menuPosition ?? { position: "fixed", visibility: "hidden" }}
+          className="z-50 min-w-44 w-max y rounded-xl border border-border bg-popover p-1 text-popover-foreground shadow-lg"
+        >
           {actions.map((action) => (
             <button
               key={action.label}
@@ -105,7 +167,8 @@ export default function ActionMenu({ label, actions, className }: ActionMenuProp
               {action.label}
             </button>
           ))}
-        </div>
+        </div>,
+        portalTarget,
       )}
     </div>
   );

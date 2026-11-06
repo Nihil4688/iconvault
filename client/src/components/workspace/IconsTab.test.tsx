@@ -579,8 +579,8 @@ describe("selection", () => {
 });
 
 describe("bulk actions", () => {
-  async function selectTwo() {
-    const ctx = setup();
+  async function selectTwo(selectedFolder = "all") {
+    const ctx = setup({ selectedFolder });
     await screen.findByRole("button", { name: "Open Alpha" });
     await userEvent.click(screen.getByRole("checkbox", { name: "Select Alpha" }));
     await userEvent.click(screen.getByRole("checkbox", { name: "Select Beta" }));
@@ -615,14 +615,16 @@ describe("bulk actions", () => {
 
   it("moves the selection to a folder", async () => {
     vi.mocked(iconsApi.batchMoveIcons).mockResolvedValue({ requested: 2, matched: 2 });
-    const ctx = await selectTwo();
+    listIcons.mockResolvedValue(reply(three().map((icon) => ({ ...icon, folderId: "ui" }))));
+    const ctx = await selectTwo("ui");
     await userEvent.click(screen.getByRole("button", { name: "Move" }));
     const dialog = screen.getByRole("dialog", { name: "Move 2 icons" });
-    await userEvent.selectOptions(within(dialog).getByLabelText("Move into"), "ui");
+    await userEvent.click(within(dialog).getByLabelText("Move Into"));
+    await userEvent.click(within(screen.getByRole("menu", { name: "Folder" })).getByRole("menuitemradio", { name: "UI" }));
     await userEvent.click(within(dialog).getByRole("button", { name: "Move" }));
     expect(iconsApi.batchMoveIcons).toHaveBeenCalledWith("p1", ["a", "b"], "ui");
     expect(await screen.findByText("Moved 2 icons.")).toBeInTheDocument();
-    expectSelectionCleared();
+    expect(screen.queryByRole("region", { name: "Selected icons" })).not.toBeInTheDocument();
     refreshed(ctx);
   });
 

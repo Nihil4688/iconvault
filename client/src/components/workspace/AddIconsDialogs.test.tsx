@@ -148,9 +148,38 @@ describe("UploadDialog: files", () => {
     uploadIcons.mockResolvedValue(summary({ created: [makeIcon(), makeIcon()], replaced: [makeIcon()], skipped: [{ name: "Old", reason: "An icon with that name already exists." }], foldersCreated: 2 }));
     const props = setup({ defaultFolderId: "ui" });
     await userEvent.upload(input(), [svgFile("a.svg"), svgFile("b.svg")]);
-    expect(screen.getByLabelText("Folder")).toHaveValue("ui");
-    await userEvent.selectOptions(screen.getByLabelText("If an icon with that name exists"), "skip");
-    await userEvent.click(screen.getByLabelText("Optimize to make the files smaller"));
+    const folderPicker = screen.getByRole("button", { name: "Folder: UI" });
+    let triggerRect = { x: 180, y: 500, top: 500, right: 620, bottom: 536, left: 180, width: 440, height: 36, toJSON: () => ({}) };
+    vi.spyOn(folderPicker, "getBoundingClientRect").mockImplementation(() => triggerRect);
+    await userEvent.click(folderPicker);
+    const folderMenu = screen.getByRole("menu", { name: "Folder" });
+    expect(folderMenu.parentElement).toBe(screen.getByRole("dialog", { name: /Add Icons/i }));
+    expect(folderMenu).toHaveStyle({ position: "fixed", top: "540px" });
+    expect(folderMenu).toHaveStyle({ maxHeight: "220px" });
+    triggerRect = { ...triggerRect, top: 320, y: 320, bottom: 356 };
+    fireEvent.scroll(screen.getByRole("dialog", { name: /Add Icons/i }).querySelector('[data-slot="dialog-content"]') as HTMLElement);
+    expect(folderMenu).toHaveStyle({ top: "360px" });
+    const selectedFolder = within(folderMenu).getByRole("menuitemradio", { name: "UI" });
+    expect(selectedFolder).toHaveAttribute("aria-checked", "true");
+    expect(selectedFolder).toHaveClass("bg-accent");
+    expect(selectedFolder).toHaveClass("hover:bg-accent");
+    expect(selectedFolder.querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+    expect(within(folderMenu).getByRole("menuitemradio", { name: "Uncategorized (Project Root)" }).querySelector("svg")).toHaveAttribute("aria-hidden", "true");
+    const subfolder = within(folderMenu).getByRole("menuitemradio", { name: "Arrows" });
+    expect(subfolder.querySelector(".folder-option-row")).toHaveStyle({ paddingLeft: "18px" });
+    expect(subfolder.querySelector(".folder-tree-connector-above")).toBeInTheDocument();
+    expect(subfolder.querySelector(".folder-tree-connector-above")).toHaveStyle({ left: "18px" });
+    expect(subfolder.querySelector(".folder-tree-connector-elbow")).toBeInTheDocument();
+    await userEvent.click(within(folderMenu).getByRole("menuitemradio", { name: "Arrows" }));
+    const strategyPicker = screen.getByRole("button", { name: /If an Icon with That Name Exists:/i });
+    await userEvent.click(strategyPicker);
+    const strategyMenu = screen.getByRole("menu", { name: "If an Icon with That Name Exists" });
+    const selectedStrategy = within(strategyMenu).getByRole("menuitemradio", { name: "Keep Both (Add a Number)" });
+    expect(selectedStrategy).toHaveAttribute("aria-checked", "true");
+    expect(selectedStrategy).toHaveClass("bg-accent");
+    expect(selectedStrategy.querySelector("svg")).not.toBeInTheDocument();
+    await userEvent.click(within(strategyMenu).getByRole("menuitemradio", { name: "Skip" }));
+    await userEvent.click(screen.getByLabelText(/Optimize to Make the Files Smaller/i));
     await userEvent.type(screen.getByLabelText("Tags"), "UI, Nav");
     await userEvent.click(screen.getByRole("button", { name: "Add 2 files" }));
 
@@ -159,7 +188,7 @@ describe("UploadDialog: files", () => {
     const [projectId, sent, options] = uploadIcons.mock.calls[0] as [string, File[], object];
     expect(projectId).toBe("p1");
     expect(sent.map((f) => f.name)).toEqual(["a.svg", "b.svg"]);
-    expect(options).toEqual({ folderId: "ui", strategy: "skip", optimize: true, tags: ["ui", "nav"] });
+    expect(options).toEqual({ folderId: "ar", strategy: "skip", optimize: true, tags: ["ui", "nav"] });
 
     const result = await screen.findByRole("status");
     expect(result).toHaveTextContent("Added 2 icons.");
@@ -168,8 +197,27 @@ describe("UploadDialog: files", () => {
     expect(result).toHaveTextContent("2 folders created from the ZIP.");
     expect(screen.getByText("Old: An icon with that name already exists.")).toBeInTheDocument();
     expect(props.onUploaded).toHaveBeenCalledTimes(1);
-    await userEvent.click(screen.getByRole("button", { name: "Done" }));
-    expect(props.onClose).toHaveBeenCalled();
+  });
+
+  it("starts subfolder highlights after the connected L-shaped tree elbow", async () => {
+    setup({
+      defaultFolderId: "ar",
+      folders: [...folders, makeFolder({ id: "ar2", name: "Chevrons", parentId: "ui" }), makeFolder({ id: "nested", name: "Nested", parentId: "ar" })],
+    });
+    await userEvent.click(screen.getByRole("button", { name: /Folder:/ }));
+
+    const folderMenu = screen.getByRole("menu", { name: "Folder" });
+    const firstSibling = within(folderMenu).getByRole("menuitemradio", { name: "Arrows" });
+    const secondSibling = within(folderMenu).getByRole("menuitemradio", { name: "Chevrons" });
+    const nestedFolder = within(folderMenu).getByRole("menuitemradio", { name: "Nested" });
+    expect(firstSibling.querySelector(".folder-option-highlight")).toHaveClass("group-hover/option:bg-accent");
+    expect(firstSibling.querySelector(".folder-option-highlight")).toHaveStyle({ left: "30px" });
+    expect(firstSibling.querySelector(".folder-option-highlight")).toHaveClass("bg-accent");
+    expect(firstSibling).not.toHaveClass("bg-accent");
+    expect(firstSibling.querySelector(".folder-tree-connector-below")).toBeInTheDocument();
+    expect(secondSibling.querySelector(".folder-tree-connector-above")).toBeInTheDocument();
+    expect(nestedFolder.querySelector(".folder-option-row")).toHaveStyle({ paddingLeft: "48px" });
+    expect(nestedFolder.querySelector(".folder-tree-connector-above")).toHaveStyle({ left: "48px" });
   });
 
   it("shows every file that could not be added, with the reason", async () => {
