@@ -1,6 +1,5 @@
 // A "more actions" menu button. Opens a list of actions; Arrow keys move between them, Home and End jump, Escape closes and returns focus to the button, and a click outside or tabbing away closes it. Disabled actions are skipped by the keys.
 import { MoreVertical } from "lucide-react";
-import { createPortal } from "react-dom";
 import { useEffect, useId, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { cn } from "../../lib/cn";
 
@@ -136,7 +135,6 @@ export default function ActionMenu({ label, actions, className }: ActionMenuProp
         <MoreVertical aria-hidden="true" className="h-4 w-4" />
       </button>
       {open && (
-        createPortal(
           <div
             ref={menuRef}
             id={menuId}
@@ -177,9 +175,7 @@ export default function ActionMenu({ label, actions, className }: ActionMenuProp
                 {action.label}
               </button>
             ))}
-          </div>,
-          document.body,
-        )
+          </div>
       )}
     </div>
   );
