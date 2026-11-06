@@ -434,6 +434,38 @@ describe("the page layout", () => {
     expect(within(scope).getByText("4 / 9")).toBeInTheDocument();
   });
 
+  it("opens the checklist with only the selected folder and its subfolders checked", async () => {
+    const inUi = makeIcon({ id: "home", name: "Home", slug: "home", folderId: "ui" });
+    const inArrows = makeIcon({ id: "left", name: "Left", slug: "left", folderId: "arrows" });
+    const uncategorized = makeIcon({ id: "star", name: "Star", slug: "star" });
+    vi.mocked(iconsApi.listIcons).mockResolvedValue({
+      icons: [inUi, inArrows, uncategorized],
+      total: 3,
+      page: 1,
+      limit: 1000,
+    });
+    setup({
+      project: makeDetail({ id: "p1", prefix: "fth", purpose: "font", iconCount: 3 }),
+      folderList: {
+        folders: [
+          makeFolder({ id: "ui", name: "UI", iconCount: 1 }),
+          makeFolder({ id: "arrows", name: "Arrows", parentId: "ui", iconCount: 1 }),
+        ],
+        uncategorizedCount: 1,
+      },
+    });
+
+    await userEvent.click(screen.getByRole("radio", { name: /Selected folder/i }));
+    await userEvent.selectOptions(screen.getByLabelText("Folder"), "ui");
+    await userEvent.click(screen.getByRole("button", { name: /Review \/ Edit Checklist/i }));
+
+    const review = screen.getByRole("dialog", { name: "Choose icons for the font" });
+    await within(review).findByRole("button", { name: "Build font (2 icons)" });
+    expect(within(review).getByRole("checkbox", { name: /Home/ })).toBeChecked();
+    expect(within(review).getByRole("checkbox", { name: /Left/ })).toBeChecked();
+    expect(within(review).getByRole("checkbox", { name: /Star/ })).not.toBeChecked();
+  });
+
   it("has three columns like Icon Vault, with the font metrics always visible", () => {
     setup();
     const css = screen.getByRole("region", { name: "2. Font & CSS settings" });

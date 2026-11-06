@@ -596,7 +596,10 @@ export default function FontTab() {
         mode="font"
         projectId={project.id}
         folders={folderList.folders}
-        initialIds={scopeKind === "selected" ? chosen : null}
+        initialIds={
+          scopeKind === "selected" ? chosen : scopeKind === "folder" ? [] : null
+        }
+        initialFolderId={scopeKind === "folder" ? folderChoice : undefined}
         onClose={() => setChoosing(false)}
         onConfirm={(iconIds) => {
           setChosen(iconIds);

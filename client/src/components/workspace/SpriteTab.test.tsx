@@ -320,6 +320,33 @@ describe("the page layout and options", () => {
     expect(within(scope).getByText("4 / 9")).toBeInTheDocument();
   });
 
+  it("opens the checklist with only the selected folder and its subfolders checked", async () => {
+    const inUi = { ...icon("home"), folderId: "ui" };
+    const inArrows = { ...icon("left"), folderId: "arrows" };
+    const uncategorized = icon("star");
+    listIcons.mockResolvedValue(reply([inUi, inArrows, uncategorized]));
+    setup({
+      project: makeDetail({ id: "p1", prefix: "fth", iconCount: 3 }),
+      folderList: {
+        folders: [
+          makeFolder({ id: "ui", name: "UI", iconCount: 1 }),
+          makeFolder({ id: "arrows", name: "Arrows", parentId: "ui", iconCount: 1 }),
+        ],
+        uncategorizedCount: 1,
+      },
+    });
+
+    await userEvent.click(screen.getByRole("radio", { name: /Selected folder/i }));
+    await userEvent.selectOptions(screen.getByLabelText("Folder"), "ui");
+    await userEvent.click(screen.getByRole("button", { name: /Review \/ Edit Checklist/i }));
+
+    const review = screen.getByRole("dialog", { name: "Choose icons for the sprite" });
+    await within(review).findByRole("button", { name: "Build sprite (2 icons)" });
+    expect(within(review).getByRole("checkbox", { name: /home/ })).toBeChecked();
+    expect(within(review).getByRole("checkbox", { name: /left/ })).toBeChecked();
+    expect(within(review).getByRole("checkbox", { name: /star/ })).not.toBeChecked();
+  });
+
   it("opens the checklist when Selected icons is picked with nothing chosen yet", async () => {
     setup();
     await userEvent.click(screen.getByRole("radio", { name: "Selected icons (0)" }));
