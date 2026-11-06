@@ -10,6 +10,7 @@ export type WorkspaceContextValue = {
   project: ProjectDetail;
   folderList: FolderList;
   selectedFolder: FolderSelection;
+  selectionOrigin?: FolderSelection | null;
   selectFolder: (selection: FolderSelection) => void;
   setSelectionOrigin?: (selection: FolderSelection | null) => void;
   // Reload the project (counts, name) and/or the folders after a change.

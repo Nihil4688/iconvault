@@ -307,6 +307,25 @@ describe("icon selection across tabs", () => {
     expect(screen.getByRole("checkbox", { name: "Select Alpha" })).not.toBeChecked();
   });
 
+  it("disables selection in All Icons while keeping a folder-origin selection", async () => {
+    getProject.mockResolvedValue(makeDetail({ id: "p1", name: "Feather", purpose: "sprite" }));
+    renderPage("/projects/p1?folder=ui");
+    await screen.findByRole("button", { name: "Open Alpha" });
+    await userEvent.click(screen.getByRole("checkbox", { name: "Select Alpha" }));
+
+    await userEvent.click(screen.getByRole("button", { name: /^All Icons/ }));
+
+    const selectAll = screen.getByRole("checkbox", { name: /Select all 3 shown/i });
+    const alpha = screen.getByRole("checkbox", { name: "Select Alpha" });
+    expect(screen.getByText("1 icon selected")).toBeInTheDocument();
+    expect(selectAll).toBeDisabled();
+    expect(alpha).toBeDisabled();
+    expect(alpha).not.toBeChecked();
+
+    await userEvent.click(screen.getByRole("button", { name: /^UI/ }));
+    expect(screen.getByRole("checkbox", { name: "Select Alpha" })).toBeChecked();
+  });
+
   it("keeps a selection when switching between folders", async () => {
     getProject.mockResolvedValue(makeDetail({ id: "p1", name: "Feather", purpose: "sprite" }));
     renderPage("/projects/p1?folder=ui");

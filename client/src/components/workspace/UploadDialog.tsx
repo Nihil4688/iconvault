@@ -5,7 +5,6 @@ import { importFont } from "../../api/fonts";
 import { pasteIcon, uploadIcons } from "../../api/icons";
 import type { DuplicateStrategy, FolderWithCount, FontImportPreview, FontImportResult, PasteResult, UploadSummary } from "../../api/types";
 import { cn } from "../../lib/cn";
-import { buildFolderTree, flattenFolderTree } from "../../lib/folderTree";
 import { formatBytes, pluralize } from "../../lib/format";
 import { metropToFiles } from "../../lib/metrop";
 import { readFileText } from "../../lib/readFile";
@@ -17,6 +16,7 @@ import DialogFooter from "../ui/DialogFooter";
 import { TextAreaField, TextField, SelectField } from "../ui/Fields";
 import Tabs from "../ui/Tabs";
 import { CopyFromProjectForm } from "./CopyFromProjectDialog";
+import FolderDropdownSelect from "./FolderDropdownSelect";
 
 type UploadDialogProps = {
   open: boolean;
@@ -61,8 +61,6 @@ function UploadForm({ projectId, prefix, folders, defaultFolderId, onClose, onUp
   const [summary, setSummary] = useState<UploadSummary | null>(null);
   const [dragging, setDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const folderOptions = flattenFolderTree(buildFolderTree(folders));
-
   function addFiles(chosen: File[]) {
     const checked = checkFiles([...files, ...chosen]);
     setFiles(checked.accepted);
@@ -248,14 +246,11 @@ function UploadForm({ projectId, prefix, folders, defaultFolderId, onClose, onUp
 
   const options = (
     <div className="mt-4 grid gap-3 sm:grid-cols-2">
-      <SelectField label="Folder" value={folderId} onChange={(event) => setFolderId(event.target.value)} hint={tab === "files" ? "A ZIP's folders are created inside it." : undefined}>
-        <option value="">Uncategorized (Project Root)</option>
-        {folderOptions.map((folder) => (
-          <option key={folder.id} value={folder.id}>
-            {`${"  ".repeat(folder.depth)}${folder.name}`}
-          </option>
-        ))}
-      </SelectField>
+      <div>
+        <label htmlFor="upload-folder" className="mb-1.5 block text-sm font-medium text-foreground">Folder</label>
+        <FolderDropdownSelect id="upload-folder" value={folderId} folders={folders} onChange={setFolderId} />
+        {tab === "files" && <p className="mt-1 text-xs text-muted-foreground">A ZIP's folders are created inside it.</p>}
+      </div>
       <SelectField label="If an Icon with That Name Exists" value={strategy} onChange={(event) => setStrategy(event.target.value as DuplicateStrategy)}>
         <option value="rename">Keep Both (Add a Number)</option>
         <option value="replace">Replace It (the Old One Is Kept as a Version)</option>

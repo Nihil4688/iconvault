@@ -72,7 +72,9 @@ function setup(over: Partial<WorkspaceContextValue> = {}) {
     if (!controller) throw new Error("StableWrapper is not mounted");
     controller.setBase({ ...initialBase, ...next });
   };
-  return { ...fns, rerender };
+  const selection = controllerRef.current?.selection;
+  if (!selection) throw new Error("StableWrapper selection is not available");
+  return { ...fns, rerender, selection };
 }
 
 const three = () => [makeIcon({ id: "a", name: "Alpha" }), makeIcon({ id: "b", name: "Beta" }), makeIcon({ id: "c", name: "Gamma", hasStroke: true })];
@@ -132,8 +134,40 @@ describe("showing icons", () => {
     expect(bluePreview).toHaveStyle({ backgroundColor: "#3b82f6" });
     expect(within(colorGroup).getByRole("button", { name: "Blue" })).not.toHaveClass("ring-2");
 
-    fireEvent.change(within(colorGroup).getByLabelText("More Colours"), { target: { value: "#f65a8a" } });
+    fireEvent.change(within(colorGroup).getByLabelText("Custom Color"), { target: { value: "#f65a8a" } });
     expect(within(colorGroup).getByRole("img", { name: "Selected icon color: #f65a8a" })).toHaveStyle({ backgroundColor: "#f65a8a" });
+  });
+
+  it("resets size and color for only the selected folder", async () => {
+    const otherFolderAppearance = { size: 64, color: "#123456" };
+    window.localStorage.setItem("project:p1:folder:assets:iconAppearance", JSON.stringify(otherFolderAppearance));
+    setup({
+      folderList: { folders: [makeFolder({ id: "ui", name: "UI" }), makeFolder({ id: "assets", name: "Assets" })], uncategorizedCount: 0 },
+      selectedFolder: "ui",
+    });
+    await screen.findByRole("button", { name: "Open Alpha" });
+
+    const reset = screen.getByRole("button", { name: "↺ Reset" });
+    const colorGroup = screen.getByRole("group", { name: "Icon Colour" });
+    const originalColor = within(colorGroup).getByRole("button", { name: "Original Color" });
+    expect(reset).toHaveAttribute("title", "Reset size and color for this folder");
+    expect(reset).toBeDisabled();
+    expect(originalColor).toHaveAttribute("aria-pressed", "true");
+    expect(originalColor).toHaveClass("bg-muted");
+    expect(originalColor.querySelector("svg")).toBeInTheDocument();
+    expect(within(colorGroup).getByLabelText("Custom Color")).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "Smaller Icons" }));
+    await userEvent.click(within(colorGroup).getByRole("button", { name: "Blue" }));
+    expect(reset).toBeEnabled();
+
+    await userEvent.click(reset);
+
+    expect(screen.getByText("40px")).toBeInTheDocument();
+    expect(originalColor).toHaveAttribute("aria-pressed", "true");
+    expect(reset).toBeDisabled();
+    expect(JSON.parse(window.localStorage.getItem("project:p1:folder:ui:iconAppearance") ?? "null")).toEqual({ size: 40, color: "" });
+    expect(JSON.parse(window.localStorage.getItem("project:p1:folder:assets:iconAppearance") ?? "null")).toEqual(otherFolderAppearance);
   });
 
   it("places the background control opposite Select all with even vertical spacing", async () => {
@@ -416,6 +450,21 @@ describe("selection", () => {
     expect(screen.queryByText("3 icons selected")).not.toBeInTheDocument();
   });
 
+  it("disables selection in All Icons while a folder selection is active", async () => {
+    const { selection } = setup({ selectedFolder: "all", selectionOrigin: "ui" });
+    act(() => selection.set(["a"]));
+
+    await screen.findByRole("button", { name: "Open Alpha" });
+    expect(screen.getByRole("checkbox", { name: /select all 3 shown/i })).toBeDisabled();
+    expect(screen.getByRole("checkbox", { name: "Select Alpha" })).toBeDisabled();
+    expect(screen.getByRole("checkbox", { name: "Select Alpha" })).not.toBeChecked();
+
+    await userEvent.click(screen.getByRole("button", { name: "List view" }));
+    expect(await screen.findByRole("table", { name: "Icons" })).toBeInTheDocument();
+    expect(screen.getByRole("checkbox", { name: "Select Alpha" })).toBeDisabled();
+    expect(screen.getByRole("checkbox", { name: "Select Alpha" })).not.toBeChecked();
+  });
+
   it("hides Move and Tag in All Icons but keeps them available in a folder", async () => {
     const { rerender } = setup({ selectedFolder: "all" });
     await screen.findByRole("button", { name: "Open Alpha" });
@@ -530,8 +579,8 @@ describe("selection", () => {
 });
 
 describe("bulk actions", () => {
-  async function selectTwo() {
-    const ctx = setup();
+  async function selectTwo(selectedFolder = "all") {
+    const ctx = setup({ selectedFolder });
     await screen.findByRole("button", { name: "Open Alpha" });
     await userEvent.click(screen.getByRole("checkbox", { name: "Select Alpha" }));
     await userEvent.click(screen.getByRole("checkbox", { name: "Select Beta" }));
@@ -566,14 +615,16 @@ describe("bulk actions", () => {
 
   it("moves the selection to a folder", async () => {
     vi.mocked(iconsApi.batchMoveIcons).mockResolvedValue({ requested: 2, matched: 2 });
-    const ctx = await selectTwo();
+    listIcons.mockResolvedValue(reply(three().map((icon) => ({ ...icon, folderId: "ui" }))));
+    const ctx = await selectTwo("ui");
     await userEvent.click(screen.getByRole("button", { name: "Move" }));
     const dialog = screen.getByRole("dialog", { name: "Move 2 icons" });
-    await userEvent.selectOptions(within(dialog).getByLabelText("Move into"), "ui");
+    await userEvent.click(within(dialog).getByLabelText("Move Into"));
+    await userEvent.click(within(screen.getByRole("menu", { name: "Folder" })).getByRole("menuitemradio", { name: "UI" }));
     await userEvent.click(within(dialog).getByRole("button", { name: "Move" }));
     expect(iconsApi.batchMoveIcons).toHaveBeenCalledWith("p1", ["a", "b"], "ui");
     expect(await screen.findByText("Moved 2 icons.")).toBeInTheDocument();
-    expectSelectionCleared();
+    expect(screen.queryByRole("region", { name: "Selected icons" })).not.toBeInTheDocument();
     refreshed(ctx);
   });
 

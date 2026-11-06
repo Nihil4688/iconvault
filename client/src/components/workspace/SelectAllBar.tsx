@@ -5,10 +5,11 @@ type SelectAllBarProps = {
   // How many icons are shown and how many of them are selected.
   loaded: number;
   selected: number;
+  disabled?: boolean;
   onSelectAll: (checked: boolean) => void;
 };
 
-export default function SelectAllBar({ loaded, selected, onSelectAll }: SelectAllBarProps) {
+export default function SelectAllBar({ loaded, selected, disabled = false, onSelectAll }: SelectAllBarProps) {
   const ref = useRef<HTMLInputElement | null>(null);
   const all = loaded > 0 && selected === loaded;
   const some = selected > 0 && selected < loaded;
@@ -19,8 +20,8 @@ export default function SelectAllBar({ loaded, selected, onSelectAll }: SelectAl
   }, [some]);
 
   return (
-    <label className="inline-flex cursor-pointer items-center gap-2 text-sm text-muted-foreground">
-      <input ref={ref} type="checkbox" checked={all} disabled={loaded === 0} onChange={(event) => onSelectAll(event.target.checked)} className="h-4 w-4 accent-[hsl(var(--primary))]" />
+    <label className={`inline-flex items-center gap-2 text-sm text-muted-foreground ${disabled ? "\!cursor-not-allowed opacity-70" : "cursor-pointer"}`}>
+      <input ref={ref} type="checkbox" checked={all} disabled={disabled || loaded === 0} onChange={(event) => onSelectAll(event.target.checked)} className={`h-4 w-4 accent-primary ${disabled ? "\!cursor-not-allowed opacity-50" : "cursor-pointer"}`} />
       Select All {loaded} Shown
     </label>
   );

@@ -108,10 +108,10 @@ describe("details", () => {
     setup();
     await ready();
     expect(screen.getByLabelText("Name")).toHaveValue("Arrow Left");
-    expect(screen.getByLabelText("Folder")).toHaveValue("ui");
+    expect(screen.getByLabelText("Folder")).toHaveAttribute("aria-label", "Folder: UI");
     expect(screen.getByLabelText("Tags")).toHaveValue("nav");
-    expect(screen.getByLabelText("Font codepoint")).toHaveValue("E001");
-    expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
+    expect(screen.getByLabelText("Font Codepoint")).toHaveValue("E001");
+    expect(screen.getByRole("button", { name: "Save Changes" })).toBeDisabled();
   });
 
   it("saves only what changed and refreshes", async () => {
@@ -123,8 +123,9 @@ describe("details", () => {
     await userEvent.type(name, "  Arrow Back ");
     await userEvent.clear(screen.getByLabelText("Tags"));
     await userEvent.type(screen.getByLabelText("Tags"), "Nav, Left, nav");
-    await userEvent.selectOptions(screen.getByLabelText("Folder"), "");
-    await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await userEvent.click(screen.getByRole("button", { name: "Folder: UI" }));
+    await userEvent.click(within(screen.getByRole("menu", { name: "Folder" })).getByRole("menuitemradio", { name: "Uncategorized (Project Root)" }));
+    await userEvent.click(screen.getByRole("button", { name: "Save Changes" }));
     expect(iconsApi.updateIcon).toHaveBeenCalledWith("ic1", { name: "Arrow Back", folderId: null, tags: ["nav", "left"] });
     expect(await screen.findByText("Saved.")).toBeInTheDocument();
     expect(onChanged).toHaveBeenCalled();

@@ -1,13 +1,13 @@
 // Dialogs for bulk actions that need a choice: where to move the selected icons, and which tags to add, remove or set.
 import { useState, type FormEvent } from "react";
 import type { FolderWithCount } from "../../api/types";
-import { buildFolderTree, flattenFolderTree } from "../../lib/folderTree";
 import { pluralize } from "../../lib/format";
 import { parseTags } from "../../lib/upload";
 import { Button } from "../ui/Button";
 import Dialog from "../ui/Dialog";
 import DialogFooter from "../ui/DialogFooter";
 import { SelectField, TextField } from "../ui/Fields";
+import FolderDropdownSelect from "./FolderDropdownSelect";
 
 type MoveIconsDialogProps = {
   open: boolean;
@@ -29,7 +29,6 @@ function MoveForm({ folders, onClose, onSubmit }: Pick<MoveIconsDialogProps, "fo
   const [folderId, setFolderId] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
-  const options = flattenFolderTree(buildFolderTree(folders));
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -47,14 +46,7 @@ function MoveForm({ folders, onClose, onSubmit }: Pick<MoveIconsDialogProps, "fo
 
   return (
     <form onSubmit={submit} className="space-y-3">
-      <SelectField label="Move Into" value={folderId} onChange={(event) => setFolderId(event.target.value)} error={error ?? undefined}>
-        <option value="">Uncategorized (Project Root)</option>
-        {options.map((option) => (
-          <option key={option.id} value={option.id}>
-            {`${"  ".repeat(option.depth)}${option.name}`}
-          </option>
-        ))}
-      </SelectField>
+      <FolderDropdownSelect label="Move Into" value={folderId} folders={folders} onChange={setFolderId} error={error ?? undefined} />
       <DialogFooter>
         <Button variant="secondary" onClick={onClose} disabled={busy}>
           Cancel
