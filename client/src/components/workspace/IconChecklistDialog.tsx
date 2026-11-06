@@ -3,7 +3,6 @@ import {
   ChevronDown,
   ChevronRight,
   FolderOpen,
-  Layers,
   Search,
   Sparkles,
 } from "lucide-react";
