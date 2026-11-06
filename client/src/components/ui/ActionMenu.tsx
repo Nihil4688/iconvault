@@ -136,7 +136,6 @@ export default function ActionMenu({ label, actions, className }: ActionMenuProp
         <MoreVertical aria-hidden="true" className="h-4 w-4" />
       </button>
       {open && (
-        createPortal(
           <div
             ref={menuRef}
             id={menuId}
@@ -177,9 +176,7 @@ export default function ActionMenu({ label, actions, className }: ActionMenuProp
                 {action.label}
               </button>
             ))}
-          </div>,
-          document.body,
-        )
+          </div>
       )}
     </div>
   );
