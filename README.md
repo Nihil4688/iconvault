@@ -162,7 +162,7 @@ Admins are not stored: a user is an admin when their email is in `ADMIN_EMAILS`.
 
 ## Command line
 
-`cli/` holds `iconvault`, a Node (18+) command-line tool that uses the API with a personal token:
+`cli/` holds `iconvault`, a dependency-free Node (18+) tool that uses the API with a personal token:
 
 ```bash
 node cli/bin/iconvault.mjs login --url http://localhost:5000   # paste a token from the web app (API tokens)
@@ -173,7 +173,7 @@ node cli/bin/iconvault.mjs export "Feather" --out feather.zip
 node cli/bin/iconvault.mjs import feather.zip
 ```
 
-`iconvault help` lists everything. For CI, set `ICONVAULT_URL` and `ICONVAULT_TOKEN` instead of running `login`. `npm link` inside `cli/` installs `iconvault` and `iconvault-mcp`. See the [MCP server setup guide](./cli/README.md) for VS Code, Codex, and Antigravity configuration. Exit code 0 is success, 1 an error, 2 some files could not be added.
+`iconvault help` lists everything. For CI, set `ICONVAULT_URL` and `ICONVAULT_TOKEN` instead of running `login`. `npm link` inside `cli/` installs the `iconvault` command. Exit code 0 is success, 1 an error, 2 some files could not be added.
 
 ## Maintenance scripts
 

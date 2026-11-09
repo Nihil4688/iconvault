@@ -1,8 +1,0 @@
-.gitignore
-.vscode/**
-.vscode-test/**
-node_modules/**
-test/**
-package-lock.json
-npm-debug.log
-dist/*.cjs

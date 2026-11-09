@@ -1,28 +1,11 @@
 {
   "name": "iconvault-cli",
   "version": "1.0.0",
-  "description": "IconVault command line, stdio MCP server, and remote HTTP MCP endpoint. Uses personal API tokens for project and icon operations.",
+  "description": "Command line for IconVault: list projects, upload icons, build sprites, export and import. Signs in with a personal API token.",
   "type": "module",
-  "bin": {
-    "iconvault": "./bin/iconvault.mjs",
-    "iconvault-mcp": "./bin/iconvault-mcp.mjs"
-  },
-  "engines": {
-    "node": ">=18"
-  },
-  "scripts": {
-    "test": "node --test test/*.test.mjs",
-    "mcp": "node bin/iconvault-mcp.mjs",
-    "build:standalone:win-x64": "esbuild bin/iconvault-standalone.mjs --bundle --platform=node --format=cjs --target=node24 --outfile=dist/iconvault-standalone.cjs && pkg dist/iconvault-standalone.cjs --target node24-win-x64 --output dist/iconvault-mcp-win-x64.exe"
-  },
+  "bin": { "iconvault": "./bin/iconvault.mjs" },
+  "engines": { "node": ">=18" },
+  "scripts": { "test": "node --test test/*.test.mjs" },
   "license": "UNLICENSED",
-  "private": true,
-  "devDependencies": {
-    "@yao-pkg/pkg": "^6.25.0",
-    "esbuild": "^0.28.2"
-  },
-  "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.32.2",
-    "zod": "^4.6.7"
-  }
+  "private": true
 }
