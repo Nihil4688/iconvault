@@ -133,7 +133,9 @@ describe("signing in", () => {
     assert.equal(r.out.includes(TOKEN) || r.err.includes(TOKEN), false);
     const file = path.join(dir, "config.json");
     assert.deepEqual(JSON.parse(await readFile(file, "utf8")), { url: base, token: TOKEN });
-    assert.equal((await stat(file)).mode & 0o077, 0, "the file must not be readable by others");
+    if (process.platform !== "win32") {
+      assert.equal((await stat(file)).mode & 0o077, 0, "the file must not be readable by others");
+    }
     // The saved settings are used afterwards.
     const next = await run(["whoami"]);
     assert.equal(next.code, 0, next.err);
