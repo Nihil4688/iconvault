@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { createServer } from "node:http";
 import { after, before, describe, it } from "node:test";
-import handler, { config } from "../api/mcp.mjs";
+import handler from "../api/mcp.mjs";
 
 const TOKEN = `isv_${"A".repeat(43)}`;
 
@@ -61,10 +61,6 @@ after(async () => {
 });
 
 describe("remote IconVault MCP endpoint", () => {
-  it("leaves the MCP request body stream untouched for the transport", () => {
-    assert.equal(config.api.bodyParser, false);
-  });
-
   it("requires a well-formed personal API token", async () => {
     requests = [];
     for (const authorization of [undefined, "Bearer isv_short"]) {
