@@ -12,7 +12,7 @@ function sendJson(res, status, body) {
 
 export const config = {
   api: {
-    bodyParser: false,
+    bodyParser: { sizeLimit: "2mb" },
   },
 };
 
@@ -53,7 +53,7 @@ export default async function handler(req, res) {
 
   try {
     await server.connect(transport);
-    await transport.handleRequest(req, res);
+    await transport.handleRequest(req, res, req.body);
   } catch (error) {
     console.error(
       "[iconvault-mcp] Failed to handle an MCP request.",
