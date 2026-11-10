@@ -57,7 +57,7 @@ describe("UploadDialog: files", () => {
 
     expect(screen.queryByRole("tab", { name: "Import Icon Font" })).not.toBeInTheDocument();
     expect(screen.queryByRole("tab", { name: "Import SVG Sprite" })).not.toBeInTheDocument();
-    expect(await screen.findByLabelText("Copy from")).toBeInTheDocument();
+    expect(await screen.findByRole("combobox", { name: "Copy From" })).toBeInTheDocument();
     expect(await screen.findByRole("checkbox", { name: "Arrow" })).toBeInTheDocument();
     await userEvent.click(screen.getByRole("tab", { name: "Upload files" }));
     expect((screen.getByTestId("file-input") as HTMLInputElement).accept).toContain(".ttf");
@@ -172,8 +172,17 @@ describe("UploadDialog: files", () => {
     expect(subfolder.querySelector(".folder-tree-connector-elbow")).toBeInTheDocument();
     await userEvent.click(within(folderMenu).getByRole("menuitemradio", { name: "Arrows" }));
     const strategyPicker = screen.getByRole("button", { name: /If an Icon with That Name Exists:/i });
+    expect(strategyPicker.querySelector(".lucide-chevron-down")).toBeInTheDocument();
+    let strategyRect = { x: 180, y: 500, top: 500, right: 620, bottom: 536, left: 180, width: 440, height: 36, toJSON: () => ({}) };
+    vi.spyOn(strategyPicker, "getBoundingClientRect").mockImplementation(() => strategyRect);
     await userEvent.click(strategyPicker);
     const strategyMenu = screen.getByRole("menu", { name: "If an Icon with That Name Exists" });
+    const dialog = screen.getByRole("dialog", { name: /Add Icons/i });
+    expect(strategyMenu.parentElement).toBe(dialog);
+    expect(strategyMenu).toHaveStyle({ position: "fixed", top: "540px", left: "180px", width: "440px", maxHeight: "220px" });
+    strategyRect = { ...strategyRect, y: 320, top: 320, bottom: 356 };
+    fireEvent.scroll(dialog.querySelector('[data-slot="dialog-content"]') as HTMLElement);
+    expect(strategyMenu).toHaveStyle({ top: "360px" });
     const selectedStrategy = within(strategyMenu).getByRole("menuitemradio", { name: "Keep Both (Add a Number)" });
     expect(selectedStrategy).toHaveAttribute("aria-checked", "true");
     expect(selectedStrategy).toHaveClass("bg-accent");
@@ -343,9 +352,12 @@ describe("CopyFromProjectDialog", () => {
 
   it("offers the other projects, saying whose they are, and loads the first one's icons", async () => {
     setup();
-    const select = await screen.findByLabelText("Copy from");
-    expect(within(select).getAllByRole("option").map((o) => o.textContent)).toEqual(["Feather (yours)", "Shared (by Grace)"]);
-    expect(await screen.findByRole("checkbox", { name: "Arrow" })).toBeInTheDocument();
+    const sourcePicker = await screen.findByRole("button", { name: "Copy From: Feather (yours) (0 icons)" });
+    await userEvent.click(sourcePicker);
+    const sourceMenu = screen.getByRole("menu", { name: "Copy From" });
+    expect(within(sourceMenu).getAllByRole("menuitemradio").map((option) => option.textContent?.trim())).toEqual(["Feather (yours) (0 icons)", "Shared (by Grace) (0 icons)"]);
+    expect(await screen.findByRole("checkbox", { name: "Arrow" })).not.toHaveClass("sr-only");
+    expect(screen.queryByRole("button", { name: /Grid view|List view/i })).not.toBeInTheDocument();
     expect(iconsApi.listIcons).toHaveBeenCalledWith("s1", { sort: "name", limit: 200 });
   });
 
@@ -354,8 +366,10 @@ describe("CopyFromProjectDialog", () => {
     const props = setup();
     await userEvent.click(await screen.findByRole("checkbox", { name: "Arrow" }));
     expect(screen.getByRole("button", { name: "Copy 1 icon" })).toBeEnabled();
-    await userEvent.selectOptions(screen.getByLabelText("Put them in"), "ar");
-    await userEvent.selectOptions(screen.getByLabelText("If an icon with that name exists"), "replace");
+    await userEvent.click(screen.getByRole("button", { name: "Folder: Uncategorized (Project Root)" }));
+    await userEvent.click(within(screen.getByRole("menu", { name: "Folder" })).getByRole("menuitemradio", { name: "Arrows" }));
+    await userEvent.click(screen.getByRole("button", { name: /If an Icon with That Name Exists:/i }));
+    await userEvent.click(within(screen.getByRole("menu", { name: "If an Icon with That Name Exists" })).getByRole("menuitemradio", { name: "Replace It (the Old One Is Kept as a Version)" }));
     await userEvent.click(screen.getByRole("button", { name: "Copy 1 icon" }));
     expect(iconsApi.copyIcons).toHaveBeenCalledWith("p1", { sourceProjectId: "s1", iconIds: ["a"], folderId: "ar", strategy: "replace" });
     await waitFor(() => expect(props.onClose).toHaveBeenCalled());
@@ -364,9 +378,18 @@ describe("CopyFromProjectDialog", () => {
 
   it("selects all and clears", async () => {
     setup();
-    await userEvent.click(await screen.findByRole("button", { name: "Select all 2" }));
+    const selectAll = await screen.findByRole("checkbox", { name: "Select all icons" });
+    expect(selectAll).not.toBeChecked();
+    expect(screen.queryByRole("button", { name: "Clear selection" })).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("checkbox", { name: "Arrow" }));
+    expect(selectAll).toHaveProperty("indeterminate", true);
+    expect(screen.getByRole("button", { name: "Clear selection" })).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Clear selection" }));
+    expect(selectAll).not.toHaveProperty("indeterminate", true);
+    await userEvent.click(selectAll);
     expect(screen.getByText("2 icons selected")).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("button", { name: "Clear" }));
+    expect(selectAll).toBeChecked();
+    await userEvent.click(screen.getByRole("button", { name: "Clear selection" }));
     expect(screen.getByText("0 icons selected")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Copy icons" })).toBeDisabled();
   });
@@ -374,7 +397,8 @@ describe("CopyFromProjectDialog", () => {
   it("forgets ticks when another project is chosen", async () => {
     setup();
     await userEvent.click(await screen.findByRole("checkbox", { name: "Arrow" }));
-    await userEvent.selectOptions(screen.getByLabelText("Copy from"), "s2");
+    await userEvent.click(screen.getByRole("button", { name: "Copy From: Feather (yours) (0 icons)" }));
+    await userEvent.click(within(screen.getByRole("menu", { name: "Copy From" })).getByRole("menuitemradio", { name: "Shared (by Grace)" }));
     expect(await screen.findByRole("checkbox", { name: "Cloud" })).not.toBeChecked();
     expect(screen.getByText("0 icons selected")).toBeInTheDocument();
   });
@@ -382,7 +406,7 @@ describe("CopyFromProjectDialog", () => {
   it("searches the source project's icons", async () => {
     setup();
     await screen.findByRole("checkbox", { name: "Arrow" });
-    await userEvent.type(screen.getByLabelText("Search icons"), "bel");
+    await userEvent.type(screen.getByRole("searchbox", { name: "Search Icons" }), "bel");
     await waitFor(() => expect(iconsApi.listIcons).toHaveBeenLastCalledWith("s1", { sort: "name", limit: 200, search: "bel" }));
   });
 

@@ -9,9 +9,11 @@ type TabsProps<T extends string> = {
   tabs: Array<{ value: T; label: string }>;
   // Renders the panel for the current tab.
   children: ReactNode;
+  // When set, the tab list stays put and only the panel scrolls. Needs a parent that gives the tabs a bounded height (e.g. Dialog with contentLayout="fit").
+  fill?: boolean;
 };
 
-export default function Tabs<T extends string>({ label, value, onChange, tabs, children }: TabsProps<T>) {
+export default function Tabs<T extends string>({ label, value, onChange, tabs, children, fill = false }: TabsProps<T>) {
   const baseId = useId();
   const refs = useRef(new Map<T, HTMLButtonElement>());
 
@@ -30,8 +32,8 @@ export default function Tabs<T extends string>({ label, value, onChange, tabs, c
   }
 
   return (
-    <div>
-      <div role="tablist" aria-label={label} onKeyDown={onKeyDown} className="flex flex-wrap gap-1 border-b border-border">
+    <div className={cn(fill && "flex min-h-0 flex-1 flex-col")}>
+      <div role="tablist" aria-label={label} onKeyDown={onKeyDown} className={cn("flex flex-wrap gap-1 border-b border-border", fill && "shrink-0 mx-4")}>
         {tabs.map((tab) => (
           <button
             key={tab.value}
@@ -47,7 +49,7 @@ export default function Tabs<T extends string>({ label, value, onChange, tabs, c
             tabIndex={value === tab.value ? 0 : -1}
             onClick={() => onChange(tab.value)}
             className={cn(
-              "-mb-px border-b-2 px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring",
+              "-mb-px border-b-2 px-3 pb-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring",
               value === tab.value ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground",
             )}
           >
@@ -55,7 +57,7 @@ export default function Tabs<T extends string>({ label, value, onChange, tabs, c
           </button>
         ))}
       </div>
-      <div role="tabpanel" id={`${baseId}-panel`} aria-labelledby={`${baseId}-tab-${value}`} className="pt-4">
+      <div role="tabpanel" id={`${baseId}-panel`} aria-labelledby={`${baseId}-tab-${value}`} className={cn("pt-4", fill && "min-h-0 flex-1 px-4 pb-4 overflow-y-auto scrollbar-thin")}>
         {children}
       </div>
     </div>

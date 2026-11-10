@@ -98,6 +98,7 @@ export default function IconToolbar({ search, onSearch, sort, onSort, view, onVi
             options={(Object.keys(SORT_LABELS) as IconSort[]).map((value) => ({ value, label: SORT_LABELS[value] }))}
             onChange={(value) => onSort(value as IconSort)}
             title={`Sort: ${SORT_LABELS[sort]}`}
+            showChevron={false}
             triggerClassName="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-input bg-background text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           >
             <ArrowUpDown aria-hidden="true" className="h-4 w-4" />

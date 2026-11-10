@@ -8,8 +8,29 @@ import { Button, IconButton } from "./Button";
 import ConfirmDialog from "./ConfirmDialog";
 import Dialog from "./Dialog";
 import DialogFooter from "./DialogFooter";
+import DropdownSelect from "./DropdownSelect";
 import SvgPreview from "./SvgPreview";
 import { RadioCardGroup } from "./RadioCardGroup";
+
+describe("DropdownSelect", () => {
+  const props = {
+    label: "Status",
+    value: "active",
+    options: [{ value: "active", label: "Active" }],
+    onChange: vi.fn(),
+    triggerClassName: "flex",
+  };
+
+  it("shows a chevron by default", () => {
+    render(<DropdownSelect {...props}>Active</DropdownSelect>);
+    expect(screen.getByRole("button", { name: "Status: Active" }).querySelector("svg")).toBeInTheDocument();
+  });
+
+  it("can hide the chevron for icon-only triggers", () => {
+    render(<DropdownSelect {...props} showChevron={false}>Sort</DropdownSelect>);
+    expect(screen.getByRole("button", { name: "Status: Active" }).querySelector("svg")).not.toBeInTheDocument();
+  });
+});
 
 describe("Button", () => {
   it("shows a spinner and refuses clicks while loading", async () => {

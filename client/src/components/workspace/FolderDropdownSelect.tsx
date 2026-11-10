@@ -244,7 +244,7 @@ export default function FolderDropdownSelect({ value, folders, onChange, id, lab
                 }}
                 className={cn(
                   "group/option mt-1 flex w-full items-center rounded-lg text-left text-sm transition-colors focus-visible:outline-none",
-                  depth > 0 ? "p-0" : "p-2",
+                  depth > 0 ? "p-0" : "p-1.5",
                   depth === 0 && "hover:bg-accent focus-visible:bg-accent",
                   selected && depth === 0 && "bg-accent text-accent-foreground",
                 )}

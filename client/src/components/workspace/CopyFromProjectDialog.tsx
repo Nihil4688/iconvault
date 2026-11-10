@@ -1,18 +1,19 @@
 // Copy icons into this project from another project the user can see (their own or public ones): pick the project, tick the icons, choose a folder here and what to do when a name is taken.
-import { useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
+import { Layers, Search } from "lucide-react";
 import { copyIcons, listIcons } from "../../api/icons";
 import { listProjects } from "../../api/projects";
 import type { DuplicateStrategy, FolderWithCount, UploadSummary } from "../../api/types";
 import { useDebounced } from "../../hooks/useDebounced";
 import { useResource } from "../../hooks/useResource";
 import { cn } from "../../lib/cn";
-import { buildFolderTree, flattenFolderTree } from "../../lib/folderTree";
 import { pluralize } from "../../lib/format";
 import { Button } from "../ui/Button";
 import Dialog from "../ui/Dialog";
 import DialogFooter from "../ui/DialogFooter";
-import { SelectField } from "../ui/Fields";
 import SvgPreview from "../ui/SvgPreview";
+import DropdownSelect from "../ui/DropdownSelect";
+import FolderDropdownSelect from "./FolderDropdownSelect";
 
 export type CopyFromProjectDialogProps = {
   open: boolean;
@@ -22,6 +23,12 @@ export type CopyFromProjectDialogProps = {
   onClose: () => void;
   onCopied: (summary: UploadSummary) => void;
 };
+
+const duplicateOptions: { value: DuplicateStrategy; label: string }[] = [
+  { value: "rename", label: "Keep Both (Add a Number)" },
+  { value: "replace", label: "Replace It (the Old One Is Kept as a Version)" },
+  { value: "skip", label: "Skip" },
+];
 
 export default function CopyFromProjectDialog({ open, onClose, ...rest }: CopyFromProjectDialogProps) {
   return (
@@ -42,15 +49,25 @@ export function CopyFromProjectForm({ targetProjectId, targetFolders, defaultFol
   const [strategy, setStrategy] = useState<DuplicateStrategy>("rename");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const selectAllRef = useRef<HTMLInputElement | null>(null);
 
   const sourceId = chosen || sources[0]?.id || "";
+  const sourceOptions = sources.map((project) => ({
+    value: project.id,
+    label: `${project.name} (${project.access.canEdit ? "yours" : `by ${project.owner.displayName}`}) (${pluralize(project.iconCount, "icon")})`,
+  }));
+  const selectedSource = sourceOptions.find((option) => option.value === sourceId) ?? sourceOptions[0];
   const query = useDebounced(search.trim(), 300);
   const icons = useResource(sourceId ? `copy-icons:${sourceId}:${query}` : null, () => listIcons(sourceId, { sort: "name", limit: 200, ...(query ? { search: query } : {}) }));
   const shown = icons.data?.icons ?? [];
-  const folderOptions = flattenFolderTree(buildFolderTree(targetFolders));
 
   // Ticks that belong to a project that is no longer chosen are ignored.
   const pickedHere = picked.filter((id) => shown.some((icon) => icon.id === id));
+  const allShownPicked = shown.length > 0 && shown.every((icon) => pickedHere.includes(icon.id));
+
+  useEffect(() => {
+    if (selectAllRef.current) selectAllRef.current.indeterminate = pickedHere.length > 0 && !allShownPicked;
+  }, [allShownPicked, pickedHere.length]);
 
   function toggle(id: string) {
     setPicked((current) => (current.includes(id) ? current.filter((x) => x !== id) : [...current, id]));
@@ -95,33 +112,38 @@ export function CopyFromProjectForm({ targetProjectId, targetFolders, defaultFol
   return (
     <form onSubmit={submit} className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-2">
-        <SelectField
-          label="Copy From"
-          value={sourceId}
-          onChange={(event) => {
-            setChosen(event.target.value);
-            setPicked([]);
-          }}
-        >
-          {sources.map((project) => (
-            <option key={project.id} value={project.id}>
-              {project.name} ({project.access.canEdit ? "yours" : `by ${project.owner.displayName}`})
-            </option>
-          ))}
-        </SelectField>
         <div>
-          <label htmlFor="copy-search" className="mb-1 block text-sm font-medium">
+          <label htmlFor="copy-source" className="mb-1.5 block text-sm font-medium text-foreground">
+            Copy From
+          </label>
+          <DropdownSelect
+            id="copy-source"
+            label="Copy From"
+            value={sourceId}
+            options={sourceOptions}
+            showSelectedCheck={false}
+            onChange={(value) => {
+              setChosen(value);
+              setPicked([]);
+            }}
+            portalMenu
+            triggerClassName="flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-input bg-background px-3 text-left text-sm text-foreground transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
+          >
+            <span className="min-w-0 flex-1 truncate text-left">{selectedSource.label}</span>
+          </DropdownSelect>
+        </div>
+        <div>
+          <label htmlFor="copy-search" className="mb-1.5 block text-sm font-medium text-foreground">
             Search Icons
           </label>
-          <input id="copy-search" type="search" value={search} onChange={(event) => setSearch(event.target.value)} autoComplete="off" className="h-9 w-full rounded-lg border border-input bg-background px-3 text-sm focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring" />
+          <div className="relative">
+            <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <input id="copy-search" type="search" value={search} onChange={(event) => setSearch(event.target.value)} autoComplete="off" placeholder="Search icons by name" className="h-9 w-full rounded-lg border border-input bg-background pl-9 pr-3 text-sm placeholder:text-muted-foreground focus:border-[#1555E0] focus:shadow-[0_0_0_3px_rgba(21,85,224,0.2)] focus:outline-none" />
+          </div>
         </div>
       </div>
 
-      <fieldset>
-        <legend className="mb-1 flex w-full items-center justify-between text-sm font-medium">
-          <span>Icons</span>
-          <span className="text-xs font-normal text-muted-foreground">{pluralize(pickedHere.length, "Icon")} Selected</span>
-        </legend>
+      <section aria-label="Icons">
         {icons.error ? (
           <p role="alert" className="text-sm text-destructive">
             {icons.error.message}
@@ -131,26 +153,47 @@ export function CopyFromProjectForm({ targetProjectId, targetFolders, defaultFol
             Loading icons…
           </p>
         ) : shown.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No icons found in that project.</p>
+          <div className="min-h-0 flex-1 overflow-y-auto rounded-2xl border border-dashed border-border p-10 text-center">
+            <Layers aria-hidden="true" className="mx-auto h-8 w-8 text-muted-foreground" />
+            <p className="mt-2 text-base font-semibold">
+               No icons match {search}
+            </p>
+            <p className="mx-auto mt-1 text-sm text-muted-foreground">Try a different search.</p>
+          </div>
         ) : (
           <>
-            <div className="mb-2 flex gap-2">
-              <Button size="sm" onClick={() => setPicked(shown.map((icon) => icon.id))}>
-                Select All {shown.length}
-              </Button>
-              <Button size="sm" variant="ghost" onClick={() => setPicked([])} disabled={pickedHere.length === 0}>
-                Clear
-              </Button>
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-3 h-8">
+              <div className="flex flex-wrap items-center gap-4">
+                <label className="inline-flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
+                  <input
+                    ref={selectAllRef}
+                    type="checkbox"
+                    aria-label="Select all icons"
+                    checked={allShownPicked}
+                    onChange={(event) => setPicked(event.currentTarget.checked ? shown.map((icon) => icon.id) : [])}
+                    className="h-4 w-4 accent-primary"
+                  />
+                  Select All {shown.length} shown
+                </label>
+              </div>
+              <div className="flex items-center gap-3">
+                <span className="text-sm font-medium">{pickedHere.length} selected</span>
+                {pickedHere.length > 0 && (
+                  <Button size="sm" variant="ghost" className="px-2 text-primary" onClick={() => setPicked([])}>
+                    Clear selection
+                  </Button>
+                )}
+              </div>
             </div>
-            <ul className="grid max-h-64 grid-cols-3 gap-2 overflow-y-auto sm:grid-cols-4">
+            <ul className="grid max-h-54 grid-cols-2 gap-2 p-1 overflow-y-auto sm:grid-cols-4 lg:grid-cols-6">
               {shown.map((icon) => {
                 const on = pickedHere.includes(icon.id);
                 return (
                   <li key={icon.id}>
-                    <label className={cn("flex cursor-pointer flex-col items-center gap-1 rounded-lg border p-2 text-center text-xs has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-ring", on ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border hover:bg-accent")}>
-                      <input type="checkbox" checked={on} onChange={() => toggle(icon.id)} className="sr-only" aria-label={icon.name} />
-                      <SvgPreview svg={icon.svg ?? ""} size={32} />
-                      <span className="w-full truncate">{icon.name}</span>
+                    <label className={cn("relative flex min-h-24 cursor-pointer flex-col items-center justify-center gap-2 rounded-lg border p-3 pt-7 text-center text-xs has-[:focus-visible]:outline-2 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-ring", on ? "border-primary bg-primary/5 ring-1 ring-primary" : "border-border hover:bg-accent")}>
+                      <input type="checkbox" checked={on} onChange={() => toggle(icon.id)} className="absolute left-2 top-2 h-4 w-4 accent-[hsl(var(--primary))]" aria-label={icon.name} />
+                      <SvgPreview svg={icon.svg ?? ""} size={36} />
+                      <span className="w-full truncate text-muted-foreground">{icon.name}</span>
                     </label>
                   </li>
                 );
@@ -158,23 +201,28 @@ export function CopyFromProjectForm({ targetProjectId, targetFolders, defaultFol
             </ul>
           </>
         )}
-      </fieldset>
+      </section>
 
-      <div className="grid gap-3 sm:grid-cols-2">
-        <SelectField label="Put Them In" value={folderId} onChange={(event) => setFolderId(event.target.value)}>
-          <option value="">Uncategorized (Project Root)</option>
-          {folderOptions.map((folder) => (
-            <option key={folder.id} value={folder.id}>
-              {`${"  ".repeat(folder.depth)}${folder.name}`}
-            </option>
-          ))}
-        </SelectField>
-        <SelectField label="If an Icon with That Name Exists" value={strategy} onChange={(event) => setStrategy(event.target.value as DuplicateStrategy)}>
-          <option value="rename">Keep Both (Add a Number)</option>
-          <option value="replace">Replace It</option>
-          <option value="skip">Skip</option>
-        </SelectField>
-      </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div>
+            <FolderDropdownSelect id="copy-destination-folder" label="Destination Folder" value={folderId} folders={targetFolders} onChange={setFolderId} />
+          </div>
+          <div>
+            <label htmlFor="copy-duplicate-strategy" className="mb-1.5 block text-sm font-medium text-foreground">If an Icon with That Name Exists</label>
+            <DropdownSelect
+              id="copy-duplicate-strategy"
+              label="If an Icon with That Name Exists"
+              value={strategy}
+              options={duplicateOptions}
+              showSelectedCheck={false}
+              onChange={(value) => setStrategy(value as DuplicateStrategy)}
+              portalMenu
+              triggerClassName="flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-input bg-background px-3 text-left text-sm text-foreground transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
+            >
+              <span className="min-w-0 flex-1 truncate">{duplicateOptions.find((option) => option.value === strategy)?.label}</span>
+            </DropdownSelect>
+          </div>
+        </div>
 
       {error && (
         <p role="alert" className="text-sm font-medium text-destructive">
@@ -182,11 +230,12 @@ export function CopyFromProjectForm({ targetProjectId, targetFolders, defaultFol
         </p>
       )}
       <DialogFooter>
+        <span role="status" className="mr-auto text-sm text-muted-foreground">{pluralize(pickedHere.length, "icon")} selected</span>
         <Button variant="secondary" onClick={onClose} disabled={busy}>
           Cancel
         </Button>
         <Button type="submit" variant="primary" loading={busy} disabled={pickedHere.length === 0}>
-          {pickedHere.length > 0 ? `Copy ${pluralize(pickedHere.length, "icon")}` : "Copy icons"}
+          {pickedHere.length > 0 ? `Copy ${pluralize(pickedHere.length, "Icon")}` : "Copy Icons"}
         </Button>
       </DialogFooter>
     </form>

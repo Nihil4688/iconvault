@@ -13,8 +13,9 @@ import { checkFiles, isIconFont, isMetrop, isSvgOrZip, mergeSummaries, parseTags
 import { Button, IconButton } from "../ui/Button";
 import Dialog from "../ui/Dialog";
 import DialogFooter from "../ui/DialogFooter";
-import { TextAreaField, TextField, SelectField } from "../ui/Fields";
+import { TextAreaField, TextField } from "../ui/Fields";
 import Tabs from "../ui/Tabs";
+import DropdownSelect from "../ui/DropdownSelect";
 import { CopyFromProjectForm } from "./CopyFromProjectDialog";
 import FolderDropdownSelect from "./FolderDropdownSelect";
 
@@ -36,13 +37,19 @@ type UploadDialogProps = {
 
 export default function UploadDialog({ open, onClose, ...rest }: UploadDialogProps) {
   return (
-    <Dialog open={open} onClose={onClose} dismissOnBackdrop={false} title="Add Icons" description="Upload icons, paste SVG code, or copy icons from another project." size="lg">
+    <Dialog open={open} onClose={onClose} dismissOnBackdrop={false} title="Add Icons" description="Upload icons, paste SVG code, or copy icons from another project." size="lg" contentLayout="fit">
       <UploadForm onClose={onClose} {...rest} />
     </Dialog>
   );
 }
 
 type Tab = "files" | "paste" | "copy";
+
+const duplicateOptions: { value: DuplicateStrategy; label: string }[] = [
+  { value: "rename", label: "Keep Both (Add a Number)" },
+  { value: "replace", label: "Replace It (the Old One Is Kept as a Version)" },
+  { value: "skip", label: "Skip" },
+];
 
 function UploadForm({ projectId, prefix, folders, defaultFolderId, onClose, onUploaded, onCopied, onPasted, initialTab = "files" }: Omit<UploadDialogProps, "open">) {
   const [tab, setTab] = useState<Tab>(initialTab);
@@ -251,11 +258,21 @@ function UploadForm({ projectId, prefix, folders, defaultFolderId, onClose, onUp
         <FolderDropdownSelect id="upload-folder" value={folderId} folders={folders} onChange={setFolderId} />
         {tab === "files" && <p className="mt-1 text-xs text-muted-foreground">A ZIP's folders are created inside it.</p>}
       </div>
-      <SelectField label="If an Icon with That Name Exists" value={strategy} onChange={(event) => setStrategy(event.target.value as DuplicateStrategy)}>
-        <option value="rename">Keep Both (Add a Number)</option>
-        <option value="replace">Replace It (the Old One Is Kept as a Version)</option>
-        <option value="skip">Skip</option>
-      </SelectField>
+      <div>
+        <label htmlFor="upload-strategy" className="mb-1.5 block text-sm font-medium text-foreground">If an Icon with That Name Exists</label>
+        <DropdownSelect
+          id="upload-strategy"
+          label="If an Icon with That Name Exists"
+          value={strategy}
+          options={duplicateOptions}
+          onChange={(value) => setStrategy(value as DuplicateStrategy)}
+          showSelectedCheck={false}
+          portalMenu
+          triggerClassName="flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-input bg-background px-3 text-left text-sm text-foreground transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
+        >
+          <span className="min-w-0 flex-1 truncate">{duplicateOptions.find((option) => option.value === strategy)?.label}</span>
+        </DropdownSelect>
+      </div>
       <TextField label="Tags" value={tagText} autoComplete="off" hint="Optional, separated by commas." onChange={(event) => setTagText(event.target.value)} />
       <div className="self-end pb-2">
         <label className="flex cursor-pointer items-center gap-2 text-sm">
@@ -275,6 +292,7 @@ function UploadForm({ projectId, prefix, folders, defaultFolderId, onClose, onUp
 
   return (
     <Tabs
+      fill
       label="How to Add Icons"
       value={tab}
       onChange={(next) => {
@@ -364,8 +382,8 @@ function UploadForm({ projectId, prefix, folders, defaultFolderId, onClose, onUp
       ) : tab === "paste" ? (
         <form onSubmit={pasteCodeSubmit} noValidate>
           <div className="space-y-3">
-            <TextField label="Name" value={pasteName} placeholder="Pasted icon" maxLength={100} autoComplete="off" onChange={(event) => setPasteName(event.target.value)} />
-            <TextAreaField label="SVG Code" value={pasteCode} rows={8} spellCheck={false} className="font-mono text-xs" placeholder='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">…</svg>' onChange={(event) => setPasteCode(event.target.value)} />
+            <TextField label="Name" value={pasteName}  placeholder="Pasted icon" maxLength={100} autoComplete="off" onChange={(event) => setPasteName(event.target.value)} required />
+            <TextAreaField label="SVG Code" value={pasteCode} rows={8} spellCheck={false} required className="font-mono text-xs" placeholder='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">…</svg>' onChange={(event) => setPasteCode(event.target.value)} />
           </div>
           {options}
           {notice && (

@@ -214,6 +214,11 @@ describe("IconToolbar", () => {
     expect(onSort).toHaveBeenCalledWith("largest");
   });
 
+  it("omits the shared chevron from the icon-only sort trigger", () => {
+    setup();
+    expect(screen.getByTitle("Sort: Newest").querySelector(".lucide-chevron-down")).not.toBeInTheDocument();
+  });
+
   it("keeps search and actions on one responsive row", () => {
     setup();
     expect(screen.queryByRole("navigation", { name: "Breadcrumb" })).not.toBeInTheDocument();

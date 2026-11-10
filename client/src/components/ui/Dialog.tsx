@@ -16,12 +16,14 @@ type DialogProps = {
   size?: keyof typeof SIZES;
   // "drawer" docks the panel to the right edge at full height instead of centering it.
   placement?: "center" | "drawer";
+  // "scroll" (default) lets the whole content area scroll. "fit" makes the content area a non-scrolling flex column, so a child (e.g. Tabs with fill) can own the scrolling instead.
+  contentLayout?: "scroll" | "fit";
   dismissOnBackdrop?: boolean;
   children: ReactNode;
   footer?: ReactNode;
 };
 
-export default function Dialog({ open, onClose, title, description, size = "md", placement = "center", dismissOnBackdrop = true, children, footer }: DialogProps) {
+export default function Dialog({ open, onClose, title, description, size = "md", placement = "center", contentLayout = "scroll", dismissOnBackdrop = true, children, footer }: DialogProps) {
   const ref = useRef<HTMLDialogElement | null>(null);
   const [layout, setLayout] = useState<HTMLDivElement | null>(null);
   const [content, setContent] = useState<HTMLElement | null>(null);
@@ -87,7 +89,10 @@ export default function Dialog({ open, onClose, title, description, size = "md",
             <section
               ref={setContent}
               data-slot="dialog-content"
-              className="min-h-0 flex-1 overflow-y-auto px-5 py-4 scrollbar-thin scrollbar-gutter-both"
+              className={cn(
+                "min-h-0 flex-1 px-5 py-4",
+                contentLayout === "fit" ? "flex flex-col overflow-hidden px-0 pb-0" : "overflow-y-auto scrollbar-thin scrollbar-gutter-both",
+              )}
             >
               {children}
             </section>
