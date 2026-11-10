@@ -292,6 +292,7 @@ function UploadForm({ projectId, prefix, folders, defaultFolderId, onClose, onUp
 
   return (
     <Tabs
+      fill
       label="How to Add Icons"
       value={tab}
       onChange={(next) => {

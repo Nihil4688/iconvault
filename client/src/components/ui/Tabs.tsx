@@ -9,9 +9,11 @@ type TabsProps<T extends string> = {
   tabs: Array<{ value: T; label: string }>;
   // Renders the panel for the current tab.
   children: ReactNode;
+  // When set, the tab list stays fixed and only the panel scrolls. The parent must give the tabs a bounded height.
+  fill?: boolean;
 };
 
-export default function Tabs<T extends string>({ label, value, onChange, tabs, children }: TabsProps<T>) {
+export default function Tabs<T extends string>({ label, value, onChange, tabs, children, fill = false }: TabsProps<T>) {
   const baseId = useId();
   const refs = useRef(new Map<T, HTMLButtonElement>());
 
@@ -30,8 +32,8 @@ export default function Tabs<T extends string>({ label, value, onChange, tabs, c
   }
 
   return (
-    <div>
-      <div role="tablist" aria-label={label} onKeyDown={onKeyDown} className="flex flex-wrap gap-1 border-b border-border">
+    <div className={cn(fill && "flex h-full min-h-0 flex-col")}>
+      <div role="tablist" aria-label={label} onKeyDown={onKeyDown} className={cn("flex flex-wrap gap-1 border-b border-border", fill && "shrink-0")}>
         {tabs.map((tab) => (
           <button
             key={tab.value}
@@ -55,7 +57,7 @@ export default function Tabs<T extends string>({ label, value, onChange, tabs, c
           </button>
         ))}
       </div>
-      <div role="tabpanel" id={`${baseId}-panel`} aria-labelledby={`${baseId}-tab-${value}`} className="pt-4">
+      <div role="tabpanel" id={`${baseId}-panel`} aria-labelledby={`${baseId}-tab-${value}`} className={cn("pt-4", fill && "min-h-0 flex-1 overflow-y-auto scrollbar-thin")}>
         {children}
       </div>
     </div>
