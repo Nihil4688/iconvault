@@ -121,7 +121,7 @@ export default function ProjectPage() {
           {onIconsSection ? (
             // Split view: the folders on the left, the icons on the right, divided by a line, using the whole width.
             <div className="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)] lg:grid-cols-[17rem_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)]">
-              <aside aria-label="Folders" className="max-h-[35dvh] overflow-y-auto border-b border-border p-3 lg:max-h-none lg:border-b-0 lg:border-r lg:p-4">
+              <aside aria-label="Folders" className="flex max-h-[35dvh] flex-col overflow-y-auto border-b border-border p-3 lg:max-h-none lg:overflow-hidden lg:border-b-0 lg:border-r lg:p-4">
                 <button
                   type="button"
                   aria-expanded={foldersOpen}
@@ -132,7 +132,7 @@ export default function ProjectPage() {
                   <span>Folder: {selectedFolder === "all" ? "All Icons" : selectedFolder === "root" ? project.data.uncategorizedName || "Uncategorized" : folderPath(folderList.folders, selectedFolder)}</span>
                   {foldersOpen ? <ChevronUp aria-hidden="true" className="h-4 w-4" /> : <ChevronDown aria-hidden="true" className="h-4 w-4" />}
                 </button>
-                <div id="folder-panel" className={`${foldersOpen ? "mt-2 block" : "hidden"} lg:mt-0 lg:block`}>
+                <div id="folder-panel" className={`${foldersOpen ? "mt-2 flex" : "hidden"} min-h-0 flex-col lg:mt-0 lg:flex lg:min-h-0 lg:flex-1`}>
                   {folders.error && !folders.data && (
                     <p role="alert" className="mb-2 text-sm text-destructive">
                       Could not load folders. <button type="button" className="underline" onClick={folders.reload}>Try Again</button>
