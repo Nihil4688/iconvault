@@ -36,7 +36,7 @@ type UploadDialogProps = {
 
 export default function UploadDialog({ open, onClose, ...rest }: UploadDialogProps) {
   return (
-    <Dialog open={open} onClose={onClose} dismissOnBackdrop={false} title="Add Icons" description="Upload icons, paste SVG code, or copy icons from another project." size="lg">
+    <Dialog open={open} onClose={onClose} dismissOnBackdrop={false} title="Add Icons" description="Upload icons, paste SVG code, or copy icons from another project." size="lg" contentLayout="fit">
       <UploadForm onClose={onClose} {...rest} />
     </Dialog>
   );
@@ -275,6 +275,7 @@ function UploadForm({ projectId, prefix, folders, defaultFolderId, onClose, onUp
 
   return (
     <Tabs
+      fill
       label="How to Add Icons"
       value={tab}
       onChange={(next) => {
