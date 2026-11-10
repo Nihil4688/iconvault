@@ -32,8 +32,8 @@ export default function Tabs<T extends string>({ label, value, onChange, tabs, c
   }
 
   return (
-    <div>
-      <div role="tablist" aria-label={label} onKeyDown={onKeyDown} className={cn("flex flex-wrap gap-1 border-b border-border", fill && "sticky top-0 z-10 bg-card -mx-5 -mt-4 px-5 pt-4")}>
+    <div className={cn(fill && "flex min-h-0 flex-col")}>
+      <div role="tablist" aria-label={label} onKeyDown={onKeyDown} className={cn("flex flex-wrap gap-1 border-b border-border", fill && "sticky top-0 z-10 shrink-0 bg-card -mx-5 -mt-4 px-5 pt-4")}>
         {tabs.map((tab) => (
           <button
             key={tab.value}
