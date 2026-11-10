@@ -199,7 +199,6 @@ export default function DashboardPage() {
           triggerClassName="inline-flex h-9 items-center gap-2 rounded-lg border border-input bg-background pl-3 pr-3 text-sm font-medium transition-colors hover:bg-accent"
         >
           {status === "archived" ? "Draft" : status === "all" ? "Both" : "Active"}
-          <ChevronDown aria-hidden="true" className="h-3.5 w-3.5 transition-transform group-aria-expanded:rotate-180" />
         </DropdownSelect>
         {/* The sort choice is a filter icon; the list of choices opens from it. */}
         <DropdownSelect
@@ -208,6 +207,7 @@ export default function DashboardPage() {
           onChange={(value) => setFilter("sort", value, "updated")}
           options={(Object.keys(SORT_LABELS) as Array<keyof typeof SORT_LABELS>).map((value) => ({ value, label: SORT_LABELS[value] }))}
           title={`Sort: ${SORT_LABELS[sort]}`}
+          showChevron={false}
           triggerClassName="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-input bg-background text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
         >
           <ArrowUpDown aria-hidden="true" className="h-4 w-4" />

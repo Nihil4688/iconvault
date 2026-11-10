@@ -1,4 +1,4 @@
-import { Check } from "lucide-react";
+import { Check, ChevronDown } from "lucide-react";
 import { createPortal } from "react-dom";
 import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent, type ReactNode } from "react";
 import { cn } from "../../lib/cn";
@@ -17,10 +17,11 @@ type DropdownSelectProps = {
   menuClassName?: string;
   portalMenu?: boolean;
   showSelectedCheck?: boolean;
+  showChevron?: boolean;
   title?: string;
 };
 
-export default function DropdownSelect({ id, label, value, options, onChange, children, triggerClassName, rootClassName, menuClassName, portalMenu = false, showSelectedCheck = true, title }: DropdownSelectProps) {
+export default function DropdownSelect({ id, label, value, options, onChange, children, triggerClassName, rootClassName, menuClassName, portalMenu = false, showSelectedCheck = true, showChevron = true, title }: DropdownSelectProps) {
   const [open, setOpen] = useState(false);
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
   const [menuPosition, setMenuPosition] = useState<CSSProperties | null>(null);
@@ -127,7 +128,7 @@ export default function DropdownSelect({ id, label, value, options, onChange, ch
       onKeyDown={onMenuKeyDown}
       style={portalMenu ? menuPosition ?? { position: "fixed", visibility: "hidden" } : undefined}
       className={cn(
-        "absolute right-0 top-full z-50 mt-2 w-max min-w-32 max-w-[calc(100vw-2rem)] whitespace-nowrap rounded-lg border border-border bg-popover px-1 pb-1 text-popover-foreground shadow-xl custom-scrollbar overflow-y-auto",
+        "absolute right-0 top-full z-50 mt-2 min-w-32 max-w-[calc(100vw-2rem)] whitespace-nowrap rounded-lg border border-border bg-popover px-1 pb-1 text-popover-foreground shadow-xl custom-scrollbar overflow-y-auto",
         portalMenu && "fixed left-0 right-auto top-0 mt-0 w-full min-w-0 max-w-none max-h-55 whitespace-normal",
         menuClassName,
       )}
@@ -155,7 +156,7 @@ export default function DropdownSelect({ id, label, value, options, onChange, ch
               {value === option.value && <Check aria-hidden="true" className="h-4 w-4 text-primary" />}
             </span>
           )}
-          <span className="whitespace-nowrap">{option.label}</span>
+          <span className="whitespace-nowrap truncate">{option.label}</span>
         </button>
       ))}
     </div>
@@ -191,6 +192,7 @@ export default function DropdownSelect({ id, label, value, options, onChange, ch
         )}
       >
         {children}
+        {showChevron && <ChevronDown aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-aria-expanded:rotate-180" />}
       </button>
       {portalMenu && menu ? createPortal(menu, portalTarget as HTMLElement) : menu}
     </div>

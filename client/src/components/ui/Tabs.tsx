@@ -47,7 +47,7 @@ export default function Tabs<T extends string>({ label, value, onChange, tabs, c
             tabIndex={value === tab.value ? 0 : -1}
             onClick={() => onChange(tab.value)}
             className={cn(
-              "-mb-px border-b-2 px-3 py-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring",
+              "-mb-px border-b-2 px-3 pb-2 text-sm font-medium transition-colors focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-ring",
               value === tab.value ? "border-primary text-foreground" : "border-transparent text-muted-foreground hover:text-foreground",
             )}
           >
