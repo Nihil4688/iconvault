@@ -1,6 +1,6 @@
 // Copy icons into this project from another project the user can see (their own or public ones): pick the project, tick the icons, choose a folder here and what to do when a name is taken.
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { Search } from "lucide-react";
+import { Layers, Search } from "lucide-react";
 import { copyIcons, listIcons } from "../../api/icons";
 import { listProjects } from "../../api/projects";
 import type { DuplicateStrategy, FolderWithCount, UploadSummary } from "../../api/types";
@@ -138,7 +138,7 @@ export function CopyFromProjectForm({ targetProjectId, targetFolders, defaultFol
           </label>
           <div className="relative">
             <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <input id="copy-search" type="search" value={search} onChange={(event) => setSearch(event.target.value)} autoComplete="off" placeholder="Search icons by name..." className="h-9 w-full rounded-lg border border-input bg-background pl-9 pr-3 text-sm placeholder:text-muted-foreground focus:border-[#1555E0] focus:shadow-[0_0_0_3px_rgba(21,85,224,0.2)] focus:outline-none" />
+            <input id="copy-search" type="search" value={search} onChange={(event) => setSearch(event.target.value)} autoComplete="off" placeholder="Search icons by name" className="h-9 w-full rounded-lg border border-input bg-background pl-9 pr-3 text-sm placeholder:text-muted-foreground focus:border-[#1555E0] focus:shadow-[0_0_0_3px_rgba(21,85,224,0.2)] focus:outline-none" />
           </div>
         </div>
       </div>
@@ -153,7 +153,13 @@ export function CopyFromProjectForm({ targetProjectId, targetFolders, defaultFol
             Loading icons…
           </p>
         ) : shown.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No icons found in that project.</p>
+          <div className="min-h-0 flex-1 overflow-y-auto rounded-2xl border border-dashed border-border p-10 text-center">
+            <Layers aria-hidden="true" className="mx-auto h-8 w-8 text-muted-foreground" />
+            <p className="mt-2 text-base font-semibold">
+               No icons match {search}
+            </p>
+            <p className="mx-auto mt-1 text-sm text-muted-foreground">Try a different search.</p>
+          </div>
         ) : (
           <>
             <div className="mb-3 flex flex-wrap items-center justify-between gap-3 h-8">

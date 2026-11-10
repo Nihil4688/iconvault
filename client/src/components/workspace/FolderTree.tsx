@@ -128,7 +128,7 @@ export default function FolderTree({ folders, uncategorizedCount, uncategorizedN
 
   return (
     <nav aria-label="Folders" className="flex min-h-0 flex-1 flex-col">
-      <div className="mb-1 flex shrink-0 items-center justify-between pl-3 pr-1 pt-1">
+      <div className="mb-1 flex shrink-0 items-center justify-between pl-7 pr-5 pt-5">
         <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Folders</h2>
         {canEdit && (
           <IconButton label="New Folder" className="h-7 w-7" onClick={() => setDialog({ kind: "create", parent: null })}>
@@ -136,7 +136,7 @@ export default function FolderTree({ folders, uncategorizedCount, uncategorizedN
           </IconButton>
         )}
       </div>
-      <ul className="min-h-0 flex-1 overflow-y-auto scrollbar-thin">
+      <ul className="min-h-0 flex-1 overflow-y-auto px-4 pb-4 scrollbar-thin">
         <li>
           <div className={cn(rowBase, allSelected ? "bg-primary/10 text-primary" : "hover:bg-accent/60")} style={{ paddingLeft: 4 }}>
             <span className="h-6 w-6 shrink-0" aria-hidden="true" />

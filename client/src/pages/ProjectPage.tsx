@@ -121,7 +121,7 @@ export default function ProjectPage() {
           {onIconsSection ? (
             // Split view: the folders on the left, the icons on the right, divided by a line, using the whole width.
             <div className="grid min-h-0 flex-1 grid-rows-[auto_minmax(0,1fr)] lg:grid-cols-[17rem_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)]">
-              <aside aria-label="Folders" className="flex max-h-[35dvh] flex-col overflow-y-auto border-b border-border p-3 lg:max-h-none lg:overflow-hidden lg:border-b-0 lg:border-r lg:p-4">
+              <aside aria-label="Folders" className="flex max-h-[35dvh] flex-col overflow-y-auto border-b border-border lg:max-h-none lg:overflow-hidden lg:border-b-0 lg:border-r">
                 <button
                   type="button"
                   aria-expanded={foldersOpen}

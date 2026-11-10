@@ -91,7 +91,7 @@ export default function Dialog({ open, onClose, title, description, size = "md",
               data-slot="dialog-content"
               className={cn(
                 "min-h-0 flex-1 px-5 py-4",
-                contentLayout === "fit" ? "flex flex-col overflow-hidden" : "overflow-y-auto scrollbar-thin scrollbar-gutter-both",
+                contentLayout === "fit" ? "flex flex-col overflow-hidden px-0 pb-0" : "overflow-y-auto scrollbar-thin scrollbar-gutter-both",
               )}
             >
               {children}
