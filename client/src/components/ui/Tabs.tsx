@@ -9,11 +9,9 @@ type TabsProps<T extends string> = {
   tabs: Array<{ value: T; label: string }>;
   // Renders the panel for the current tab.
   children: ReactNode;
-  // When set, the tab list stays fixed and only the panel scrolls. The parent must give the tabs a bounded height.
-  fill?: boolean;
 };
 
-export default function Tabs<T extends string>({ label, value, onChange, tabs, children, fill = false }: TabsProps<T>) {
+export default function Tabs<T extends string>({ label, value, onChange, tabs, children }: TabsProps<T>) {
   const baseId = useId();
   const refs = useRef(new Map<T, HTMLButtonElement>());
 
@@ -32,8 +30,8 @@ export default function Tabs<T extends string>({ label, value, onChange, tabs, c
   }
 
   return (
-    <div className={cn(fill && "flex min-h-0 flex-col")}>
-      <div role="tablist" aria-label={label} onKeyDown={onKeyDown} className={cn("flex flex-wrap gap-1 border-b border-border", fill && "sticky top-0 z-10 shrink-0 bg-card -mx-5 -mt-4 px-5 pt-4")}>
+    <div>
+      <div role="tablist" aria-label={label} onKeyDown={onKeyDown} className="flex flex-wrap gap-1 border-b border-border">
         {tabs.map((tab) => (
           <button
             key={tab.value}
