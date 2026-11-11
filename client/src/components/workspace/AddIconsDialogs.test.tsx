@@ -328,9 +328,16 @@ describe("UploadDialog: paste", () => {
     expect(screen.getByText(/does not look like SVG code/i)).toBeInTheDocument();
     expect(pasteIcon).not.toHaveBeenCalled();
 
+    // Pasting more than one <svg> is caught with its own message, below the field.
+    fireEvent.change(code, { target: { value: "<svg></svg><svg></svg>" } });
+    await userEvent.click(screen.getByRole("button", { name: "Add Icon" }));
+    expect(screen.getByText("Paste one icon at a time. This has more than one <svg> element.")).toBeInTheDocument();
+    expect(pasteIcon).not.toHaveBeenCalled();
+
     // Valid markup clears the error.
     fireEvent.change(code, { target: { value: "<svg viewBox='0 0 1 1'></svg>" } });
     expect(screen.queryByText(/does not look like SVG code/i)).toBeNull();
+    expect(screen.queryByText(/more than one/i)).toBeNull();
     expect(code).not.toHaveAttribute("aria-invalid");
   });
 
