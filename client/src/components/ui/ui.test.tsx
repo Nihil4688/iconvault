@@ -134,6 +134,17 @@ describe("Dialog", () => {
     expect(screen.getByLabelText("Name")).toHaveFocus();
   });
 
+  it("leaves the first text field unfocused when autoFocusField is false", () => {
+    render(
+      <Dialog open onClose={() => undefined} title="Options" autoFocusField={false}>
+        <label>
+          Name <input type="text" />
+        </label>
+      </Dialog>,
+    );
+    expect(screen.getByLabelText("Name")).not.toHaveFocus();
+  });
+
   it("does not steal focus for a checkbox or file input", async () => {
     render(
       <Dialog open onClose={() => undefined} title="Options">
