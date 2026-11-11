@@ -85,8 +85,7 @@ export default function IconToolbar({ search, onSearch, sort, onSort, view, onVi
                   <button type="button" aria-label="Larger Icons" disabled={appearance.size >= MAX_ICON_SIZE} onClick={() => onAppearance({ size: stepIconSize(appearance.size, 1) })} className="inline-flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:text-foreground disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-ring">
                     <Plus aria-hidden="true" className="h-4 w-4" />
                   </button>
-                </div>
-                <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1">
                   <input
                     type="number"
                     inputMode="numeric"
@@ -110,19 +109,16 @@ export default function IconToolbar({ search, onSearch, sort, onSort, view, onVi
                       }
                     }}
                     className={cn(
-                      "h-9 w-14 rounded-lg border bg-background text-center font-mono text-sm tabular-nums transition-colors [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
+                      "h-6 w-10 rounded-lg border bg-background text-center font-mono text-sm tabular-nums transition-colors [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
                       "hover:border-ring focus:border-[#1555E0] focus:shadow-[0_0_0_3px_rgba(21,85,224,0.2)] focus:outline-none",
                       sizeInvalid ? "border-destructive text-destructive focus:border-destructive focus:shadow-[0_0_0_3px_rgba(220,38,38,0.2)]" : "border-input text-foreground",
                     )}
                   />
                   <span aria-hidden="true" className="text-sm text-muted-foreground">px</span>
                 </div>
+                </div>
+                
               </div>
-              {sizeInvalid && (
-                <p id="icon-size-error" className="text-xs text-destructive">
-                  Maximum size is {MAX_ICON_SIZE}px
-                </p>
-              )}
             </div>
             <div role="group" aria-label="Icon Colour" className="flex h-9 items-center gap-2 rounded-lg border border-input bg-background px-3">
               <span
