@@ -56,7 +56,7 @@ export function CopyFromProjectForm({ targetProjectId, targetFolders, defaultFol
     value: project.id,
     label: `${project.name} (${project.access.canEdit ? "yours" : `by ${project.owner.displayName}`}) (${pluralize(project.iconCount, "icon")})`,
   }));
-  const selectedSource = sourceOptions.find((option) => option.value === sourceId) ?? sourceOptions[0];
+  const selectedSource = sourceOptions.find((option) => option.value === sourceId) ?? sourceOptions[0] ?? { value: "", label: "Loading projects…" };
   const query = useDebounced(search.trim(), 300);
   const icons = useResource(sourceId ? `copy-icons:${sourceId}:${query}` : null, () => listIcons(sourceId, { sort: "name", limit: 200, ...(query ? { search: query } : {}) }));
   const shown = icons.data?.icons ?? [];
@@ -89,14 +89,8 @@ export function CopyFromProjectForm({ targetProjectId, targetFolders, defaultFol
     }
   }
 
-  if (projects.loading && !projects.data) {
-    return (
-      <p role="status" className="text-sm text-muted-foreground">
-        Loading projects…
-      </p>
-    );
-  }
-  if (sources.length === 0) {
+  const projectsLoading = projects.loading && !projects.data;
+  if (!projectsLoading && sources.length === 0) {
     return (
       <div>
         <p className="text-sm text-muted-foreground">There is no other project to copy from yet.</p>
@@ -150,7 +144,13 @@ export function CopyFromProjectForm({ targetProjectId, targetFolders, defaultFol
           <p role="alert" className="text-sm text-destructive">
             {icons.error.message}
           </p>
-        )  : shown.length === 0 ? (
+        ) : projectsLoading || (icons.loading && !icons.data) ? (
+          <ul aria-hidden="true" className="grid max-h-54 grid-cols-2 gap-2 p-1 overflow-y-auto sm:grid-cols-4 lg:grid-cols-6">
+            {Array.from({ length: 12 }).map((_, index) => (
+              <li key={index} className="min-h-24 animate-pulse rounded-lg border border-border bg-muted" />
+            ))}
+          </ul>
+        ) : shown.length === 0 ? (
           <div className="min-h-0 flex-1 overflow-y-auto rounded-2xl border border-dashed border-border p-10 text-center">
             <Layers aria-hidden="true" className="mx-auto h-8 w-8 text-muted-foreground" />
             <p className="mt-2 text-base font-semibold">
