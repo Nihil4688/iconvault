@@ -213,7 +213,8 @@ function UploadForm({ projectId, prefix, folders, defaultFolderId, onClose, onUp
         onClose();
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not add the icon.");
+      // The icon is built from the pasted markup, so a failure belongs under the SVG Code field, not at the foot of the form.
+      setPasteErrors({ code: err instanceof Error ? err.message : "Could not add the icon." });
     } finally {
       setBusy(false);
     }

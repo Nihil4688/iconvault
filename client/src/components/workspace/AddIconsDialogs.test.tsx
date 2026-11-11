@@ -372,6 +372,25 @@ describe("UploadDialog: paste", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent("Invalid SVG: XML entities are not permitted.");
     expect(props.onClose).not.toHaveBeenCalled();
   });
+
+  it("shows a refused SVG message below the SVG Code field, not at the foot of the form", async () => {
+    pasteIcon.mockRejectedValue(new ApiError("Invalid SVG: the markup could not be parsed.", 400));
+    const props = { open: true, projectId: "p1", prefix: "fth", folders, defaultFolderId: "ar", onClose: vi.fn(), onUploaded: vi.fn(), onPasted: vi.fn() };
+    render(<UploadDialog {...props} />);
+    await userEvent.click(screen.getByRole("tab", { name: "Paste SVG Code" }));
+
+    await userEvent.type(screen.getByRole("textbox", { name: /^Name/ }), "Arrow");
+    const code = screen.getByRole("textbox", { name: /^SVG Code/ });
+    fireEvent.change(code, { target: { value: "<svg></svg>" } });
+    await userEvent.click(screen.getByRole("button", { name: "Add Icon" }));
+
+    const message = await screen.findByText("Invalid SVG: the markup could not be parsed.");
+    expect(message).toBeInTheDocument();
+    // The message is wired to the SVG Code field, so it reads out right below that input.
+    expect(code).toHaveAttribute("aria-invalid", "true");
+    expect(code.getAttribute("aria-describedby")).toContain(message.id);
+    expect(props.onClose).not.toHaveBeenCalled();
+  });
 });
 
 describe("CopyFromProjectDialog", () => {
