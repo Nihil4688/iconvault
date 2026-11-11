@@ -1,7 +1,7 @@
-// The panel that opens when an icon is clicked. Preview at the icon's folder-specific size and colour on the background chosen in the toolbar; quick actions (copy as SVG, React or Vue, download, optimize, move to trash); and three tabs: Details (name, folder, tags, codepoint), Code (edit the SVG with a live preview, and the generated snippets) and Versions (restore an earlier state). People who cannot edit the project see everything read-only.
+// The panel that opens when an icon is clicked. Preview at the icon's folder-specific size and colour on the background chosen in the toolbar; quick actions (copy as SVG, React or Vue, download, optimize); and the editable details (name, folder, tags, codepoint). People who cannot edit the project see everything read-only.
 import { ChevronDown, Copy, Download, Sparkles, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { deleteIcon, downloadIcon, getIcon, optimizeIcon, restoreIcon, restoreVersion, updateIcon } from "../../api/icons";
+import { deleteIcon, downloadIcon, getIcon, optimizeIcon, restoreIcon, updateIcon } from "../../api/icons";
 import type { FolderWithCount, IconDetail, ProjectPurpose } from "../../api/types";
 import { useToast } from "../../context/ToastContext";
 import { useIconAppearance } from "../../hooks/useIconAppearance";
@@ -18,9 +18,8 @@ import { parseTags } from "../../lib/upload";
 import { triggerBrowserDownload } from "../../utils/zipBundle";
 import { Button } from "../ui/Button";
 import Dialog from "../ui/Dialog";
-import { TextAreaField, TextField } from "../ui/Fields";
+import { TextField } from "../ui/Fields";
 import SvgPreview from "../ui/SvgPreview";
-import Tabs from "../ui/Tabs";
 import FolderDropdownSelect from "./FolderDropdownSelect";
 
 
@@ -46,11 +45,8 @@ export default function IconDrawer({ iconId, onClose, ...rest }: IconDrawerProps
   );
 }
 
-type Tab = "details" | "code" | "versions";
-
 function DrawerBody({ iconId, onClose, ...rest }: Omit<IconDrawerProps, "iconId"> & { iconId: string }) {
   const icon = useResource(`icon:${iconId}`, () => getIcon(iconId));
-  const [tab, setTab] = useState<Tab>("details");
 
   if (icon.error && !icon.data) {
     return (
@@ -68,12 +64,12 @@ function DrawerBody({ iconId, onClose, ...rest }: Omit<IconDrawerProps, "iconId"
     );
   }
   // Keyed so the forms start fresh from the saved values after every reload.
-  return <IconPanel key={`${icon.data.id}:${icon.data.updatedAt}`} icon={icon.data} tab={tab} onTab={setTab} reload={icon.reload} onClose={onClose} {...rest} />;
+  return <IconPanel key={`${icon.data.id}:${icon.data.updatedAt}`} icon={icon.data} reload={icon.reload} onClose={onClose} {...rest} />;
 }
 
-type PanelProps = Omit<IconDrawerProps, "iconId"> & { icon: IconDetail; tab: Tab; onTab: (tab: Tab) => void; reload: () => void };
+type PanelProps = Omit<IconDrawerProps, "iconId"> & { icon: IconDetail; reload: () => void };
 
-function IconPanel({ projectId, icon, tab, onTab, reload, canEdit, folders, idPrefix, purpose = "font", onClose, onChanged }: PanelProps) {
+function IconPanel({ projectId, icon, reload, canEdit, folders, idPrefix, purpose = "font", onClose, onChanged }: PanelProps) {
   const { showToast } = useToast();
   const [surface] = usePersistentChoice(projectId ?? "unknown", "iconSurface", SURFACES, "theme");
   const [appearance] = useIconAppearance(projectId ?? "unknown", icon.folderId);
@@ -170,29 +166,7 @@ function IconPanel({ projectId, icon, tab, onTab, reload, canEdit, folders, idPr
         </p>
       )}
 
-      <Tabs
-        label="Icon Sections"
-        value={tab}
-        onChange={onTab}
-        tabs={[
-          { value: "details", label: "Details" },
-          { value: "code", label: "Code" },
-          { value: "versions", label: `Versions (${icon.versions.length})` },
-        ]}
-      >
-        {tab === "details" && <DetailsTab icon={icon} canEdit={canEdit} folders={folders} purpose={purpose} onSaved={() => { reload(); onChanged(); }} onTrash={trash} busyAction={busy !== null} />}
-        {tab === "code" && <CodeTab icon={icon} canEdit={canEdit} onSaved={() => { reload(); onChanged(); }} />}
-        {tab === "versions" && (
-          <VersionsTab
-            icon={icon}
-            canEdit={canEdit}
-            onRestored={() => {
-              reload();
-              onChanged();
-            }}
-          />
-        )}
-      </Tabs>
+      <DetailsTab icon={icon} canEdit={canEdit} folders={folders} purpose={purpose} onSaved={() => { reload(); onChanged(); }} onTrash={trash} busyAction={busy !== null} />
     </div>
   );
 }
@@ -334,143 +308,5 @@ function CopySplitButton({ onCopySvg, onCopyReact, onCopyVue }: { onCopySvg: () 
         </div>
       )}
     </div>
-  );
-}
-
-// Live preview of code being typed. It has not been cleaned by the server yet, so it is shown as an image: an SVG used as an image can never run scripts or load other files.
-function DraftPreview({ code }: { code: string }) {
-  return <img alt="Preview of the code" src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(code)}`} className="h-24 w-24 object-contain" />;
-}
-
-function CodeTab({ icon, canEdit, onSaved }: { icon: IconDetail; canEdit: boolean; onSaved: () => void }) {
-  const { showToast } = useToast();
-  const [code, setCode] = useState(icon.svg);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const dirty = code !== icon.svg;
-
-  let react = "";
-  let vue = "";
-  try {
-    react = toReactComponent(icon.svg, icon.name);
-    vue = toVueComponent(icon.svg);
-  } catch {
-    // The snippets are a convenience; the editor still works.
-  }
-
-  async function save() {
-    setBusy(true);
-    setError(null);
-    try {
-      await updateIcon(icon.id, { rawSvg: code });
-      showToast("Saved. The previous version is kept.", "success");
-      onSaved();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  return (
-    <div className="space-y-4">
-      <TextAreaField label="SVG Code" value={code} readOnly={!canEdit} rows={10} spellCheck={false} className="font-mono text-xs" onChange={(event) => setCode(event.target.value)} />
-      {canEdit && (
-        <>
-          <div className="flex items-center gap-3">
-            <div className="rounded-lg border border-border bg-white p-1">
-              <DraftPreview code={code} />
-            </div>
-            <p className="text-xs text-muted-foreground">Live preview of what you typed. It is cleaned and checked when you save.</p>
-          </div>
-          {error && (
-            <p role="alert" className="text-sm font-medium text-destructive">
-              {error}
-            </p>
-          )}
-          <div className="flex gap-2">
-            <Button variant="primary" loading={busy} disabled={!dirty} onClick={save}>
-              Save SVG
-            </Button>
-            <Button variant="secondary" disabled={!dirty || busy} onClick={() => { setCode(icon.svg); setError(null); }}>
-              Revert
-            </Button>
-          </div>
-        </>
-      )}
-
-      {react && (
-        <>
-          <Snippet title="React Component (TSX)" code={react} />
-          <Snippet title="Vue 3 Component" code={vue} />
-        </>
-      )}
-    </div>
-  );
-}
-
-function Snippet({ title, code }: { title: string; code: string }) {
-  const { showToast } = useToast();
-  return (
-    <section aria-label={title}>
-      <div className="mb-1 flex items-center justify-between">
-        <h4 className="text-sm font-semibold">{title}</h4>
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={async () => {
-            const ok = await copyText(code);
-            showToast(ok ? "Copied." : "Could not copy to the clipboard.", ok ? "success" : "error");
-          }}
-        >
-          Copy
-        </Button>
-      </div>
-      <pre className="max-h-48 overflow-auto rounded-lg border border-border bg-muted p-3 text-xs">
-        <code>{code}</code>
-      </pre>
-    </section>
-  );
-}
-
-function VersionsTab({ icon, canEdit, onRestored }: { icon: IconDetail; canEdit: boolean; onRestored: () => void }) {
-  const { showToast } = useToast();
-  const [busy, setBusy] = useState<string | null>(null);
-
-  if (icon.versions.length === 0) {
-    return <p className="text-sm text-muted-foreground">No earlier versions yet. One is saved each time the SVG changes (the newest 20 are kept).</p>;
-  }
-
-  async function restore(versionId: string) {
-    setBusy(versionId);
-    try {
-      await restoreVersion(icon.id, versionId);
-      showToast("Restored. The version you replaced is kept too.", "success");
-      onRestored();
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : "Could not restore.", "error");
-    } finally {
-      setBusy(null);
-    }
-  }
-
-  return (
-    <ul aria-label="Earlier Versions" className="divide-y divide-border rounded-lg border border-border text-sm">
-      {icon.versions.map((version, index) => (
-        <li key={version.id} className="flex items-center justify-between gap-3 px-3 py-2">
-          <span>
-            {index === 0 ? "Most recent change" : formatDate(version.createdAt)}
-            <span className="block text-xs text-muted-foreground">
-              {formatRelative(version.createdAt)} · {formatBytes(version.byteSize)}
-            </span>
-          </span>
-          {canEdit && (
-            <Button size="sm" loading={busy === version.id} disabled={busy !== null} onClick={() => restore(version.id)} aria-label={`Restore the Version From ${formatRelative(version.createdAt)}`}>
-              Restore
-            </Button>
-          )}
-        </li>
-      ))}
-    </ul>
   );
 }
