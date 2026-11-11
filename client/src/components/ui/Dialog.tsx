@@ -62,7 +62,7 @@ export default function Dialog({ open, onClose, title, description, size = "md",
       className={cn(
         "overflow-hidden border border-border bg-card p-0 text-card-foreground shadow-xl backdrop:bg-black/50 backdrop:backdrop-blur-sm",
         placement === "drawer"
-          ? "m-0 ml-auto h-dvh max-h-none w-full max-w-xl rounded-l-2xl"
+          ? "m-0 ml-auto h-dvh max-h-none w-full max-w-md rounded-l-2xl"
           : cn("m-auto w-[calc(100vw-1rem)] max-h-[calc(100dvh-1rem)] rounded-2xl sm:w-[calc(100vw-2rem)] sm:max-h-[calc(100dvh-2rem)]", SIZES[size]),
       )}
     >
