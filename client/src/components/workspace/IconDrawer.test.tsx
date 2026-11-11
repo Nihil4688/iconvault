@@ -87,14 +87,17 @@ describe("details", () => {
     window.localStorage.removeItem(key);
   });
 
-  it("shows size and savings, canvas, dates", async () => {
+  it("shows the canvas, size and dates in the facts row", async () => {
     setup();
     await ready();
-    const panel = screen.getByRole("tabpanel");
-    expect(within(panel).getByText(/150 B/)).toBeInTheDocument();
-    expect(within(panel).getByText(/was 300 B, 50% smaller/)).toBeInTheDocument();
-    expect(within(panel).getByText("0 0 24 24")).toBeInTheDocument();
-    expect(within(panel).getByText("Oct 1, 2026")).toBeInTheDocument();
+    const row = screen.getByText("Canvas").closest("dl") as HTMLElement;
+    expect(within(row).getByText("24 × 24")).toBeInTheDocument();
+    expect(within(row).getByText(/150 B/)).toBeInTheDocument();
+    expect(within(row).getByText("Canvas")).toBeInTheDocument();
+    expect(within(row).getByText("Size")).toBeInTheDocument();
+    expect(within(row).getByText("Added on")).toBeInTheDocument();
+    expect(within(row).getByText("Last updated")).toBeInTheDocument();
+    expect(within(row).getByText("Oct 1, 2026")).toBeInTheDocument();
   });
 
   it("warns about what will not become a font glyph", async () => {
@@ -181,7 +184,7 @@ describe("details", () => {
     expect(screen.queryByRole("button", { name: "Optimize" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Move to trash" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Download" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Copy SVG" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Copy" })).toBeInTheDocument();
   });
 });
 
@@ -218,7 +221,7 @@ describe("copy and download", () => {
   it("copies the SVG, and the React and Vue components", async () => {
     setup();
     await ready();
-    await userEvent.click(screen.getByRole("button", { name: "Copy SVG" }));
+    await userEvent.click(screen.getByRole("button", { name: "Copy" }));
     expect(clipboard.copyText).toHaveBeenLastCalledWith(SVG);
     expect(await screen.findByText("Copied the SVG.")).toBeInTheDocument();
 
@@ -234,7 +237,7 @@ describe("copy and download", () => {
     vi.mocked(clipboard.copyText).mockResolvedValue(false);
     setup();
     await ready();
-    await userEvent.click(screen.getByRole("button", { name: "Copy SVG" }));
+    await userEvent.click(screen.getByRole("button", { name: "Copy" }));
     expect(await screen.findByText("Could not copy to the clipboard.")).toBeInTheDocument();
   });
 
@@ -273,7 +276,7 @@ describe("optimize and trash", () => {
     vi.mocked(iconsApi.restoreIcon).mockResolvedValue({ icon: makeIcon(), adjusted: [] });
     const { onChanged, onClose } = setup();
     await ready();
-    await userEvent.click(screen.getByRole("button", { name: "Move to trash" }));
+    await userEvent.click(screen.getByRole("button", { name: "Delete icon" }));
     expect(iconsApi.deleteIcon).toHaveBeenCalledWith("ic1");
     await waitFor(() => expect(onClose).toHaveBeenCalled());
     expect(await screen.findByText("Moved “Arrow Left” to the trash.")).toBeInTheDocument();

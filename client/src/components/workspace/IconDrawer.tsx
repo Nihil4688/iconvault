@@ -10,7 +10,7 @@ import { usePersistentChoice } from "../../hooks/usePersistentChoice";
 import { cn } from "../../lib/cn";
 import { copyText } from "../../lib/clipboard";
 import { codepointProblem } from "../../lib/codepoint";
-import { formatBytes, formatDate, formatRelative, savingsPercent } from "../../lib/format";
+import { formatBytes, formatDate, formatRelative } from "../../lib/format";
 import { iconWarnings } from "../../lib/iconInfo";
 import { SURFACES, surfaceClass, surfaceStyle } from "../../lib/previewSurface";
 import { toReactComponent, toVueComponent } from "../../lib/svgSnippets";
@@ -80,7 +80,6 @@ function IconPanel({ projectId, icon, tab, onTab, reload, canEdit, folders, idPr
   const size = appearance.size;
   const [busy, setBusy] = useState<string | null>(null);
   const warnings = iconWarnings(icon);
-  const saved = savingsPercent(icon.originalByteSize, icon.byteSize);
 
   async function copy(label: string, make: () => string) {
     try {
@@ -142,17 +141,24 @@ function IconPanel({ projectId, icon, tab, onTab, reload, canEdit, folders, idPr
         </div>
       </section>
 
-      <section aria-label="Actions" className="flex flex-wrap gap-2">
+      <dl aria-label="Icon facts" className="grid grid-cols-4 gap-2 text-sm">
+        <Fact label="Canvas" value={`${icon.width} × ${icon.height}`} />
+        <Fact label="Size" value={formatBytes(icon.byteSize)} />
+        <Fact label="Added on" value={formatDate(icon.createdAt)} />
+        <Fact label="Last updated" value={formatRelative(icon.updatedAt)} />
+      </dl>
+
+      <section aria-label="Actions" className="flex flex-wrap items-center gap-2">
         <CopySplitButton
           onCopySvg={() => copy("the SVG", () => icon.svg)}
           onCopyReact={() => copy("the React component", () => toReactComponent(icon.svg, icon.name))}
           onCopyVue={() => copy("the Vue component", () => toVueComponent(icon.svg))}
         />
-        <Button size="sm" icon={<Download aria-hidden="true" className="h-4 w-4" />} loading={busy === "download"} disabled={busy !== null} onClick={download}>
+        <Button variant="secondary" icon={<Download aria-hidden="true" className="h-4 w-4" />} loading={busy === "download"} disabled={busy !== null} onClick={download}>
           Download
         </Button>
         {canEdit && (
-          <Button size="sm" icon={<Sparkles aria-hidden="true" className="h-4 w-4" />} loading={busy === "optimize"} disabled={busy !== null} onClick={optimize}>
+          <Button variant="secondary" icon={<Sparkles aria-hidden="true" className="h-4 w-4" />} loading={busy === "optimize"} disabled={busy !== null} onClick={optimize}>
             Optimize
           </Button>
         )}
@@ -174,7 +180,7 @@ function IconPanel({ projectId, icon, tab, onTab, reload, canEdit, folders, idPr
           { value: "versions", label: `Versions (${icon.versions.length})` },
         ]}
       >
-        {tab === "details" && <DetailsTab icon={icon} canEdit={canEdit} folders={folders} purpose={purpose} saved={saved} onSaved={() => { reload(); onChanged(); }} onTrash={trash} trashBusy={busy === "trash"} busyAction={busy !== null} />}
+        {tab === "details" && <DetailsTab icon={icon} canEdit={canEdit} folders={folders} purpose={purpose} onSaved={() => { reload(); onChanged(); }} onTrash={trash} busyAction={busy !== null} />}
         {tab === "code" && <CodeTab icon={icon} canEdit={canEdit} onSaved={() => { reload(); onChanged(); }} />}
         {tab === "versions" && (
           <VersionsTab
@@ -191,7 +197,7 @@ function IconPanel({ projectId, icon, tab, onTab, reload, canEdit, folders, idPr
   );
 }
 
-function DetailsTab({ icon, canEdit, folders, purpose, saved, onSaved, onTrash, trashBusy, busyAction }: { icon: IconDetail; canEdit: boolean; folders: FolderWithCount[]; purpose: ProjectPurpose; saved: number; onSaved: () => void; onTrash: () => void; trashBusy: boolean; busyAction: boolean }) {
+function DetailsTab({ icon, canEdit, folders, purpose, onSaved, onTrash, busyAction }: { icon: IconDetail; canEdit: boolean; folders: FolderWithCount[]; purpose: ProjectPurpose; onSaved: () => void; onTrash: () => void; busyAction: boolean }) {
   const { showToast } = useToast();
   const [name, setName] = useState(icon.name);
   const [folderId, setFolderId] = useState(icon.folderId ?? "");
@@ -251,9 +257,10 @@ function DetailsTab({ icon, canEdit, folders, purpose, saved, onSaved, onTrash, 
         )}
         {canEdit && (
           <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
-            <Button type="button" variant="destructive" icon={<Trash2 aria-hidden="true" className="h-4 w-4" />} loading={trashBusy} disabled={busyAction} onClick={onTrash}>
-              Move to trash
-            </Button>
+            <button type="button" disabled={busyAction} onClick={onTrash} className="inline-flex items-center gap-1.5 text-sm font-medium text-destructive transition-colors hover:opacity-80 disabled:pointer-events-none disabled:opacity-50">
+              <Trash2 aria-hidden="true" className="h-4 w-4" />
+              Delete icon
+            </button>
             <div className="flex gap-2">
               <Button type="button" variant="secondary" disabled={!changed || busy} onClick={reset}>
                 Cancel
@@ -265,22 +272,16 @@ function DetailsTab({ icon, canEdit, folders, purpose, saved, onSaved, onTrash, 
           </div>
         )}
       </form>
+    </div>
+  );
+}
 
-      <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 border-t border-border pt-3 text-sm">
-        <dt className="text-muted-foreground">Size</dt>
-        <dd>
-          {formatBytes(icon.byteSize)}
-          {saved > 0 && <span className="text-muted-foreground"> (was {formatBytes(icon.originalByteSize)}, {saved}% smaller)</span>}
-        </dd>
-        <dt className="text-muted-foreground">Canvas</dt>
-        <dd>
-          {icon.width} × {icon.height}, viewBox <span className="font-mono text-xs">{icon.viewBox}</span>
-        </dd>
-        <dt className="text-muted-foreground">Added</dt>
-        <dd>{formatDate(icon.createdAt)}</dd>
-        <dt className="text-muted-foreground">Last changed</dt>
-        <dd>{formatRelative(icon.updatedAt)}</dd>
-      </dl>
+// One Canvas / Size / Added / Updated fact in the stats row.
+function Fact({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <dd className="font-medium text-foreground">{value}</dd>
+      <dt className="text-xs text-muted-foreground">{label}</dt>
     </div>
   );
 }
@@ -306,15 +307,15 @@ function CopySplitButton({ onCopySvg, onCopyReact, onCopyVue }: { onCopySvg: () 
 
   return (
     <div ref={rootRef} className="relative inline-flex">
-      <Button size="sm" className="rounded-r-none" icon={<Copy aria-hidden="true" className="h-4 w-4" />} onClick={onCopySvg}>
-        Copy SVG
+      <Button variant="primary" className="rounded-r-none" icon={<Copy aria-hidden="true" className="h-4 w-4" />} onClick={onCopySvg}>
+        Copy
       </Button>
       <Button
-        size="sm"
+        variant="primary"
         aria-label="More copy options"
         aria-haspopup="menu"
         aria-expanded={open}
-        className="-ml-px rounded-l-none px-1.5"
+        className="-ml-px rounded-l-none border-l border-primary-foreground/20 px-2"
         onClick={() => setOpen((value) => !value)}
       >
         <ChevronDown aria-hidden="true" className="h-4 w-4" />
