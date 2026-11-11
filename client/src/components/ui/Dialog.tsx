@@ -19,11 +19,13 @@ type DialogProps = {
   // "scroll" (default) lets the whole content area scroll. "fit" makes the content area a non-scrolling flex column, so a child (e.g. Tabs with fill) can own the scrolling instead.
   contentLayout?: "scroll" | "fit";
   dismissOnBackdrop?: boolean;
+  // By default the first text field gets the cursor on open. Set false when the first field is not the primary one (e.g. an optional Tags box above a file picker).
+  autoFocusField?: boolean;
   children: ReactNode;
   footer?: ReactNode;
 };
 
-export default function Dialog({ open, onClose, title, description, size = "md", placement = "center", contentLayout = "scroll", dismissOnBackdrop = true, children, footer }: DialogProps) {
+export default function Dialog({ open, onClose, title, description, size = "md", placement = "center", contentLayout = "scroll", dismissOnBackdrop = true, autoFocusField = true, children, footer }: DialogProps) {
   const ref = useRef<HTMLDialogElement | null>(null);
   const [layout, setLayout] = useState<HTMLDivElement | null>(null);
   const [content, setContent] = useState<HTMLElement | null>(null);
@@ -36,10 +38,12 @@ export default function Dialog({ open, onClose, title, description, size = "md",
     if (open && !dialog.open) {
       dialog.showModal();
       // React's autoFocus runs while the dialog is still closed, so it does nothing here and the browser would focus the Close button. Put the cursor in the first text field instead, when there is one.
-      dialog.querySelector<HTMLElement>("input:not([type]), input[type=text], input[type=search], input[type=email], input[type=url], input[type=password], textarea")?.focus();
+      if (autoFocusField) {
+        dialog.querySelector<HTMLElement>("input:not([type]), input[type=text], input[type=search], input[type=email], input[type=url], input[type=password], textarea")?.focus();
+      }
     }
     if (!open && dialog.open) dialog.close();
-  }, [open]);
+  }, [open, autoFocusField]);
 
   return (
     <dialog
