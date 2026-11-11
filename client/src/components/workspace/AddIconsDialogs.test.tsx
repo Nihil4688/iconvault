@@ -328,9 +328,16 @@ describe("UploadDialog: paste", () => {
     expect(screen.getByText(/does not look like SVG code/i)).toBeInTheDocument();
     expect(pasteIcon).not.toHaveBeenCalled();
 
+    // Pasting more than one <svg> is caught with its own message, below the field.
+    fireEvent.change(code, { target: { value: "<svg></svg><svg></svg>" } });
+    await userEvent.click(screen.getByRole("button", { name: "Add Icon" }));
+    expect(screen.getByText("Paste one icon at a time. This has more than one <svg> element.")).toBeInTheDocument();
+    expect(pasteIcon).not.toHaveBeenCalled();
+
     // Valid markup clears the error.
     fireEvent.change(code, { target: { value: "<svg viewBox='0 0 1 1'></svg>" } });
     expect(screen.queryByText(/does not look like SVG code/i)).toBeNull();
+    expect(screen.queryByText(/more than one/i)).toBeNull();
     expect(code).not.toHaveAttribute("aria-invalid");
   });
 
@@ -370,6 +377,25 @@ describe("UploadDialog: paste", () => {
     fireEvent.change(screen.getByLabelText("SVG code"), { target: { value: "<svg/>" } });
     await userEvent.click(screen.getByRole("button", { name: "Add icon" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Invalid SVG: XML entities are not permitted.");
+    expect(props.onClose).not.toHaveBeenCalled();
+  });
+
+  it("shows a refused SVG message below the SVG Code field, not at the foot of the form", async () => {
+    pasteIcon.mockRejectedValue(new ApiError("Invalid SVG: the markup could not be parsed.", 400));
+    const props = { open: true, projectId: "p1", prefix: "fth", folders, defaultFolderId: "ar", onClose: vi.fn(), onUploaded: vi.fn(), onPasted: vi.fn() };
+    render(<UploadDialog {...props} />);
+    await userEvent.click(screen.getByRole("tab", { name: "Paste SVG Code" }));
+
+    await userEvent.type(screen.getByRole("textbox", { name: /^Name/ }), "Arrow");
+    const code = screen.getByRole("textbox", { name: /^SVG Code/ });
+    fireEvent.change(code, { target: { value: "<svg></svg>" } });
+    await userEvent.click(screen.getByRole("button", { name: "Add Icon" }));
+
+    const message = await screen.findByText("Invalid SVG: the markup could not be parsed.");
+    expect(message).toBeInTheDocument();
+    // The message is wired to the SVG Code field, so it reads out right below that input.
+    expect(code).toHaveAttribute("aria-invalid", "true");
+    expect(code.getAttribute("aria-describedby")).toContain(message.id);
     expect(props.onClose).not.toHaveBeenCalled();
   });
 });

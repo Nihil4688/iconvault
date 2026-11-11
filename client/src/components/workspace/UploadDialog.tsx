@@ -185,10 +185,13 @@ function UploadForm({ projectId, prefix, folders, defaultFolderId, onClose, onUp
       next.name = "Enter a name for the icon.";
     }
     const code = pasteCode.trim();
+    const openTags = code.match(/<svg[\s>]/gi)?.length ?? 0;
     if (!code) {
       next.code = "Paste the SVG code for the icon.";
-    } else if (!/<svg[\s>][\s\S]*<\/svg\s*>/i.test(code)) {
+    } else if (openTags === 0 || !/<\/svg\s*>/i.test(code)) {
       next.code = "This does not look like SVG code. Paste the full markup, from <svg> to </svg>.";
+    } else if (openTags > 1) {
+      next.code = "Paste one icon at a time. This has more than one <svg> element.";
     }
     return next;
   }
@@ -213,7 +216,8 @@ function UploadForm({ projectId, prefix, folders, defaultFolderId, onClose, onUp
         onClose();
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not add the icon.");
+      // The icon is built from the pasted markup, so a failure belongs under the SVG Code field, not at the foot of the form.
+      setPasteErrors({ code: err instanceof Error ? err.message : "Could not add the icon." });
     } finally {
       setBusy(false);
     }
