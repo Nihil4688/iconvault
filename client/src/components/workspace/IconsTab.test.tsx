@@ -128,6 +128,26 @@ describe("showing icons", () => {
     expect(slider).toHaveValue("96");
   });
 
+  it("flags an out-of-range size while typing and reverts it on Escape", async () => {
+    setup();
+    await screen.findByRole("button", { name: "Open Alpha" });
+
+    const box = screen.getByRole("spinbutton", { name: "Icon Size in Pixels" });
+    expect(box).toHaveValue(40);
+
+    // Typing a value above the maximum shows a validation message and marks the box invalid.
+    await userEvent.clear(box);
+    await userEvent.type(box, "120");
+    expect(box).toHaveAttribute("aria-invalid", "true");
+    expect(screen.getByText("Maximum size is 96px")).toBeInTheDocument();
+
+    // Escape discards the edit and restores the committed value.
+    await userEvent.keyboard("{Escape}");
+    expect(box).toHaveValue(40);
+    expect(box).toHaveAttribute("aria-invalid", "false");
+    expect(screen.queryByText("Maximum size is 96px")).toBeNull();
+  });
+
   it("shows the selected color preview before a separator and keeps selection styling on the preview", async () => {
     setup();
     await screen.findByRole("button", { name: "Open Alpha" });
