@@ -177,7 +177,7 @@ export function CopyFromProjectForm({ targetProjectId, targetFolders, defaultFol
               <div className="flex items-center gap-3">
                 <span className="text-sm font-medium">{pickedHere.length} selected</span>
                 {pickedHere.length > 0 && (
-                  <Button size="sm" variant="ghost" className="px-2 text-primary" onClick={() => setPicked([])}>
+                  <Button size="sm" variant="ghost" className="px-2 text-primary hover:bg-primary/5" onClick={() => setPicked([])}>
                     Clear selection
                   </Button>
                 )}
