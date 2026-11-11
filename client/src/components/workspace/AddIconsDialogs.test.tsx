@@ -26,7 +26,12 @@ const svgFile = (name: string, text = "<svg/>") => new File([text], name, { type
 
 const folders = [makeFolder({ id: "ui", name: "UI" }), makeFolder({ id: "ar", name: "Arrows", parentId: "ui" })];
 
-beforeEach(() => vi.resetAllMocks());
+beforeEach(() => {
+  vi.resetAllMocks();
+  // The "From another project" tab mounts as soon as the dialog opens so it can load in the background, so every test needs these to resolve. Individual tests override them as needed.
+  vi.mocked(projectsApi.listProjects).mockResolvedValue({ projects: [], total: 0, page: 1, limit: 100 });
+  vi.mocked(iconsApi.listIcons).mockResolvedValue({ icons: [], total: 0, page: 1, limit: 200 });
+});
 
 describe("UploadDialog: files", () => {
   function setup(over: Partial<React.ComponentProps<typeof UploadDialog>> = {}) {
