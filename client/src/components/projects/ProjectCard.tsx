@@ -37,7 +37,7 @@ export default function ProjectCard({ project, currentUserId, onEdit, onDuplicat
   }
 
   return (
-    <li className="relative flex items-start gap-2 rounded-xl border border-border bg-card p-3.5 text-card-foreground shadow-sm hover:border-primary/60 transition-all duration-200 hover:shadow-xl hover:-translate-y-1">
+    <li className="relative flex items-start rounded-xl border border-border bg-card p-3.5 text-card-foreground shadow-sm hover:border-primary/60 transition-all duration-200 hover:shadow-xl hover:-translate-y-1">
       <div className="flex min-w-0 flex-1 flex-col gap-2.5">
         <div className="flex flex-wrap items-center gap-1.5">
           <PurposeBadge purpose={project.purpose} />
@@ -57,7 +57,7 @@ export default function ProjectCard({ project, currentUserId, onEdit, onDuplicat
           {project.description || "No description."}
         </p>
         <div
-          className="flex min-h-9 items-center gap-3 overflow-hidden rounded-lg bg-muted px-3 py-2"
+          className="flex min-h-9 items-center gap-2 overflow-hidden rounded-lg bg-muted px-3 py-2"
           role="img"
           aria-label={pluralize(project.sampleIcons.length, "Sample Icon")}
         >
