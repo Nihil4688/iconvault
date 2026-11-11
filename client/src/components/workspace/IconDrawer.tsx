@@ -1,6 +1,6 @@
 // The panel that opens when an icon is clicked. Preview at the icon's folder-specific size and colour on the background chosen in the toolbar; quick actions (copy as SVG, React or Vue, download, optimize, move to trash); and three tabs: Details (name, folder, tags, codepoint), Code (edit the SVG with a live preview, and the generated snippets) and Versions (restore an earlier state). People who cannot edit the project see everything read-only.
-import { Copy, Download, Sparkles, Trash2 } from "lucide-react";
-import { useState, type FormEvent } from "react";
+import { ChevronDown, Copy, Download, Sparkles, Trash2 } from "lucide-react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 import { deleteIcon, downloadIcon, getIcon, optimizeIcon, restoreIcon, restoreVersion, updateIcon } from "../../api/icons";
 import type { FolderWithCount, IconDetail, ProjectPurpose } from "../../api/types";
 import { useToast } from "../../context/ToastContext";
@@ -10,7 +10,6 @@ import { usePersistentChoice } from "../../hooks/usePersistentChoice";
 import { cn } from "../../lib/cn";
 import { copyText } from "../../lib/clipboard";
 import { codepointProblem } from "../../lib/codepoint";
-import { folderPath } from "../../lib/folderTree";
 import { formatBytes, formatDate, formatRelative, savingsPercent } from "../../lib/format";
 import { iconWarnings } from "../../lib/iconInfo";
 import { SURFACES, surfaceClass, surfaceStyle } from "../../lib/previewSurface";
@@ -144,27 +143,18 @@ function IconPanel({ projectId, icon, tab, onTab, reload, canEdit, folders, idPr
       </section>
 
       <section aria-label="Actions" className="flex flex-wrap gap-2">
-        <Button size="sm" icon={<Copy aria-hidden="true" className="h-4 w-4" />} onClick={() => copy("the SVG", () => icon.svg)}>
-          Copy SVG
-        </Button>
-        <Button size="sm" onClick={() => copy("the React component", () => toReactComponent(icon.svg, icon.name))}>
-          Copy React
-        </Button>
-        <Button size="sm" onClick={() => copy("the Vue component", () => toVueComponent(icon.svg))}>
-          Copy Vue
-        </Button>
+        <CopySplitButton
+          onCopySvg={() => copy("the SVG", () => icon.svg)}
+          onCopyReact={() => copy("the React component", () => toReactComponent(icon.svg, icon.name))}
+          onCopyVue={() => copy("the Vue component", () => toVueComponent(icon.svg))}
+        />
         <Button size="sm" icon={<Download aria-hidden="true" className="h-4 w-4" />} loading={busy === "download"} disabled={busy !== null} onClick={download}>
           Download
         </Button>
         {canEdit && (
-          <>
-            <Button size="sm" icon={<Sparkles aria-hidden="true" className="h-4 w-4" />} loading={busy === "optimize"} disabled={busy !== null} onClick={optimize}>
-              Optimize
-            </Button>
-            <Button size="sm" variant="destructive" icon={<Trash2 aria-hidden="true" className="h-4 w-4" />} loading={busy === "trash"} disabled={busy !== null} onClick={trash}>
-              Move to Trash
-            </Button>
-          </>
+          <Button size="sm" icon={<Sparkles aria-hidden="true" className="h-4 w-4" />} loading={busy === "optimize"} disabled={busy !== null} onClick={optimize}>
+            Optimize
+          </Button>
         )}
       </section>
 
@@ -184,7 +174,7 @@ function IconPanel({ projectId, icon, tab, onTab, reload, canEdit, folders, idPr
           { value: "versions", label: `Versions (${icon.versions.length})` },
         ]}
       >
-        {tab === "details" && <DetailsTab icon={icon} canEdit={canEdit} folders={folders} purpose={purpose} saved={saved} onSaved={() => { reload(); onChanged(); }} />}
+        {tab === "details" && <DetailsTab icon={icon} canEdit={canEdit} folders={folders} purpose={purpose} saved={saved} onSaved={() => { reload(); onChanged(); }} onTrash={trash} trashBusy={busy === "trash"} busyAction={busy !== null} />}
         {tab === "code" && <CodeTab icon={icon} canEdit={canEdit} onSaved={() => { reload(); onChanged(); }} />}
         {tab === "versions" && (
           <VersionsTab
@@ -201,7 +191,7 @@ function IconPanel({ projectId, icon, tab, onTab, reload, canEdit, folders, idPr
   );
 }
 
-function DetailsTab({ icon, canEdit, folders, purpose, saved, onSaved }: { icon: IconDetail; canEdit: boolean; folders: FolderWithCount[]; purpose: ProjectPurpose; saved: number; onSaved: () => void }) {
+function DetailsTab({ icon, canEdit, folders, purpose, saved, onSaved, onTrash, trashBusy, busyAction }: { icon: IconDetail; canEdit: boolean; folders: FolderWithCount[]; purpose: ProjectPurpose; saved: number; onSaved: () => void; onTrash: () => void; trashBusy: boolean; busyAction: boolean }) {
   const { showToast } = useToast();
   const [name, setName] = useState(icon.name);
   const [folderId, setFolderId] = useState(icon.folderId ?? "");
@@ -210,6 +200,14 @@ function DetailsTab({ icon, canEdit, folders, purpose, saved, onSaved }: { icon:
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const problem = purpose === "font" ? codepointProblem(codepoint) : null;
+
+  function reset() {
+    setName(icon.name);
+    setFolderId(icon.folderId ?? "");
+    setTagText(icon.tags.join(", "));
+    setCodepoint(icon.codepoint ?? "");
+    setError(null);
+  }
 
   const patch = {
     ...(name.trim() !== icon.name ? { name: name.trim() } : {}),
@@ -241,30 +239,32 @@ function DetailsTab({ icon, canEdit, folders, purpose, saved, onSaved }: { icon:
 
   return (
     <div className="space-y-4">
-      {canEdit ? (
-        <form onSubmit={submit} noValidate className="space-y-3">
-          <TextField label="Name" value={name} maxLength={100} autoComplete="off" onChange={(event) => setName(event.target.value)} hint="Changing the name also changes the icon's id." />
-          <FolderDropdownSelect label="Folder" value={folderId} folders={folders} onChange={setFolderId} />
-          <TextField label="Tags" value={tagText} autoComplete="off" hint="Separated by commas." onChange={(event) => setTagText(event.target.value)} />
-          {purpose === "font" && <TextField label="Font Codepoint" value={codepoint} autoComplete="off" spellCheck={false} maxLength={4} className="font-mono" hint="Optional: 4 hex digits from E000 to F8FF, for example E001. Kept the same every time a font is built." error={problem ?? undefined} onChange={(event) => setCodepoint(event.target.value)} />}
-          {error && (
-            <p role="alert" className="text-sm font-medium text-destructive">
-              {error}
-            </p>
-          )}
-          <Button type="submit" variant="primary" loading={busy} disabled={!changed || problem !== null}>
-            Save Changes
-          </Button>
-        </form>
-      ) : (
-        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
-          <dt className="text-muted-foreground">Folder</dt>
-          <dd>{folderPath(folders, icon.folderId)}</dd>
-          <dt className="text-muted-foreground">Tags</dt>
-          <dd>{icon.tags.length > 0 ? icon.tags.join(", ") : "None"}</dd>
-          {purpose === "font" && <><dt className="text-muted-foreground">Font codepoint</dt><dd className="font-mono">{icon.codepoint ?? "Not set"}</dd></>}
-        </dl>
-      )}
+      <form onSubmit={submit} noValidate className="space-y-3">
+        <TextField label="Name" value={name} maxLength={100} autoComplete="off" disabled={!canEdit} onChange={(event) => setName(event.target.value)} hint="Changing the name also changes the icon's id." />
+        <FolderDropdownSelect label="Folder" value={folderId} folders={folders} onChange={setFolderId} disabled={!canEdit} />
+        <TextField label="Tags" value={tagText} autoComplete="off" disabled={!canEdit} hint="Separated by commas." onChange={(event) => setTagText(event.target.value)} />
+        {purpose === "font" && <TextField label="Font Codepoint" value={codepoint} autoComplete="off" spellCheck={false} maxLength={4} disabled={!canEdit} className="font-mono" hint="Optional: 4 hex digits from E000 to F8FF, for example E001. Kept the same every time a font is built." error={problem ?? undefined} onChange={(event) => setCodepoint(event.target.value)} />}
+        {error && (
+          <p role="alert" className="text-sm font-medium text-destructive">
+            {error}
+          </p>
+        )}
+        {canEdit && (
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
+            <Button type="button" variant="destructive" icon={<Trash2 aria-hidden="true" className="h-4 w-4" />} loading={trashBusy} disabled={busyAction} onClick={onTrash}>
+              Move to trash
+            </Button>
+            <div className="flex gap-2">
+              <Button type="button" variant="secondary" disabled={!changed || busy} onClick={reset}>
+                Cancel
+              </Button>
+              <Button type="submit" variant="primary" loading={busy} disabled={!changed || problem !== null}>
+                Save Changes
+              </Button>
+            </div>
+          </div>
+        )}
+      </form>
 
       <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 border-t border-border pt-3 text-sm">
         <dt className="text-muted-foreground">Size</dt>
@@ -281,6 +281,57 @@ function DetailsTab({ icon, canEdit, folders, purpose, saved, onSaved }: { icon:
         <dt className="text-muted-foreground">Last changed</dt>
         <dd>{formatRelative(icon.updatedAt)}</dd>
       </dl>
+    </div>
+  );
+}
+
+// A split button: the main part copies the SVG; the chevron opens a small menu to copy the React or Vue component instead.
+function CopySplitButton({ onCopySvg, onCopyReact, onCopyVue }: { onCopySvg: () => void; onCopyReact: () => void; onCopyVue: () => void }) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    function onPointerDown(event: MouseEvent) {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onPointerDown);
+    return () => document.removeEventListener("mousedown", onPointerDown);
+  }, [open]);
+
+  function choose(run: () => void) {
+    setOpen(false);
+    run();
+  }
+
+  return (
+    <div ref={rootRef} className="relative inline-flex">
+      <Button size="sm" className="rounded-r-none" icon={<Copy aria-hidden="true" className="h-4 w-4" />} onClick={onCopySvg}>
+        Copy SVG
+      </Button>
+      <Button
+        size="sm"
+        aria-label="More copy options"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className="-ml-px rounded-l-none px-1.5"
+        onClick={() => setOpen((value) => !value)}
+      >
+        <ChevronDown aria-hidden="true" className="h-4 w-4" />
+      </Button>
+      {open && (
+        <div role="menu" aria-label="Copy as" className="absolute left-0 top-full z-30 mt-1 min-w-40 rounded-xl border border-border bg-popover p-1 text-popover-foreground shadow-lg">
+          <button type="button" role="menuitem" className="flex w-full items-center rounded-lg px-2.5 py-2 text-left text-sm transition-colors hover:bg-accent focus-visible:bg-accent focus-visible:outline-none" onClick={() => choose(onCopySvg)}>
+            Copy SVG
+          </button>
+          <button type="button" role="menuitem" className="flex w-full items-center rounded-lg px-2.5 py-2 text-left text-sm transition-colors hover:bg-accent focus-visible:bg-accent focus-visible:outline-none" onClick={() => choose(onCopyReact)}>
+            Copy React
+          </button>
+          <button type="button" role="menuitem" className="flex w-full items-center rounded-lg px-2.5 py-2 text-left text-sm transition-colors hover:bg-accent focus-visible:bg-accent focus-visible:outline-none" onClick={() => choose(onCopyVue)}>
+            Copy Vue
+          </button>
+        </div>
+      )}
     </div>
   );
 }
