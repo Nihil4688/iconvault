@@ -1,6 +1,6 @@
 // Controls above the icon list: folder-specific preview size and colour, sort (an icon with a menu), a More menu (preview background) and grid or list view in one row, with search first, the "select all" checkbox  and (for editors) the Upload icons menu, which can be placed into the project header.
 import { ArrowUpDown, LayoutGrid, List, Minus, Plus, Search } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "../../lib/cn";
 import { ICON_COLORS, MAX_ICON_SIZE, MIN_EDITABLE_ICON_SIZE, clampIconSizeToRange, stepIconSize, type IconAppearance } from "../../lib/iconAppearance";
@@ -31,9 +31,15 @@ type IconToolbarProps = {
 const SORT_LABELS: Record<IconSort, string> = { newest: "Newest", oldest: "Oldest", name: "Name A–Z", "name-desc": "Name Z–A", largest: "Largest" };
 
 export default function IconToolbar({ search, onSearch, sort, onSort, view, onView, appearance, onAppearance, appearanceScope, actionsHost, canAdd, onUpload, disabled = false, appearanceDisabled = false }: IconToolbarProps) {
-  // The px box is editable, so it keeps the raw text while typing and only commits a clamped value on blur or Enter.
+  // The size shows as plain text until the user clicks it; then it becomes an editable field that keeps the raw
+  // text while typing and only commits a clamped value on blur or Enter.
   const [sizeText, setSizeText] = useState(String(appearance.size));
+  const [editingSize, setEditingSize] = useState(false);
+  const sizeInputRef = useRef<HTMLInputElement>(null);
   useEffect(() => setSizeText(String(appearance.size)), [appearance.size]);
+  useEffect(() => {
+    if (editingSize) sizeInputRef.current?.select();
+  }, [editingSize]);
 
   const parsedSize = Number.parseInt(sizeText, 10);
   // While typing, flag a value that is out of range (e.g. 120) so the box turns red and a message shows.
@@ -43,6 +49,7 @@ export default function IconToolbar({ search, onSearch, sort, onSort, view, onVi
     const parsed = Number.parseInt(raw, 10);
     const next = Number.isNaN(parsed) ? appearance.size : clampIconSizeToRange(parsed);
     setSizeText(String(next));
+    setEditingSize(false);
     if (next !== appearance.size) onAppearance({ size: next });
   }
 
@@ -55,7 +62,7 @@ export default function IconToolbar({ search, onSearch, sort, onSort, view, onVi
 
   return (
     <div className="space-y-3">
-      <fieldset disabled={disabled} className={cn("flex min-w-0 flex-wrap items-center gap-4 border-0 p-0s", disabled && "opacity-50")}>
+      <fieldset disabled={disabled} className={cn("flex min-w-0 flex-wrap items-center gap-4 border-0 p-0", disabled && "opacity-50")}>
         <legend className="sr-only">Icon Browsing Controls</legend>
         <div className="relative min-w-48 max-w-xs flex-1">
           <label htmlFor="icon-search" className="sr-only">
@@ -87,34 +94,45 @@ export default function IconToolbar({ search, onSearch, sort, onSort, view, onVi
                   </button>
                 </div>
                 <div className="flex items-center gap-1">
-                  <input
-                    type="number"
-                    inputMode="numeric"
-                    aria-label="Icon Size in Pixels"
-                    aria-invalid={sizeInvalid}
-                    aria-describedby={sizeInvalid ? "icon-size-error" : undefined}
-                    min={MIN_EDITABLE_ICON_SIZE}
-                    max={MAX_ICON_SIZE}
-                    step={1}
-                    value={sizeText}
-                    onChange={(event) => setSizeText(event.target.value)}
-                    onFocus={(event) => event.currentTarget.select()}
-                    onBlur={(event) => commitSize(event.target.value)}
-                    onKeyDown={(event) => {
-                      if (event.key === "Enter") {
-                        event.preventDefault();
-                        commitSize(event.currentTarget.value);
-                      } else if (event.key === "Escape") {
-                        event.preventDefault();
-                        setSizeText(String(appearance.size));
-                      }
-                    }}
-                    className={cn(
-                      "h-9 w-14 rounded-lg border bg-background text-center font-mono text-sm tabular-nums transition-colors [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
-                      "hover:border-ring focus:border-[#1555E0] focus:shadow-[0_0_0_3px_rgba(21,85,224,0.2)] focus:outline-none",
-                      sizeInvalid ? "border-destructive text-destructive focus:border-destructive focus:shadow-[0_0_0_3px_rgba(220,38,38,0.2)]" : "border-input text-foreground",
-                    )}
-                  />
+                  {editingSize ? (
+                    <input
+                      ref={sizeInputRef}
+                      type="number"
+                      inputMode="numeric"
+                      aria-label="Icon Size in Pixels"
+                      aria-invalid={sizeInvalid}
+                      aria-describedby={sizeInvalid ? "icon-size-error" : undefined}
+                      min={MIN_EDITABLE_ICON_SIZE}
+                      max={MAX_ICON_SIZE}
+                      step={1}
+                      value={sizeText}
+                      onChange={(event) => setSizeText(event.target.value)}
+                      onBlur={(event) => commitSize(event.target.value)}
+                      onKeyDown={(event) => {
+                        if (event.key === "Enter") {
+                          event.preventDefault();
+                          commitSize(event.currentTarget.value);
+                        } else if (event.key === "Escape") {
+                          event.preventDefault();
+                          setSizeText(String(appearance.size));
+                          setEditingSize(false);
+                        }
+                      }}
+                      className={cn(
+                        "w-10 border-0 border-b bg-transparent text-center text-sm tabular-nums focus:outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
+                        sizeInvalid ? "border-destructive text-destructive" : "border-foreground text-foreground",
+                      )}
+                    />
+                  ) : (
+                    <button
+                      type="button"
+                      aria-label="Edit icon size in pixels"
+                      onClick={() => setEditingSize(true)}
+                      className="w-10 text-center text-sm tabular-nums text-foreground"
+                    >
+                      {appearance.size}
+                    </button>
+                  )}
                   <span aria-hidden="true" className="text-sm text-muted-foreground">px</span>
                 </div>
               </div>

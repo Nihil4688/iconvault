@@ -103,35 +103,41 @@ describe("showing icons", () => {
     expect(slider).toHaveAttribute("min", "0");
     expect(slider).toHaveAttribute("max", "96");
     expect(slider).toHaveAttribute("step", "1");
-    const box = screen.getByRole("spinbutton", { name: "Icon Size in Pixels" });
-    expect(box).toHaveValue(40);
+    // The size reads as plain text until it is clicked.
+    const display = screen.getByRole("button", { name: "Edit icon size in pixels" });
+    expect(display).toHaveTextContent("40");
 
     await userEvent.click(screen.getByRole("button", { name: "Smaller Icons" }));
-    expect(box).toHaveValue(32);
+    expect(display).toHaveTextContent("32");
     await userEvent.click(screen.getByRole("button", { name: "Larger Icons" }));
-    expect(box).toHaveValue(40);
+    expect(display).toHaveTextContent("40");
 
     // The slider works in real pixels now, so any value is reflected.
     fireEvent.change(slider, { target: { value: "63" } });
-    expect(box).toHaveValue(63);
+    expect(display).toHaveTextContent("63");
 
-    // Typing a value commits it and moves the slider too.
+    // Clicking the number turns it into an editable field; typing commits it and moves the slider too.
+    await userEvent.click(display);
+    const box = screen.getByRole("spinbutton", { name: "Icon Size in Pixels" });
     await userEvent.clear(box);
     await userEvent.type(box, "72{enter}");
-    expect(box).toHaveValue(72);
     expect(slider).toHaveValue("72");
+    expect(screen.getByRole("button", { name: "Edit icon size in pixels" })).toHaveTextContent("72");
 
     // Anything above the maximum is clamped to 96; nothing can exceed it.
-    await userEvent.clear(box);
-    await userEvent.type(box, "500{enter}");
-    expect(box).toHaveValue(96);
+    await userEvent.click(screen.getByRole("button", { name: "Edit icon size in pixels" }));
+    const box2 = screen.getByRole("spinbutton", { name: "Icon Size in Pixels" });
+    await userEvent.clear(box2);
+    await userEvent.type(box2, "500{enter}");
     expect(slider).toHaveValue("96");
+    expect(screen.getByRole("button", { name: "Edit icon size in pixels" })).toHaveTextContent("96");
   });
 
   it("flags an out-of-range size while typing and reverts it on Escape", async () => {
     setup();
     await screen.findByRole("button", { name: "Open Alpha" });
 
+    await userEvent.click(screen.getByRole("button", { name: "Edit icon size in pixels" }));
     const box = screen.getByRole("spinbutton", { name: "Icon Size in Pixels" });
     expect(box).toHaveValue(40);
 
@@ -141,10 +147,9 @@ describe("showing icons", () => {
     expect(box).toHaveAttribute("aria-invalid", "true");
     expect(screen.getByText("Maximum size is 96px")).toBeInTheDocument();
 
-    // Escape discards the edit and restores the committed value.
+    // Escape discards the edit, restores the committed value and returns to plain text.
     await userEvent.keyboard("{Escape}");
-    expect(box).toHaveValue(40);
-    expect(box).toHaveAttribute("aria-invalid", "false");
+    expect(screen.getByRole("button", { name: "Edit icon size in pixels" })).toHaveTextContent("40");
     expect(screen.queryByText("Maximum size is 96px")).toBeNull();
   });
 
