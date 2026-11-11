@@ -304,6 +304,36 @@ describe("UploadDialog: paste", () => {
     expect(pasteIcon).not.toHaveBeenCalled();
   });
 
+  it("validates the name and SVG code inline, then clears the error as the user types", async () => {
+    const props = { open: true, projectId: "p1", prefix: "fth", folders, defaultFolderId: "ar", onClose: vi.fn(), onUploaded: vi.fn(), onPasted: vi.fn() };
+    render(<UploadDialog {...props} />);
+    await userEvent.click(screen.getByRole("tab", { name: "Paste SVG Code" }));
+
+    // Submitting empty shows a message under each required field and never calls the API.
+    await userEvent.click(screen.getByRole("button", { name: "Add Icon" }));
+    expect(screen.getByText("Enter a name for the icon.")).toBeInTheDocument();
+    expect(screen.getByText("Paste the SVG code for the icon.")).toBeInTheDocument();
+    expect(pasteIcon).not.toHaveBeenCalled();
+
+    const name = screen.getByRole("textbox", { name: /^Name/ });
+    const code = screen.getByRole("textbox", { name: /^SVG Code/ });
+    expect(name).toHaveAttribute("aria-invalid", "true");
+    expect(code).toHaveAttribute("aria-invalid", "true");
+
+    // Non-SVG content is rejected with a tailored message.
+    await userEvent.type(name, "Arrow");
+    expect(screen.queryByText("Enter a name for the icon.")).toBeNull();
+    fireEvent.change(code, { target: { value: "just some text" } });
+    await userEvent.click(screen.getByRole("button", { name: "Add Icon" }));
+    expect(screen.getByText(/does not look like SVG code/i)).toBeInTheDocument();
+    expect(pasteIcon).not.toHaveBeenCalled();
+
+    // Valid markup clears the error.
+    fireEvent.change(code, { target: { value: "<svg viewBox='0 0 1 1'></svg>" } });
+    expect(screen.queryByText(/does not look like SVG code/i)).toBeNull();
+    expect(code).not.toHaveAttribute("aria-invalid");
+  });
+
   it("adds the icon with the chosen options, tells the owner, and closes", async () => {
     pasteIcon.mockResolvedValue({ outcome: "created", icon: { ...makeIcon({ name: "Arrow" }), svg: "<svg/>" } });
     const props = await openPaste();
