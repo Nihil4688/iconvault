@@ -150,11 +150,7 @@ export function CopyFromProjectForm({ targetProjectId, targetFolders, defaultFol
           <p role="alert" className="text-sm text-destructive">
             {icons.error.message}
           </p>
-        ) : icons.loading && !icons.data ? (
-          <p role="status" className="text-sm text-muted-foreground">
-            Loading icons…
-          </p>
-        ) : shown.length === 0 ? (
+        )  : shown.length === 0 ? (
           <div className="min-h-0 flex-1 overflow-y-auto rounded-2xl border border-dashed border-border p-10 text-center">
             <Layers aria-hidden="true" className="mx-auto h-8 w-8 text-muted-foreground" />
             <p className="mt-2 text-base font-semibold">
