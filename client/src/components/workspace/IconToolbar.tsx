@@ -79,7 +79,8 @@ export default function IconToolbar({ search, onSearch, sort, onSort, view, onVi
               <button type="button" aria-label="Larger Icons" disabled={appearance.size >= MAX_ICON_SIZE} onClick={() => onAppearance({ size: stepIconSize(appearance.size, 1) })} className="inline-flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:text-foreground disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-ring">
                 <Plus aria-hidden="true" className="h-4 w-4" />
               </button>
-              <div className="flex items-center">
+              <label title="Click to type an exact size (0–96px)" className="flex cursor-text items-center gap-0.5 rounded-md border border-input bg-background px-1.5 py-0.5 text-muted-foreground transition-colors hover:border-ring hover:text-foreground focus-within:border-ring focus-within:text-foreground focus-within:ring-2 focus-within:ring-ring/40">
+                <span className="sr-only">Icon Size in Pixels</span>
                 <input
                   type="number"
                   inputMode="numeric"
@@ -89,6 +90,7 @@ export default function IconToolbar({ search, onSearch, sort, onSort, view, onVi
                   step={1}
                   value={sizeText}
                   onChange={(event) => setSizeText(event.target.value)}
+                  onFocus={(event) => event.currentTarget.select()}
                   onBlur={(event) => commitSize(event.target.value)}
                   onKeyDown={(event) => {
                     if (event.key === "Enter") {
@@ -96,10 +98,10 @@ export default function IconToolbar({ search, onSearch, sort, onSort, view, onVi
                       commitSize(event.currentTarget.value);
                     }
                   }}
-                  className="w-8 bg-transparent text-right font-mono text-xs text-muted-foreground tabular-nums focus:text-foreground focus:outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
+                  className="w-7 bg-transparent text-right font-mono text-xs tabular-nums focus:outline-none [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
                 />
-                <span aria-hidden="true" className="font-mono text-xs text-muted-foreground">px</span>
-              </div>
+                <span aria-hidden="true" className="font-mono text-xs">px</span>
+              </label>
             </div>
             <div role="group" aria-label="Icon Colour" className="flex h-9 items-center gap-2 rounded-lg border border-input bg-background px-3">
               <span
