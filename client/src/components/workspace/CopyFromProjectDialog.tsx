@@ -38,7 +38,7 @@ export default function CopyFromProjectDialog({ open, onClose, ...rest }: CopyFr
   );
 }
 
-export function CopyFromProjectForm({ targetProjectId, targetFolders, defaultFolderId, onClose, onCopied }: Omit<CopyFromProjectDialogProps, "open">) {
+export function CopyFromProjectForm({ targetProjectId, targetFolders, defaultFolderId, onClose, onCopied, active = true }: Omit<CopyFromProjectDialogProps, "open"> & { active?: boolean }) {
   const projects = useResource("copy-sources", () => listProjects({ scope: "all", status: "active", limit: 100 }));
   const sources = (projects.data?.projects ?? []).filter((p) => p.id !== targetProjectId);
 
@@ -100,11 +100,13 @@ export function CopyFromProjectForm({ targetProjectId, targetFolders, defaultFol
     return (
       <div>
         <p className="text-sm text-muted-foreground">There is no other project to copy from yet.</p>
-        <DialogFooter>
-          <Button variant="primary" onClick={onClose}>
-            Close
-          </Button>
-        </DialogFooter>
+        {active && (
+          <DialogFooter>
+            <Button variant="primary" onClick={onClose}>
+              Close
+            </Button>
+          </DialogFooter>
+        )}
       </div>
     );
   }
@@ -179,7 +181,7 @@ export function CopyFromProjectForm({ targetProjectId, targetFolders, defaultFol
               <div className="flex items-center gap-3">
                 <span className="text-sm font-medium">{pickedHere.length} selected</span>
                 {pickedHere.length > 0 && (
-                  <Button size="sm" variant="ghost" className="px-2 text-primary" onClick={() => setPicked([])}>
+                  <Button size="sm" variant="ghost" className="px-2 text-primary hover:bg-primary/5" onClick={() => setPicked([])}>
                     Clear selection
                   </Button>
                 )}
@@ -229,15 +231,17 @@ export function CopyFromProjectForm({ targetProjectId, targetFolders, defaultFol
           {error}
         </p>
       )}
-      <DialogFooter>
-        <span role="status" className="mr-auto text-sm text-muted-foreground">{pluralize(pickedHere.length, "icon")} selected</span>
-        <Button variant="secondary" onClick={onClose} disabled={busy}>
-          Cancel
-        </Button>
-        <Button type="submit" variant="primary" loading={busy} disabled={pickedHere.length === 0}>
-          {pickedHere.length > 0 ? `Copy ${pluralize(pickedHere.length, "Icon")}` : "Copy Icons"}
-        </Button>
-      </DialogFooter>
+      {active && (
+        <DialogFooter>
+          <span role="status" className="mr-auto text-sm text-muted-foreground">{pluralize(pickedHere.length, "icon")} selected</span>
+          <Button variant="secondary" onClick={onClose} disabled={busy}>
+            Cancel
+          </Button>
+          <Button type="submit" variant="primary" loading={busy} disabled={pickedHere.length === 0}>
+            {pickedHere.length > 0 ? `Copy ${pluralize(pickedHere.length, "Icon")}` : "Copy Icons"}
+          </Button>
+        </DialogFooter>
+      )}
     </form>
   );
 }

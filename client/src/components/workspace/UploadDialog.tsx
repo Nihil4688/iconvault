@@ -306,7 +306,7 @@ function UploadForm({ projectId, prefix, folders, defaultFolderId, onClose, onUp
         { value: "copy", label: "From Another Project" },
       ]}
     >
-      {tab === "files" ? (
+      {tab === "files" && (
         <form onSubmit={uploadFiles}>
           <div
             onDragOver={(event) => {
@@ -379,7 +379,8 @@ function UploadForm({ projectId, prefix, folders, defaultFolderId, onClose, onUp
             </Button>
           </DialogFooter>
         </form>
-      ) : tab === "paste" ? (
+      )}
+      {tab === "paste" && (
         <form onSubmit={pasteCodeSubmit} noValidate>
           <div className="space-y-3">
             <TextField label="Name" value={pasteName}  placeholder="Pasted icon" maxLength={100} autoComplete="off" onChange={(event) => setPasteName(event.target.value)} required />
@@ -401,15 +402,18 @@ function UploadForm({ projectId, prefix, folders, defaultFolderId, onClose, onUp
             </Button>
           </DialogFooter>
         </form>
-      ) : (
+      )}
+      {/* Mounted while the dialog is open (even when another tab is active) so its projects and icons load in the background. This way switching to it shows content instead of a loading state, like the other tabs. Hidden rather than unmounted so the fetched data and any selection are kept. */}
+      <div hidden={tab !== "copy"}>
         <CopyFromProjectForm
           targetProjectId={projectId}
           targetFolders={folders}
           defaultFolderId={defaultFolderId}
+          active={tab === "copy"}
           onClose={onClose}
           onCopied={onCopied ?? onUploaded}
         />
-      )}
+      </div>
     </Tabs>
   );
 }
