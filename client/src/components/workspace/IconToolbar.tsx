@@ -1,8 +1,9 @@
 // Controls above the icon list: folder-specific preview size and colour, sort (an icon with a menu), a More menu (preview background) and grid or list view in one row, with search first, the "select all" checkbox  and (for editors) the Upload icons menu, which can be placed into the project header.
 import { ArrowUpDown, LayoutGrid, List, Minus, Plus, Search } from "lucide-react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import { cn } from "../../lib/cn";
-import { ICON_COLORS, ICON_SIZES, stepIconSize, type IconAppearance } from "../../lib/iconAppearance";
+import { ICON_COLORS, MAX_ICON_SIZE, MIN_EDITABLE_ICON_SIZE, clampIconSizeToRange, stepIconSize, type IconAppearance } from "../../lib/iconAppearance";
 import DropdownSelect from "../ui/DropdownSelect";
 import UploadButton from "./UploadButton";
 
@@ -30,7 +31,20 @@ type IconToolbarProps = {
 const SORT_LABELS: Record<IconSort, string> = { newest: "Newest", oldest: "Oldest", name: "Name A–Z", "name-desc": "Name Z–A", largest: "Largest" };
 
 export default function IconToolbar({ search, onSearch, sort, onSort, view, onView, appearance, onAppearance, appearanceScope, actionsHost, canAdd, onUpload, disabled = false, appearanceDisabled = false }: IconToolbarProps) {
+  // The px box is editable, so it keeps the raw text while typing and only commits a clamped value on blur or Enter.
+  const [sizeText, setSizeText] = useState(String(appearance.size));
+  useEffect(() => setSizeText(String(appearance.size)), [appearance.size]);
 
+  const parsedSize = Number.parseInt(sizeText, 10);
+  // While typing, flag a value that is out of range (e.g. 120) so the box turns red and a message shows.
+  const sizeInvalid = sizeText.trim() !== "" && (Number.isNaN(parsedSize) || parsedSize < MIN_EDITABLE_ICON_SIZE || parsedSize > MAX_ICON_SIZE);
+
+  function commitSize(raw: string) {
+    const parsed = Number.parseInt(raw, 10);
+    const next = Number.isNaN(parsed) ? appearance.size : clampIconSizeToRange(parsed);
+    setSizeText(String(next));
+    if (next !== appearance.size) onAppearance({ size: next });
+  }
 
   const actions = (
     <div className="flex flex-wrap items-center gap-2">
@@ -61,15 +75,50 @@ export default function IconToolbar({ search, onSearch, sort, onSort, view, onVi
         <div role="group" aria-label="Icon Toolbar Actions" className="ml-auto flex max-w-full flex-wrap items-center justify-end gap-2">
           <fieldset disabled={appearanceDisabled} aria-describedby="appearance-scope-help" className={cn("flex items-center gap-2 border-0 p-0", appearanceDisabled && "opacity-50")}>
             <legend className="sr-only">Folder Appearance</legend>
-            <div role="group" aria-label="Icon Size" className="flex h-9 items-center gap-2 rounded-lg border border-input bg-background px-2">
-              <button type="button" aria-label="Smaller Icons" disabled={appearance.size <= ICON_SIZES[0]} onClick={() => onAppearance({ size: stepIconSize(appearance.size, -1) })} className="inline-flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:text-foreground disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-ring">
-                <Minus aria-hidden="true" className="h-4 w-4" />
-              </button>
-              <input type="range" aria-label="Icon Size in Pixels" min={0} max={ICON_SIZES.length - 1} step={1} value={ICON_SIZES.findIndex((size) => size === appearance.size)} onChange={(event) => onAppearance({ size: ICON_SIZES[Number(event.target.value)] })} className="w-20 accent-[hsl(var(--primary))]" />
-              <button type="button" aria-label="Larger Icons" disabled={appearance.size >= ICON_SIZES[ICON_SIZES.length - 1]} onClick={() => onAppearance({ size: stepIconSize(appearance.size, 1) })} className="inline-flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:text-foreground disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-ring">
-                <Plus aria-hidden="true" className="h-4 w-4" />
-              </button>
-              <output className="w-10 text-right font-mono text-xs text-muted-foreground">{appearance.size}px</output>
+            <div role="group" aria-label="Icon Size" className="flex flex-col gap-1">
+              <div className="flex items-center gap-2">
+                <div className="flex h-9 items-center gap-2 rounded-lg border border-input bg-background px-2">
+                  <button type="button" aria-label="Smaller Icons" disabled={appearance.size <= MIN_EDITABLE_ICON_SIZE} onClick={() => onAppearance({ size: stepIconSize(appearance.size, -1) })} className="inline-flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:text-foreground disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-ring">
+                    <Minus aria-hidden="true" className="h-4 w-4" />
+                  </button>
+                  <input type="range" aria-label="Icon Size in Pixels" min={MIN_EDITABLE_ICON_SIZE} max={MAX_ICON_SIZE} step={1} value={appearance.size} onChange={(event) => onAppearance({ size: clampIconSizeToRange(Number(event.target.value)) })} className="w-20 accent-[hsl(var(--primary))]" />
+                  <button type="button" aria-label="Larger Icons" disabled={appearance.size >= MAX_ICON_SIZE} onClick={() => onAppearance({ size: stepIconSize(appearance.size, 1) })} className="inline-flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:text-foreground disabled:opacity-40 focus-visible:outline-2 focus-visible:outline-ring">
+                    <Plus aria-hidden="true" className="h-4 w-4" />
+                  </button>
+                  <div className="flex items-center gap-1">
+                  <input
+                    type="number"
+                    inputMode="numeric"
+                    aria-label="Icon Size in Pixels"
+                    aria-invalid={sizeInvalid}
+                    aria-describedby={sizeInvalid ? "icon-size-error" : undefined}
+                    min={MIN_EDITABLE_ICON_SIZE}
+                    max={MAX_ICON_SIZE}
+                    step={1}
+                    value={sizeText}
+                    onChange={(event) => setSizeText(event.target.value)}
+                    onFocus={(event) => event.currentTarget.select()}
+                    onBlur={(event) => commitSize(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter") {
+                        event.preventDefault();
+                        commitSize(event.currentTarget.value);
+                      } else if (event.key === "Escape") {
+                        event.preventDefault();
+                        setSizeText(String(appearance.size));
+                      }
+                    }}
+                    className={cn(
+                      "h-6 w-10 rounded-lg border bg-background text-center font-mono text-sm tabular-nums transition-colors [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none",
+                      "hover:border-ring focus:border-[#1555E0] focus:shadow-[0_0_0_3px_rgba(21,85,224,0.2)] focus:outline-none",
+                      sizeInvalid ? "border-destructive text-destructive focus:border-destructive focus:shadow-[0_0_0_3px_rgba(220,38,38,0.2)]" : "border-input text-foreground",
+                    )}
+                  />
+                  <span aria-hidden="true" className="text-sm text-muted-foreground">px</span>
+                </div>
+                </div>
+                
+              </div>
             </div>
             <div role="group" aria-label="Icon Colour" className="flex h-9 items-center gap-2 rounded-lg border border-input bg-background px-3">
               <span

@@ -19,6 +19,15 @@ export function clampIconSize(value: number): number {
   return ICON_SIZES.reduce((closest, size) => (Math.abs(size - value) < Math.abs(closest - value) ? size : closest));
 }
 
+// Smallest size the px box and slider allow. Presets start at 12, but the box can be typed down to 0.
+export const MIN_EDITABLE_ICON_SIZE = 0;
+
+// Keeps any size within the editable range (rather than snapping to a preset), so a value typed in the px box is preserved.
+export function clampIconSizeToRange(value: number): number {
+  if (!Number.isFinite(value)) return DEFAULT_ICON_SIZE;
+  return Math.round(Math.min(MAX_ICON_SIZE, Math.max(MIN_EDITABLE_ICON_SIZE, value)));
+}
+
 export function stepIconSize(value: number, direction: -1 | 1): number {
   const index = ICON_SIZES.findIndex((size) => size === clampIconSize(value));
   return ICON_SIZES[Math.max(0, Math.min(ICON_SIZES.length - 1, index + direction))];

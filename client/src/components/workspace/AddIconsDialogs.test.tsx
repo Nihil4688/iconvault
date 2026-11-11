@@ -304,6 +304,43 @@ describe("UploadDialog: paste", () => {
     expect(pasteIcon).not.toHaveBeenCalled();
   });
 
+  it("validates the name and SVG code inline, then clears the error as the user types", async () => {
+    const props = { open: true, projectId: "p1", prefix: "fth", folders, defaultFolderId: "ar", onClose: vi.fn(), onUploaded: vi.fn(), onPasted: vi.fn() };
+    render(<UploadDialog {...props} />);
+    await userEvent.click(screen.getByRole("tab", { name: "Paste SVG Code" }));
+
+    // Submitting empty shows a message under each required field and never calls the API.
+    await userEvent.click(screen.getByRole("button", { name: "Add Icon" }));
+    expect(screen.getByText("Enter a name for the icon.")).toBeInTheDocument();
+    expect(screen.getByText("Paste the SVG code for the icon.")).toBeInTheDocument();
+    expect(pasteIcon).not.toHaveBeenCalled();
+
+    const name = screen.getByRole("textbox", { name: /^Name/ });
+    const code = screen.getByRole("textbox", { name: /^SVG Code/ });
+    expect(name).toHaveAttribute("aria-invalid", "true");
+    expect(code).toHaveAttribute("aria-invalid", "true");
+
+    // Non-SVG content is rejected with a tailored message.
+    await userEvent.type(name, "Arrow");
+    expect(screen.queryByText("Enter a name for the icon.")).toBeNull();
+    fireEvent.change(code, { target: { value: "just some text" } });
+    await userEvent.click(screen.getByRole("button", { name: "Add Icon" }));
+    expect(screen.getByText(/does not look like SVG code/i)).toBeInTheDocument();
+    expect(pasteIcon).not.toHaveBeenCalled();
+
+    // Pasting more than one <svg> is caught with its own message, below the field.
+    fireEvent.change(code, { target: { value: "<svg></svg><svg></svg>" } });
+    await userEvent.click(screen.getByRole("button", { name: "Add Icon" }));
+    expect(screen.getByText("Paste one icon at a time. This has more than one <svg> element.")).toBeInTheDocument();
+    expect(pasteIcon).not.toHaveBeenCalled();
+
+    // Valid markup clears the error.
+    fireEvent.change(code, { target: { value: "<svg viewBox='0 0 1 1'></svg>" } });
+    expect(screen.queryByText(/does not look like SVG code/i)).toBeNull();
+    expect(screen.queryByText(/more than one/i)).toBeNull();
+    expect(code).not.toHaveAttribute("aria-invalid");
+  });
+
   it("adds the icon with the chosen options, tells the owner, and closes", async () => {
     pasteIcon.mockResolvedValue({ outcome: "created", icon: { ...makeIcon({ name: "Arrow" }), svg: "<svg/>" } });
     const props = await openPaste();
@@ -340,6 +377,25 @@ describe("UploadDialog: paste", () => {
     fireEvent.change(screen.getByLabelText("SVG code"), { target: { value: "<svg/>" } });
     await userEvent.click(screen.getByRole("button", { name: "Add icon" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("Invalid SVG: XML entities are not permitted.");
+    expect(props.onClose).not.toHaveBeenCalled();
+  });
+
+  it("shows a refused SVG message below the SVG Code field, not at the foot of the form", async () => {
+    pasteIcon.mockRejectedValue(new ApiError("Invalid SVG: the markup could not be parsed.", 400));
+    const props = { open: true, projectId: "p1", prefix: "fth", folders, defaultFolderId: "ar", onClose: vi.fn(), onUploaded: vi.fn(), onPasted: vi.fn() };
+    render(<UploadDialog {...props} />);
+    await userEvent.click(screen.getByRole("tab", { name: "Paste SVG Code" }));
+
+    await userEvent.type(screen.getByRole("textbox", { name: /^Name/ }), "Arrow");
+    const code = screen.getByRole("textbox", { name: /^SVG Code/ });
+    fireEvent.change(code, { target: { value: "<svg></svg>" } });
+    await userEvent.click(screen.getByRole("button", { name: "Add Icon" }));
+
+    const message = await screen.findByText("Invalid SVG: the markup could not be parsed.");
+    expect(message).toBeInTheDocument();
+    // The message is wired to the SVG Code field, so it reads out right below that input.
+    expect(code).toHaveAttribute("aria-invalid", "true");
+    expect(code.getAttribute("aria-describedby")).toContain(message.id);
     expect(props.onClose).not.toHaveBeenCalled();
   });
 });

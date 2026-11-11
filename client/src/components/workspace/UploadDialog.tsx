@@ -37,7 +37,7 @@ type UploadDialogProps = {
 
 export default function UploadDialog({ open, onClose, ...rest }: UploadDialogProps) {
   return (
-    <Dialog open={open} onClose={onClose} dismissOnBackdrop={false} title="Add Icons" description="Upload icons, paste SVG code, or copy icons from another project." size="lg" contentLayout="fit">
+    <Dialog open={open} onClose={onClose} dismissOnBackdrop={false} autoFocusField={false} title="Add Icons" description="Upload icons, paste SVG code, or copy icons from another project." size="lg" contentLayout="fit">
       <UploadForm onClose={onClose} {...rest} />
     </Dialog>
   );
@@ -57,6 +57,8 @@ function UploadForm({ projectId, prefix, folders, defaultFolderId, onClose, onUp
   const [problems, setProblems] = useState<{ file: string; message: string }[]>([]);
   const [pasteName, setPasteName] = useState("");
   const [pasteCode, setPasteCode] = useState("");
+  // Inline, per-field errors for the Paste SVG Code tab, shown once the user tries to submit.
+  const [pasteErrors, setPasteErrors] = useState<{ name?: string; code?: string }>({});
   const [folderId, setFolderId] = useState(defaultFolderId ?? "");
   const [strategy, setStrategy] = useState<DuplicateStrategy>("rename");
   const [optimize, setOptimize] = useState(false);
@@ -177,17 +179,36 @@ function UploadForm({ projectId, prefix, folders, defaultFolderId, onClose, onUp
     await processFiles(files);
   }
 
+  function validatePaste(): { name?: string; code?: string } {
+    const next: { name?: string; code?: string } = {};
+    if (!pasteName.trim()) {
+      next.name = "Enter a name for the icon.";
+    }
+    const code = pasteCode.trim();
+    const openTags = code.match(/<svg[\s>]/gi)?.length ?? 0;
+    if (!code) {
+      next.code = "Paste the SVG code for the icon.";
+    } else if (openTags === 0 || !/<\/svg\s*>/i.test(code)) {
+      next.code = "This does not look like SVG code. Paste the full markup, from <svg> to </svg>.";
+    } else if (openTags > 1) {
+      next.code = "Paste one icon at a time. This has more than one <svg> element.";
+    }
+    return next;
+  }
+
   async function pasteCodeSubmit(event: FormEvent) {
     event.preventDefault();
-    if (!pasteCode.trim()) {
-      setError("Paste some SVG code first.");
+    const invalid = validatePaste();
+    setPasteErrors(invalid);
+    if (invalid.name || invalid.code) {
+      setError(null);
       return;
     }
     setBusy(true);
     setError(null);
     setNotice(null);
     try {
-      const result = await pasteIcon(projectId, { rawSvg: pasteCode, name: pasteName.trim() || "Pasted icon", folderId: folderId || null, optimize, tags: parseTags(tagText), strategy });
+      const result = await pasteIcon(projectId, { rawSvg: pasteCode, name: pasteName.trim(), folderId: folderId || null, optimize, tags: parseTags(tagText), strategy });
       if (result.outcome === "skipped") {
         setNotice(result.reason);
       } else {
@@ -195,7 +216,8 @@ function UploadForm({ projectId, prefix, folders, defaultFolderId, onClose, onUp
         onClose();
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not add the icon.");
+      // The icon is built from the pasted markup, so a failure belongs under the SVG Code field, not at the foot of the form.
+      setPasteErrors({ code: err instanceof Error ? err.message : "Could not add the icon." });
     } finally {
       setBusy(false);
     }
@@ -383,8 +405,8 @@ function UploadForm({ projectId, prefix, folders, defaultFolderId, onClose, onUp
       {tab === "paste" && (
         <form onSubmit={pasteCodeSubmit} noValidate>
           <div className="space-y-3">
-            <TextField label="Name" value={pasteName}  placeholder="Pasted icon" maxLength={100} autoComplete="off" onChange={(event) => setPasteName(event.target.value)} required />
-            <TextAreaField label="SVG Code" value={pasteCode} rows={8} spellCheck={false} required className="font-mono text-xs" placeholder='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">…</svg>' onChange={(event) => setPasteCode(event.target.value)} />
+            <TextField label="Name" value={pasteName} placeholder="Pasted icon" maxLength={100} autoComplete="off" error={pasteErrors.name} onChange={(event) => { setPasteName(event.target.value); if (pasteErrors.name) setPasteErrors((prev) => ({ ...prev, name: undefined })); }} required />
+            <TextAreaField label="SVG Code" value={pasteCode} rows={8} spellCheck={false} required error={pasteErrors.code} className="font-mono text-xs" placeholder='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">…</svg>' onChange={(event) => { setPasteCode(event.target.value); if (pasteErrors.code) setPasteErrors((prev) => ({ ...prev, code: undefined })); }} />
           </div>
           {options}
           {notice && (
