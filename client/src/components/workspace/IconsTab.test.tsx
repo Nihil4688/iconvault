@@ -95,25 +95,37 @@ describe("showing icons", () => {
     expect(within(card("Gamma")).queryByText("Stroke")).not.toBeInTheDocument();
   });
 
-  it("limits icon size choices to the supported pixel sizes", async () => {
+  it("limits icon size to the editable pixel range and keeps the slider and box in sync", async () => {
     setup();
     await screen.findByRole("button", { name: "Open Alpha" });
 
     const slider = screen.getByRole("slider", { name: "Icon Size in Pixels" });
     expect(slider).toHaveAttribute("min", "0");
-    expect(slider).toHaveAttribute("max", "9");
+    expect(slider).toHaveAttribute("max", "96");
     expect(slider).toHaveAttribute("step", "1");
-    expect(screen.getByText("40px")).toBeInTheDocument();
+    const box = screen.getByRole("spinbutton", { name: "Icon Size in Pixels" });
+    expect(box).toHaveValue(40);
 
     await userEvent.click(screen.getByRole("button", { name: "Smaller Icons" }));
-    expect(screen.getByText("32px")).toBeInTheDocument();
+    expect(box).toHaveValue(32);
     await userEvent.click(screen.getByRole("button", { name: "Larger Icons" }));
-    expect(screen.getByText("40px")).toBeInTheDocument();
+    expect(box).toHaveValue(40);
 
-    for (const [index, size] of [12, 16, 20, 24, 32, 40, 48, 64, 80, 96].entries()) {
-      fireEvent.change(slider, { target: { value: String(index) } });
-      expect(screen.getByText(`${size}px`)).toBeInTheDocument();
-    }
+    // The slider works in real pixels now, so any value is reflected.
+    fireEvent.change(slider, { target: { value: "63" } });
+    expect(box).toHaveValue(63);
+
+    // Typing a value commits it and moves the slider too.
+    await userEvent.clear(box);
+    await userEvent.type(box, "72{enter}");
+    expect(box).toHaveValue(72);
+    expect(slider).toHaveValue("72");
+
+    // Anything above the maximum is clamped to 96; nothing can exceed it.
+    await userEvent.clear(box);
+    await userEvent.type(box, "500{enter}");
+    expect(box).toHaveValue(96);
+    expect(slider).toHaveValue("96");
   });
 
   it("shows the selected color preview before a separator and keeps selection styling on the preview", async () => {
