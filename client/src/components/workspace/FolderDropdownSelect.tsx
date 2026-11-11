@@ -22,9 +22,10 @@ type FolderDropdownSelectProps = {
   label?: string;
   rootLabel?: string;
   error?: string;
+  disabled?: boolean;
 };
 
-export default function FolderDropdownSelect({ value, folders, onChange, id, label, rootLabel = "Uncategorized (Project Root)", error }: FolderDropdownSelectProps) {
+export default function FolderDropdownSelect({ value, folders, onChange, id, label, rootLabel = "Uncategorized (Project Root)", error, disabled = false }: FolderDropdownSelectProps) {
   const [open, setOpen] = useState(false);
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
   const [menuPosition, setMenuPosition] = useState<CSSProperties | null>(null);
@@ -194,6 +195,7 @@ export default function FolderDropdownSelect({ value, folders, onChange, id, lab
         aria-haspopup="menu"
         aria-expanded={open}
         aria-controls={open ? menuId : undefined}
+        disabled={disabled}
         onClick={() => {
           if (open) setOpen(false);
           else openAndFocus(options.findIndex((option) => option.value === value));
@@ -203,6 +205,7 @@ export default function FolderDropdownSelect({ value, folders, onChange, id, lab
           "flex h-9 w-full items-center justify-between rounded-lg border border-input bg-background px-3 text-left text-sm text-foreground focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring",
           "group",
           open && "shadow-[0_0_0_3px_rgba(21,85,224,0.2)] border-[#1555E0]",
+          disabled && "cursor-not-allowed opacity-50",
         )}
       >
         <div className="flex min-w-0 items-center gap-2 truncate">

@@ -170,13 +170,14 @@ describe("details", () => {
     expect(await screen.findByRole("alert")).toHaveTextContent('Another icon already uses the id "bell".');
   });
 
-  it("is read-only for people who cannot edit", async () => {
+  it("shows the fields disabled for people who cannot edit", async () => {
     setup({ canEdit: false });
     await ready();
-    expect(screen.queryByLabelText("Name")).not.toBeInTheDocument();
-    expect(screen.getByText("UI")).toBeInTheDocument();
-    expect(screen.getByText("nav")).toBeInTheDocument();
-    expect(screen.getByText("E001")).toBeInTheDocument();
+    expect(screen.getByLabelText("Name")).toBeDisabled();
+    expect(screen.getByLabelText("Tags")).toBeDisabled();
+    expect(screen.getByLabelText("Font Codepoint")).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Folder: UI" })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Save Changes" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Optimize" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Move to trash" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Download" })).toBeInTheDocument();
@@ -221,9 +222,11 @@ describe("copy and download", () => {
     expect(clipboard.copyText).toHaveBeenLastCalledWith(SVG);
     expect(await screen.findByText("Copied the SVG.")).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: "Copy React" }));
+    await userEvent.click(screen.getByRole("button", { name: "More copy options" }));
+    await userEvent.click(within(screen.getByRole("menu", { name: "Copy as" })).getByRole("menuitem", { name: "Copy React" }));
     expect(vi.mocked(clipboard.copyText).mock.calls.at(-1)?.[0]).toContain("export function ArrowLeftIcon(props: SVGProps<SVGSVGElement>)");
-    await userEvent.click(screen.getByRole("button", { name: "Copy Vue" }));
+    await userEvent.click(screen.getByRole("button", { name: "More copy options" }));
+    await userEvent.click(within(screen.getByRole("menu", { name: "Copy as" })).getByRole("menuitem", { name: "Copy Vue" }));
     expect(vi.mocked(clipboard.copyText).mock.calls.at(-1)?.[0]).toMatch(/^<template>/);
   });
 
