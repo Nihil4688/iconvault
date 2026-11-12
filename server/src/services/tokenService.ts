@@ -44,3 +44,9 @@ export async function revokeToken(userId: Types.ObjectId, tokenId: Types.ObjectI
   }
   return serializeToken(row as unknown as Row);
 }
+
+// Permanently removes one of the user's tokens, including revoked tokens.
+export async function deleteToken(userId: Types.ObjectId, tokenId: Types.ObjectId) {
+  const result = await ApiToken.deleteOne({ _id: tokenId, userId });
+  if (result.deletedCount === 0) throw new NotFoundError("Token not found.");
+}
