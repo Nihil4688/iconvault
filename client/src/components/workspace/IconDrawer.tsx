@@ -1,7 +1,7 @@
 // The panel that opens when an icon is clicked. Preview at the icon's folder-specific size and colour on the background chosen in the toolbar; quick actions (copy as SVG, React or Vue, download, optimize); and the editable details (name, folder, tags, codepoint). People who cannot edit the project see everything read-only.
-import { ChevronDown, Copy, Download, Sparkles, Trash2 } from "lucide-react";
+import { ChevronDown, Copy, Download, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { deleteIcon, downloadIcon, getIcon, optimizeIcon, restoreIcon, updateIcon } from "../../api/icons";
+import { deleteIcon, downloadIcon, getIcon, restoreIcon, updateIcon } from "../../api/icons";
 import type { FolderWithCount, IconDetail, ProjectPurpose } from "../../api/types";
 import { useToast } from "../../context/ToastContext";
 import { useIconAppearance } from "../../hooks/useIconAppearance";
@@ -39,7 +39,7 @@ type IconDrawerProps = {
 
 export default function IconDrawer({ iconId, onClose, ...rest }: IconDrawerProps) {
   return (
-    <Dialog open={iconId !== null} onClose={onClose} title="Icon Details" placement="drawer">
+    <Dialog open={iconId !== null} onClose={onClose} title="Icon Details" placement="drawer" size="sm">
       {iconId && <DrawerBody key={iconId} iconId={iconId} onClose={onClose} {...rest} />}
     </Dialog>
   );
@@ -97,14 +97,14 @@ function IconPanel({ projectId, icon, reload, canEdit, folders, idPrefix, purpos
     }
   }
 
-  const optimize = () =>
-    act("optimize", () => optimizeIcon(icon.id), (result) => {
-      showToast(result.changed ? `Optimized: ${formatBytes(result.before)} to ${formatBytes(result.after)} (${result.savingsPercent}% smaller). The old version is kept.` : "Already as small as it can be.", "success");
-      if (result.changed) {
-        reload();
-        onChanged();
-      }
-    });
+  // const optimize = () =>
+  //   act("optimize", () => optimizeIcon(icon.id), (result) => {
+  //     showToast(result.changed ? `Optimized: ${formatBytes(result.before)} to ${formatBytes(result.after)} (${result.savingsPercent}% smaller). The old version is kept.` : "Already as small as it can be.", "success");
+  //     if (result.changed) {
+  //       reload();
+  //       onChanged();
+  //     }
+  //   });
 
   const download = () =>
     act("download", () => downloadIcon(icon.id), ({ blob, filename }) => triggerBrowserDownload(blob, filename));
@@ -153,11 +153,11 @@ function IconPanel({ projectId, icon, reload, canEdit, folders, idPrefix, purpos
         <Button variant="secondary" icon={<Download aria-hidden="true" className="h-4 w-4" />} loading={busy === "download"} disabled={busy !== null} onClick={download}>
           Download
         </Button>
-        {canEdit && (
+        {/* {canEdit && (
           <Button variant="secondary" icon={<Sparkles aria-hidden="true" className="h-4 w-4" />} loading={busy === "optimize"} disabled={busy !== null} onClick={optimize}>
             Optimize
           </Button>
-        )}
+        )} */}
       </section>
 
       {warnings.length > 0 && (
@@ -233,10 +233,10 @@ function DetailsTab({ icon, canEdit, folders, purpose, onSaved, onTrash, busyAct
           <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
             <button type="button" disabled={busyAction} onClick={onTrash} className="inline-flex items-center gap-1.5 text-sm font-medium text-destructive transition-colors hover:opacity-80 disabled:pointer-events-none disabled:opacity-50">
               <Trash2 aria-hidden="true" className="h-4 w-4" />
-              Delete icon
+              Move to Trash
             </button>
             <div className="flex gap-2">
-              <Button type="button" variant="secondary" disabled={!changed || busy} onClick={reset}>
+              <Button type="button" variant="secondary" onClick={reset}>
                 Cancel
               </Button>
               <Button type="submit" variant="primary" loading={busy} disabled={!changed || problem !== null}>
@@ -253,9 +253,9 @@ function DetailsTab({ icon, canEdit, folders, purpose, onSaved, onTrash, busyAct
 // One Canvas / Size / Added / Updated fact in the stats row.
 function Fact({ label, value }: { label: string; value: string }) {
   return (
-    <div>
-      <dd className="font-medium text-foreground">{value}</dd>
-      <dt className="text-xs text-muted-foreground">{label}</dt>
+    <div className="flex flex-col gap-0.5">
+      <span className="font-medium text-foreground">{value}</span>
+      <span className="text-xs text-muted-foreground">{label}</span>
     </div>
   );
 }
