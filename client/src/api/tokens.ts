@@ -1,4 +1,4 @@
-// API tokens: list, create (the secret is returned once) and revoke. These need a signed-in browser session.
+// API tokens: list, create (the secret is returned once), revoke and delete. These need a signed-in browser session.
 import { http } from "./http";
 import type { ApiTokenItem, ApiTokenList, ApiTokenScope, CreatedApiToken } from "./types";
 
@@ -22,4 +22,8 @@ export async function signOutEverywhere(): Promise<string> {
 export async function revokeToken(tokenId: string): Promise<ApiTokenItem> {
   const { data } = await http.delete<ApiTokenItem>(`/api/tokens/${encodeURIComponent(tokenId)}`);
   return data;
+}
+
+export async function deleteToken(tokenId: string): Promise<void> {
+  await http.delete(`/api/tokens/${encodeURIComponent(tokenId)}/permanent`);
 }

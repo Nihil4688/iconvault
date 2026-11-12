@@ -1,9 +1,9 @@
-// Personal API tokens for the command line and scripts: create one (the secret is shown once, with a copy button), see when each was last used, and revoke. A revoked token stops working at once.
-import { Copy, KeyRound, Plus } from "lucide-react";
+// Personal API tokens for the command line and scripts: create one (the secret is shown once, with a copy button), see when each was last used, revoke or delete.
+import { Copy, KeyRound, Plus, Trash2 } from "lucide-react";
 import { useState, type FormEvent } from "react";
-import { createToken, listTokens, revokeToken, signOutEverywhere } from "../api/tokens";
+import { createToken, deleteToken, listTokens, revokeToken, signOutEverywhere } from "../api/tokens";
 import type { ApiTokenItem, ApiTokenScope, CreatedApiToken } from "../api/types";
-import { Button } from "../components/ui/Button";
+import { Button, IconButton } from "../components/ui/Button";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
 import Dialog from "../components/ui/Dialog";
 import DialogFooter from "../components/ui/DialogFooter";
@@ -21,6 +21,7 @@ export default function AccountTokensPage() {
   const [creating, setCreating] = useState(false);
   const [created, setCreated] = useState<CreatedApiToken | null>(null);
   const [revoking, setRevoking] = useState<ApiTokenItem | null>(null);
+  const [deleting, setDeleting] = useState<ApiTokenItem | null>(null);
   const [signingOut, setSigningOut] = useState(false);
   const list = tokens.data?.tokens ?? [];
   const active = list.filter((token) => !token.revokedAt).length;
@@ -71,11 +72,16 @@ export default function AccountTokensPage() {
                     <span className="font-mono">{token.prefix}…</span> · created {formatDate(token.createdAt)} · {token.lastUsedAt ? `last used ${formatRelative(token.lastUsedAt)}` : "never used"} · {token.expiresAt ? `${isExpired(token) ? "expired" : "expires"} ${formatDate(token.expiresAt)}` : "never expires"}
                   </p>
                 </div>
-                {!token.revokedAt && (
-                  <Button size="sm" variant="destructive" onClick={() => setRevoking(token)} aria-label={`Revoke ${token.name}`}>
-                    Revoke
-                  </Button>
-                )}
+                <div className="flex items-center gap-2">
+                  {!token.revokedAt && (
+                    <Button size="sm" variant="destructive" onClick={() => setRevoking(token)} aria-label={`Revoke ${token.name}`}>
+                      Revoke
+                    </Button>
+                  )}
+                  <IconButton label={`Delete ${token.name}`} variant="ghost" className="text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => setDeleting(token)}>
+                    <Trash2 aria-hidden="true" className="h-4 w-4" />
+                  </IconButton>
+                </div>
               </li>
             ))}
           </ul>
@@ -123,6 +129,20 @@ export default function AccountTokensPage() {
           await revokeToken(revoking.id);
           tokens.reload();
           showToast(`Revoked “${revoking.name}”.`, "success");
+        }}
+      />
+      <ConfirmDialog
+        open={deleting !== null}
+        title={`Delete “${deleting?.name ?? ""}”?`}
+        message="This permanently removes the token from your list and stops it from working immediately. This cannot be undone."
+        confirmLabel="Delete Token"
+        destructive
+        onClose={() => setDeleting(null)}
+        onConfirm={async () => {
+          if (!deleting) return;
+          await deleteToken(deleting.id);
+          tokens.reload();
+          showToast(`Deleted “${deleting.name}”.`, "success");
         }}
       />
     </main>
