@@ -5,7 +5,7 @@ import { ForbiddenError } from "../lib/errors.js";
 import { actorOf, parseObjectId } from "../lib/http.js";
 import { requireDb } from "../middleware/requireDb.js";
 import { requireUser } from "../middleware/requireUser.js";
-import { createToken, listTokens, revokeToken } from "../services/tokenService.js";
+import { createToken, deleteToken, listTokens, revokeToken } from "../services/tokenService.js";
 
 const router = Router();
 router.use(requireDb, requireUser, (req, _res, next) => {
@@ -34,6 +34,11 @@ router.post("/", async (req, res) => {
 
 router.delete("/:tokenId", async (req, res) => {
   res.json(await revokeToken(me(req), parseObjectId(req.params.tokenId, "token id")));
+});
+
+router.delete("/:tokenId/permanent", async (req, res) => {
+  await deleteToken(me(req), parseObjectId(req.params.tokenId, "token id"));
+  res.status(204).end();
 });
 
 export default router;
