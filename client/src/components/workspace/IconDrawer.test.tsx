@@ -49,20 +49,39 @@ describe("loading", () => {
     expect(iconsApi.getIcon).not.toHaveBeenCalled();
   });
 
-  it("shows a loading message, then the icon with the id it will have in a sprite", async () => {
+  it("shows a shimmer placeholder, then the icon with the id it will have in a sprite", async () => {
     setup();
-    expect(screen.getByRole("dialog", { name: "Icon details" })).toBeInTheDocument();
-    expect(screen.getByRole("status")).toHaveTextContent("Loading icon");
+    expect(screen.getByRole("dialog", { name: "Icon Details" })).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveAttribute("aria-label", "Loading Icon");
+    expect(screen.getByRole("status")).toHaveAttribute("aria-busy", "true");
+    expect(document.querySelectorAll(".skeleton-shimmer").length).toBeGreaterThan(0);
+    expect(screen.queryByText(/Loading icon/)).not.toBeInTheDocument();
     await ready();
     expect(screen.getByText("feather-arrow-left")).toBeInTheDocument();
     expect(iconsApi.getIcon).toHaveBeenCalledWith("ic1");
+  });
+
+  it("keeps every placeholder block the size of the panel it stands in for", async () => {
+    setup();
+    const status = screen.getByRole("status");
+    // The preview keeps the height of the real preview box, so the drawer does not jump when the icon arrives.
+    const preview = status.querySelector(".min-h-44") as HTMLElement;
+    expect(preview).toBeInTheDocument();
+    expect(preview).toHaveClass("min-h-44");
+    // The fields keep the height of a real field.
+    const field = status.querySelector(".h-9.rounded-lg") as HTMLElement;
+    expect(field).toBeInTheDocument();
+    expect(field).toHaveClass("h-9");
+    // The facts row keeps the four columns of the real one.
+    expect(status.querySelectorAll(".grid-cols-4 > div")).toHaveLength(4);
+    await ready();
   });
 
   it("explains a failure and can try again", async () => {
     vi.mocked(iconsApi.getIcon).mockRejectedValueOnce(new ApiError("Icon not found.", 404));
     setup();
     expect(await screen.findByRole("alert")).toHaveTextContent("Icon not found.");
-    await userEvent.click(screen.getByRole("button", { name: "Try again" }));
+    await userEvent.click(screen.getByRole("button", { name: "Try Again" }));
     await ready();
   });
 
@@ -81,7 +100,7 @@ describe("details", () => {
     window.localStorage.setItem(key, JSON.stringify({ size: 64, color: "#123456" }));
     setup({ projectId: "p1" });
 
-    const preview = await screen.findByRole("img", { name: "Arrow Left at 64 pixels" });
+    const preview = await screen.findByRole("img", { name: "Arrow Left at 64 Pixels" });
 
     expect(preview).toHaveStyle({ width: "64px", height: "64px", color: "#123456" });
     window.localStorage.removeItem(key);
@@ -139,26 +158,26 @@ describe("details", () => {
     vi.mocked(iconsApi.updateIcon).mockResolvedValue({ ...makeIcon(), svg: SVG });
     setup();
     await ready();
-    const field = screen.getByLabelText("Font codepoint");
+    const field = screen.getByLabelText("Font Codepoint");
     await userEvent.clear(field);
     await userEvent.type(field, "e0aa");
-    await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await userEvent.click(screen.getByRole("button", { name: "Save Changes" }));
     expect(iconsApi.updateIcon).toHaveBeenLastCalledWith("ic1", { codepoint: "E0AA" });
   });
 
   it("blocks a codepoint that is not private-use or not hex, with the reason", async () => {
     setup();
     await ready();
-    const field = screen.getByLabelText("Font codepoint");
+    const field = screen.getByLabelText("Font Codepoint");
     await userEvent.clear(field);
     await userEvent.type(field, "0041");
     expect(screen.getByText(/E000 to F8FF so it cannot replace/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Save Changes" })).toBeDisabled();
     await userEvent.clear(field);
     await userEvent.type(field, "xyz");
     expect(screen.getByText(/exactly 4 hex digits/)).toBeInTheDocument();
     await userEvent.clear(field);
-    expect(screen.getByRole("button", { name: "Save changes" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Save Changes" })).toBeEnabled();
   });
 
   it("refuses an empty name, and shows a server refusal", async () => {
@@ -166,10 +185,10 @@ describe("details", () => {
     setup();
     await ready();
     await userEvent.clear(screen.getByLabelText("Name"));
-    await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await userEvent.click(screen.getByRole("button", { name: "Save Changes" }));
     expect(screen.getByRole("alert")).toHaveTextContent("Enter a name.");
     await userEvent.type(screen.getByLabelText("Name"), "Bell");
-    await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await userEvent.click(screen.getByRole("button", { name: "Save Changes" }));
     expect(await screen.findByRole("alert")).toHaveTextContent('Another icon already uses the id "bell".');
   });
 
@@ -182,7 +201,7 @@ describe("details", () => {
     expect(screen.getByRole("button", { name: "Folder: UI" })).toBeDisabled();
     expect(screen.queryByRole("button", { name: "Save Changes" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Optimize" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Move to trash" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Move to Trash" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Download" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Copy" })).toBeInTheDocument();
   });
@@ -192,27 +211,31 @@ describe("preview", () => {
   it("shows the icon at its folder-specific size, with no size buttons or background switch of its own", async () => {
     setup();
     await ready();
-    expect(screen.getByRole("img", { name: "Arrow Left at 40 pixels" })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Arrow Left at 40 Pixels" })).toBeInTheDocument();
     expect(screen.queryByRole("group", { name: "Preview size" })).not.toBeInTheDocument();
 
     expect(screen.queryByLabelText("Preview background")).not.toBeInTheDocument();
   });
 
   it("uses the background chosen in the Icons toolbar", async () => {
-    window.localStorage.setItem("iconSurface", "dark");
-    setup();
+    // The surface is remembered per project, under "project:<id>:iconSurface".
+    const key = "project:p1:iconSurface";
+    window.localStorage.removeItem(key);
+    window.localStorage.setItem(key, "dark");
+    setup({ projectId: "p1" });
     await ready();
-    expect(screen.getByRole("img", { name: /at 40 pixels/ }).parentElement?.className).toContain("bg-neutral-900");
-    window.localStorage.removeItem("iconSurface");
+    expect(screen.getByRole("img", { name: /at 40 Pixels/ }).parentElement?.className).toContain("bg-neutral-900");
+    window.localStorage.removeItem(key);
   });
 
   it("follows the size chosen in the Icons toolbar", async () => {
     const key = "project:p1:folder:ui:iconAppearance";
     window.localStorage.removeItem(key);
+    // 72 is not one of the preset sizes, so it snaps to the closest one (64).
     window.localStorage.setItem(key, JSON.stringify({ size: 72, color: "", style: "natural" }));
     setup({ projectId: "p1" });
     await ready();
-    expect(screen.getByRole("img", { name: "Arrow Left at 72 pixels" })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Arrow Left at 64 Pixels" })).toBeInTheDocument();
     window.localStorage.removeItem(key);
   });
 });

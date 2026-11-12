@@ -57,14 +57,68 @@ function DrawerBody({ iconId, onClose, ...rest }: Omit<IconDrawerProps, "iconId"
     );
   }
   if (!icon.data) {
-    return (
-      <p role="status" className="text-sm text-muted-foreground">
-        Loading icon…
-      </p>
-    );
+    return <IconDrawerSkeleton canEdit={rest.canEdit} purpose={rest.purpose ?? "font"} />;
   }
   // Keyed so the forms start fresh from the saved values after every reload.
   return <IconPanel key={`${icon.data.id}:${icon.data.updatedAt}`} icon={icon.data} reload={icon.reload} onClose={onClose} {...rest} />;
+}
+
+// The placeholders shown while the icon is being fetched. They copy the shape of the real panel - title, id, preview, facts, actions and the fields - so the drawer does not jump when the icon arrives. Every block keeps the size of the thing it stands in for.
+function IconDrawerSkeleton({ canEdit, purpose }: { canEdit: boolean; purpose: ProjectPurpose }) {
+  return (
+    <div role="status" aria-busy="true" aria-label="Loading Icon" className="space-y-5">
+      <div>
+        <div className="skeleton-shimmer h-7 w-44 rounded-md" />
+        <div className="skeleton-shimmer mt-0.5 h-4 w-52 rounded" />
+      </div>
+
+      <div className="flex min-h-44 items-center justify-center rounded-xl border border-border p-6">
+        <div className="skeleton-shimmer h-10 w-10 rounded-lg" />
+      </div>
+
+      <div className="grid grid-cols-4 gap-2 text-sm">
+        {[0, 1, 2, 3].map((index) => (
+          <div key={index}>
+            <div className="skeleton-shimmer h-5 w-16 rounded" />
+            <div className="skeleton-shimmer mt-1 h-3 w-20 rounded" />
+          </div>
+        ))}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="skeleton-shimmer h-9 w-24 rounded-lg" />
+        <div className="skeleton-shimmer h-9 w-32 rounded-lg" />
+        {canEdit && <div className="skeleton-shimmer h-9 w-28 rounded-lg" />}
+      </div>
+
+      <div className="space-y-4">
+        <SkeletonField width="w-full" />
+        <SkeletonField width="w-full" />
+        <SkeletonField width="w-full" hint />
+        {purpose === "font" && <SkeletonField width="w-full" hint />}
+        {canEdit && (
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
+            <div className="skeleton-shimmer h-4 w-28 rounded" />
+            <div className="flex gap-2">
+              <div className="skeleton-shimmer h-9 w-20 rounded-lg" />
+              <div className="skeleton-shimmer h-9 w-32 rounded-lg" />
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// A label and a field, with the label and the hint as bars in place of the words.
+function SkeletonField({ width, hint }: { width: string; hint?: boolean }) {
+  return (
+    <div>
+      <div className="skeleton-shimmer mb-1.5 h-4 w-24 rounded" aria-hidden="true" />
+      <div className={cn("skeleton-shimmer h-9 rounded-lg", width)} />
+      {hint && <div className="skeleton-shimmer mt-1 h-3 w-48 rounded" />}
+    </div>
+  );
 }
 
 type PanelProps = Omit<IconDrawerProps, "iconId"> & { icon: IconDetail; reload: () => void };
