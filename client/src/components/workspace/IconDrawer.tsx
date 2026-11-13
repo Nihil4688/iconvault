@@ -1,7 +1,7 @@
 // The panel that opens when an icon is clicked. Preview at the icon's folder-specific size and colour on the background chosen in the toolbar; quick actions (copy as SVG, React or Vue, download, optimize); and the editable details (name, folder, tags, codepoint). People who cannot edit the project see everything read-only.
-import { ChevronDown, Copy, Download, Sparkles, Trash2 } from "lucide-react";
+import { ChevronDown, Copy, Download, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent } from "react";
-import { deleteIcon, downloadIcon, getIcon, optimizeIcon, restoreIcon, updateIcon } from "../../api/icons";
+import { deleteIcon, downloadIcon, getIcon, restoreIcon, updateIcon } from "../../api/icons";
 import type { FolderWithCount, IconDetail, ProjectPurpose } from "../../api/types";
 import { useToast } from "../../context/ToastContext";
 import { useIconAppearance } from "../../hooks/useIconAppearance";
@@ -12,7 +12,7 @@ import { copyText } from "../../lib/clipboard";
 import { codepointProblem } from "../../lib/codepoint";
 import { formatBytes, formatDate, formatRelative } from "../../lib/format";
 import { iconWarnings } from "../../lib/iconInfo";
-import { SURFACES, surfaceClass, surfaceStyle } from "../../lib/previewSurface";
+import { SURFACES, surfaceClass, surfaceStyle, type Surface } from "../../lib/previewSurface";
 import { toReactComponent, toVueComponent } from "../../lib/svgSnippets";
 import { parseTags } from "../../lib/upload";
 import { triggerBrowserDownload } from "../../utils/zipBundle";
@@ -151,15 +151,6 @@ function IconPanel({ projectId, icon, reload, canEdit, folders, idPrefix, purpos
     }
   }
 
-  const optimize = () =>
-    act("optimize", () => optimizeIcon(icon.id), (result) => {
-      showToast(result.changed ? `Optimized: ${formatBytes(result.before)} to ${formatBytes(result.after)} (${result.savingsPercent}% smaller). The old version is kept.` : "Already as small as it can be.", "success");
-      if (result.changed) {
-        reload();
-        onChanged();
-      }
-    });
-
   const download = () =>
     act("download", () => downloadIcon(icon.id), ({ blob, filename }) => triggerBrowserDownload(blob, filename));
 
@@ -179,53 +170,29 @@ function IconPanel({ projectId, icon, reload, canEdit, folders, idPrefix, purpos
     });
 
   return (
-    <div className="space-y-5">
-      <div>
-        <h3 className="text-xl font-semibold">{icon.name}</h3>
-        <p className="mt-0.5 font-mono text-xs text-muted-foreground">{`${idPrefix}-${icon.slug}`}</p>
-      </div>
-
-      <section aria-label="Preview">
-        <div className={cn("flex min-h-44 items-center justify-center rounded-xl border border-border p-6", surfaceClass(surface))} style={surfaceStyle(surface)}>
-          <SvgPreview svg={icon.svg} size={size} color={appearance.color} label={`${icon.name} at ${size} Pixels`} />
-        </div>
-      </section>
-
-      <dl aria-label="Icon facts" className="grid grid-cols-4 gap-2 text-sm">
-        <Fact label="Canvas" value={`${icon.width} × ${icon.height}`} />
-        <Fact label="Size" value={formatBytes(icon.byteSize)} />
-        <Fact label="Added on" value={formatDate(icon.createdAt)} />
-        <Fact label="Last updated" value={formatRelative(icon.updatedAt)} />
-      </dl>
-
-      <section aria-label="Actions" className="flex flex-wrap items-center gap-2">
-        <CopySplitButton
-          onCopySvg={() => copy("the SVG", () => icon.svg)}
-          onCopyReact={() => copy("the React component", () => toReactComponent(icon.svg, icon.name))}
-          onCopyVue={() => copy("the Vue component", () => toVueComponent(icon.svg))}
-        />
-        <Button variant="secondary" icon={<Download aria-hidden="true" className="h-4 w-4" />} loading={busy === "download"} disabled={busy !== null} onClick={download}>
-          Download
-        </Button>
-        {canEdit && (
-          <Button variant="secondary" icon={<Sparkles aria-hidden="true" className="h-4 w-4" />} loading={busy === "optimize"} disabled={busy !== null} onClick={optimize}>
-            Optimize
-          </Button>
-        )}
-      </section>
-
-      {warnings.length > 0 && (
-        <p role="note" className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm">
-          <strong>{warnings.join(", ")}:</strong> this icon will not convert cleanly to an icon font until it is turned into filled outlines.
-        </p>
-      )}
-
-      <DetailsTab icon={icon} canEdit={canEdit} folders={folders} purpose={purpose} onSaved={() => { reload(); onChanged(); }} onTrash={trash} busyAction={busy !== null} />
-    </div>
+    <DetailsTab icon={icon} canEdit={canEdit} folders={folders} purpose={purpose} onSaved={() => { reload(); onChanged(); }} onTrash={trash} busyAction={busy !== null} surface={surface} appearance={appearance} size={size} idPrefix={idPrefix} warnings={warnings} copy={copy} download={download} />
   );
 }
 
-function DetailsTab({ icon, canEdit, folders, purpose, onSaved, onTrash, busyAction }: { icon: IconDetail; canEdit: boolean; folders: FolderWithCount[]; purpose: ProjectPurpose; onSaved: () => void; onTrash: () => void; busyAction: boolean }) {
+type IconPanelProps = { 
+  icon: IconDetail; 
+  canEdit: boolean; 
+  folders: FolderWithCount[]; 
+  purpose: ProjectPurpose; 
+  onSaved: () => void; 
+  onTrash: () => void; 
+  busyAction: boolean;
+  surface: Surface;
+  appearance: { size: number; color: string };
+  size: number;
+  idPrefix: string;
+  warnings: string[];
+  copy: (label: string, make: () => string) => Promise<void>;
+  download: () => void;
+};
+
+function DetailsTab(props: IconPanelProps) {
+  const { icon, canEdit, folders, purpose, onSaved, onTrash, busyAction, surface, appearance, size, idPrefix, warnings, copy, download } = props;
   const { showToast } = useToast();
   const [name, setName] = useState(icon.name);
   const [folderId, setFolderId] = useState(icon.folderId ?? "");
@@ -274,18 +241,55 @@ function DetailsTab({ icon, canEdit, folders, purpose, onSaved, onTrash, busyAct
 
   return (
     <div className="flex flex-col min-h-0">
-      <div className="overflow-y-auto space-y-4 flex-1">
-        <form ref={formRef} onSubmit={submit} noValidate className="space-y-3">
-          <TextField label="Name" value={name} maxLength={100} autoComplete="off" disabled={!canEdit} onChange={(event) => setName(event.target.value)} hint="Changing the name also changes the icon's id." />
-          <FolderDropdownSelect label="Folder" value={folderId} folders={folders} onChange={setFolderId} disabled={!canEdit} />
-          <TextField label="Tags" value={tagText} autoComplete="off" disabled={!canEdit} hint="Separated by commas." onChange={(event) => setTagText(event.target.value)} />
-          {purpose === "font" && <TextField label="Font Codepoint" value={codepoint} autoComplete="off" spellCheck={false} maxLength={4} disabled={!canEdit} className="font-mono" hint="Optional: 4 hex digits from E000 to F8FF, for example E001. Kept the same every time a font is built." error={problem ?? undefined} onChange={(event) => setCodepoint(event.target.value)} />}
-          {error && (
-            <p role="alert" className="text-sm font-medium text-destructive">
-              {error}
-            </p>
-          )}
-        </form>
+      <div className="space-y-5 overflow-y-auto flex-1">
+        <div>
+          <h3 className="text-xl font-semibold">{icon.name}</h3>
+          <p className="mt-0.5 font-mono text-xs text-muted-foreground">{`${idPrefix}-${icon.slug}`}</p>
+        </div>
+
+        <section aria-label="Preview">
+          <div className={cn("flex min-h-44 items-center justify-center rounded-xl border border-border p-6", surfaceClass(surface))} style={surfaceStyle(surface)}>
+            <SvgPreview svg={icon.svg} size={size} color={appearance.color} label={`${icon.name} at ${size} Pixels`} />
+          </div>
+        </section>
+
+        <dl aria-label="Icon facts" className="grid grid-cols-4 gap-2 text-sm">
+          <Fact label="Canvas" value={`${icon.width} × ${icon.height}`} />
+          <Fact label="Size" value={formatBytes(icon.byteSize)} />
+          <Fact label="Added on" value={formatDate(icon.createdAt)} />
+          <Fact label="Last updated" value={formatRelative(icon.updatedAt)} />
+        </dl>
+
+        <section aria-label="Actions" className="flex flex-wrap items-center gap-2">
+          <CopySplitButton
+            onCopySvg={() => copy("the SVG", () => icon.svg)}
+            onCopyReact={() => copy("the React component", () => toReactComponent(icon.svg, icon.name))}
+            onCopyVue={() => copy("the Vue component", () => toVueComponent(icon.svg))}
+          />
+          <Button variant="secondary" icon={<Download aria-hidden="true" className="h-4 w-4" />} loading={busyAction} disabled={busyAction} onClick={download}>
+            Download
+          </Button>
+        </section>
+
+        {warnings.length > 0 && (
+          <p role="note" className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-sm">
+            <strong>{warnings.join(", ")}:</strong> this icon will not convert cleanly to an icon font until it is turned into filled outlines.
+          </p>
+        )}
+
+        <div className="space-y-4">
+          <form ref={formRef} onSubmit={submit} noValidate className="space-y-3">
+            <TextField label="Name" value={name} maxLength={100} autoComplete="off" disabled={!canEdit} onChange={(event) => setName(event.target.value)} hint="Changing the name also changes the icon's id." />
+            <FolderDropdownSelect label="Folder" value={folderId} folders={folders} onChange={setFolderId} disabled={!canEdit} />
+            <TextField label="Tags" value={tagText} autoComplete="off" disabled={!canEdit} hint="Separated by commas." onChange={(event) => setTagText(event.target.value)} />
+            {purpose === "font" && <TextField label="Font Codepoint" value={codepoint} autoComplete="off" spellCheck={false} maxLength={4} disabled={!canEdit} className="font-mono" hint="Optional: 4 hex digits from E000 to F8FF, for example E001. Kept the same every time a font is built." error={problem ?? undefined} onChange={(event) => setCodepoint(event.target.value)} />}
+            {error && (
+              <p role="alert" className="text-sm font-medium text-destructive">
+                {error}
+              </p>
+            )}
+          </form>
+        </div>
       </div>
 
       {canEdit && (
@@ -295,10 +299,10 @@ function DetailsTab({ icon, canEdit, folders, purpose, onSaved, onTrash, busyAct
             Move to Trash
           </button>
           <div className="flex gap-2">
-            <Button type="button" variant="secondary" disabled={!changed || busy} onClick={reset}>
+            <Button type="button" variant="secondary" onClick={reset}>
               Cancel
             </Button>
-            <Button type="submit" variant="primary" loading={busy} disabled={!changed || problem !== null} onClick={() => formRef.current?.requestSubmit()}>
+            <Button type="button" variant="primary" loading={busy} disabled={!changed || problem !== null} onClick={() => formRef.current?.requestSubmit()}>
               Save Changes
             </Button>
           </div>
