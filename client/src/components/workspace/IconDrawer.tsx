@@ -233,7 +233,6 @@ function DetailsTab({ icon, canEdit, folders, purpose, onSaved, onTrash, busyAct
   const [codepoint, setCodepoint] = useState(icon.codepoint ?? "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const formRef = useRef<HTMLFormElement>(null);
   const problem = purpose === "font" ? codepointProblem(codepoint) : null;
 
   function reset() {
@@ -273,37 +272,34 @@ function DetailsTab({ icon, canEdit, folders, purpose, onSaved, onTrash, busyAct
   }
 
   return (
-    <div className="flex flex-col min-h-0">
-      <div className="overflow-y-auto space-y-4 flex-1">
-        <form ref={formRef} onSubmit={submit} noValidate className="space-y-3">
-          <TextField label="Name" value={name} maxLength={100} autoComplete="off" disabled={!canEdit} onChange={(event) => setName(event.target.value)} hint="Changing the name also changes the icon's id." />
-          <FolderDropdownSelect label="Folder" value={folderId} folders={folders} onChange={setFolderId} disabled={!canEdit} />
-          <TextField label="Tags" value={tagText} autoComplete="off" disabled={!canEdit} hint="Separated by commas." onChange={(event) => setTagText(event.target.value)} />
-          {purpose === "font" && <TextField label="Font Codepoint" value={codepoint} autoComplete="off" spellCheck={false} maxLength={4} disabled={!canEdit} className="font-mono" hint="Optional: 4 hex digits from E000 to F8FF, for example E001. Kept the same every time a font is built." error={problem ?? undefined} onChange={(event) => setCodepoint(event.target.value)} />}
-          {error && (
-            <p role="alert" className="text-sm font-medium text-destructive">
-              {error}
-            </p>
-          )}
-        </form>
-      </div>
-
-      {canEdit && (
-        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3 shrink-0">
-          <button type="button" disabled={busyAction} onClick={onTrash} className="inline-flex items-center gap-1.5 text-sm font-medium text-destructive transition-colors hover:opacity-80 disabled:pointer-events-none disabled:opacity-50">
-            <Trash2 aria-hidden="true" className="h-4 w-4" />
-            Move to Trash
-          </button>
-          <div className="flex gap-2">
-            <Button type="button" variant="secondary" disabled={!changed || busy} onClick={reset}>
-              Cancel
-            </Button>
-            <Button type="submit" variant="primary" loading={busy} disabled={!changed || problem !== null} onClick={() => formRef.current?.requestSubmit()}>
-              Save Changes
-            </Button>
+    <div className="space-y-4">
+      <form onSubmit={submit} noValidate className="space-y-3">
+        <TextField label="Name" value={name} maxLength={100} autoComplete="off" disabled={!canEdit} onChange={(event) => setName(event.target.value)} hint="Changing the name also changes the icon's id." />
+        <FolderDropdownSelect label="Folder" value={folderId} folders={folders} onChange={setFolderId} disabled={!canEdit} />
+        <TextField label="Tags" value={tagText} autoComplete="off" disabled={!canEdit} hint="Separated by commas." onChange={(event) => setTagText(event.target.value)} />
+        {purpose === "font" && <TextField label="Font Codepoint" value={codepoint} autoComplete="off" spellCheck={false} maxLength={4} disabled={!canEdit} className="font-mono" hint="Optional: 4 hex digits from E000 to F8FF, for example E001. Kept the same every time a font is built." error={problem ?? undefined} onChange={(event) => setCodepoint(event.target.value)} />}
+        {error && (
+          <p role="alert" className="text-sm font-medium text-destructive">
+            {error}
+          </p>
+        )}
+        {canEdit && (
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
+            <button type="button" disabled={busyAction} onClick={onTrash} className="inline-flex items-center gap-1.5 text-sm font-medium text-destructive transition-colors hover:opacity-80 disabled:pointer-events-none disabled:opacity-50">
+              <Trash2 aria-hidden="true" className="h-4 w-4" />
+              Move to Trash
+            </button>
+            <div className="flex gap-2">
+              <Button type="button" variant="secondary" onClick={reset}>
+                Cancel
+              </Button>
+              <Button type="submit" variant="primary" loading={busy} disabled={!changed || problem !== null}>
+                Save Changes
+              </Button>
+            </div>
           </div>
-        </div>
-      )}
+        )}
+      </form>
     </div>
   );
 }
