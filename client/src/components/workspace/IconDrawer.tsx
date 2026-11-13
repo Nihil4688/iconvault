@@ -191,7 +191,7 @@ function IconPanel({ projectId, icon, reload, canEdit, folders, idPrefix, purpos
         </div>
       </section>
 
-      <dl aria-label="Icon facts" className="grid grid-cols-4 gap-2 text-sm">
+      <dl aria-label="Icon facts" className="grid grid-cols-4 gap-2 text-sm text-center">
         <Fact label="Canvas" value={`${icon.width} × ${icon.height}`} />
         <Fact label="Size" value={formatBytes(icon.byteSize)} />
         <Fact label="Added on" value={formatDate(icon.createdAt)} />
