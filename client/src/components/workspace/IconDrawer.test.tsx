@@ -299,7 +299,7 @@ describe("optimize and trash", () => {
     vi.mocked(iconsApi.restoreIcon).mockResolvedValue({ icon: makeIcon(), adjusted: [] });
     const { onChanged, onClose } = setup();
     await ready();
-    await userEvent.click(screen.getByRole("button", { name: "Delete icon" }));
+    await userEvent.click(screen.getByRole("button", { name: "Move to Trash" }));
     expect(iconsApi.deleteIcon).toHaveBeenCalledWith("ic1");
     await waitFor(() => expect(onClose).toHaveBeenCalled());
     expect(await screen.findByText("Moved “Arrow Left” to the trash.")).toBeInTheDocument();
