@@ -6,7 +6,7 @@ export default function AdminCrumb({ page }: { page: string }) {
     <nav aria-label="Breadcrumb">
       <ol className="flex items-center gap-1.5 text-xs text-muted-foreground">
         <li>
-          <Link to="/" className="rounded-sm hover:text-foreground hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
+          <Link to="/dashboard" className="rounded-sm hover:text-foreground hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
             Dashboard
           </Link>
         </li>

@@ -76,7 +76,7 @@ export default function ProjectPage() {
           <p className="mt-2 text-sm text-muted-foreground">{missing ? "It may have been deleted, or it is private and belongs to someone else." : project.error.message}</p>
           <div className="mt-4 flex justify-center gap-2">
             {!missing && <Button onClick={project.reload}>Try Again</Button>}
-            <Link to="/" className="inline-flex h-9 items-center rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
+            <Link to="/dashboard" className="inline-flex h-9 items-center rounded-lg bg-primary px-4 text-sm font-semibold text-primary-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
               Back to Projects
             </Link>
           </div>

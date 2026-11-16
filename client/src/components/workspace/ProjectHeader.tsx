@@ -26,7 +26,7 @@ export default function ProjectHeader({ project, actionsRef }: { project: Projec
       <nav aria-label="Breadcrumb" className="flex w-full min-w-0 justify-center">
         <ol className="flex w-fit max-w-full min-w-0 items-center gap-2 overflow-hidden rounded-xl border border-border bg-card px-4 py-1.5 text-sm">
           <li className="hidden shrink-0 sm:block">
-            <Link to="/" className="rounded-sm text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
+            <Link to="/dashboard" className="rounded-sm text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
               Dashboard
             </Link>
           </li>

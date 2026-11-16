@@ -319,7 +319,7 @@ export default function SettingsTab() {
           await deleteProject(project.id);
           showToast(`Deleted “${project.name}”.`, "success");
           bypassNavigation.current = true;
-          navigate("/");
+          navigate("/dashboard");
         }}
       />
       <Dialog
