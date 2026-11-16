@@ -1,6 +1,7 @@
 // The panel that opens when an icon is clicked. Preview at the icon's folder-specific size and colour on the background chosen in the toolbar; quick actions (copy as SVG, React or Vue, download, optimize); and the editable details (name, folder, tags, codepoint). People who cannot edit the project see everything read-only.
 import { ChevronDown, Copy, Download, Trash2 } from "lucide-react";
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { deleteIcon, downloadIcon, getIcon, restoreIcon, updateIcon } from "../../api/icons";
 import type { FolderWithCount, IconDetail, ProjectPurpose } from "../../api/types";
 import { useToast } from "../../context/ToastContext";
@@ -22,6 +23,12 @@ import { TextField } from "../ui/Fields";
 import SvgPreview from "../ui/SvgPreview";
 import FolderDropdownSelect from "./FolderDropdownSelect";
 
+type ToastMessage = {
+  id: string;
+  message: string;
+  type: "success" | "error" | "warning";
+};
+
 
 type IconDrawerProps = {
   projectId?: string;
@@ -38,14 +45,38 @@ type IconDrawerProps = {
 };
 
 export default function IconDrawer({ iconId, onClose, ...rest }: IconDrawerProps) {
+  const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  let toastCounter = useRef(0);
+
+  const showDrawerToast = (message: string, type: "success" | "error" | "warning" = "success") => {
+    const id = `drawer-toast-${++toastCounter.current}`;
+    setToasts((current) => [...current, { id, message, type }]);
+    const timer = setTimeout(() => {
+      setToasts((current) => current.filter((t) => t.id !== id));
+      timers.current.delete(id);
+    }, 3000);
+    timers.current.set(id, timer);
+  };
+
+  const dismissDrawerToast = (id: string) => {
+    setToasts((current) => current.filter((t) => t.id !== id));
+    const timer = timers.current.get(id);
+    if (timer) {
+      clearTimeout(timer);
+      timers.current.delete(id);
+    }
+  };
+
   return (
     <Dialog open={iconId !== null} onClose={onClose} title="Icon Details" placement="drawer" size="sm">
-      {iconId && <DrawerBody key={iconId} iconId={iconId} onClose={onClose} {...rest} />}
+      {iconId && <DrawerBody key={iconId} iconId={iconId} onClose={onClose} showDrawerToast={showDrawerToast} {...rest} />}
+      <DrawerToastViewport toasts={toasts} onDismiss={dismissDrawerToast} />
     </Dialog>
   );
 }
 
-function DrawerBody({ iconId, onClose, ...rest }: Omit<IconDrawerProps, "iconId"> & { iconId: string }) {
+function DrawerBody({ iconId, onClose, showDrawerToast, ...rest }: Omit<IconDrawerProps, "iconId"> & { iconId: string; showDrawerToast: (message: string, type: "success" | "error" | "warning") => void }) {
   const icon = useResource(`icon:${iconId}`, () => getIcon(iconId));
 
   if (icon.error && !icon.data) {
@@ -60,7 +91,7 @@ function DrawerBody({ iconId, onClose, ...rest }: Omit<IconDrawerProps, "iconId"
     return <IconDrawerSkeleton canEdit={rest.canEdit} purpose={rest.purpose ?? "font"} />;
   }
   // Keyed so the forms start fresh from the saved values after every reload.
-  return <IconPanel key={`${icon.data.id}:${icon.data.updatedAt}`} icon={icon.data} reload={icon.reload} onClose={onClose} {...rest} />;
+  return <IconPanel key={`${icon.data.id}:${icon.data.updatedAt}`} icon={icon.data} reload={icon.reload} onClose={onClose} showDrawerToast={showDrawerToast} {...rest} />;
 }
 
 // The placeholders shown while the icon is being fetched. They copy the shape of the real panel - title, id, preview, facts, actions and the fields - so the drawer does not jump when the icon arrives. Every block keeps the size of the thing it stands in for.
@@ -121,9 +152,9 @@ function SkeletonField({ width, hint }: { width: string; hint?: boolean }) {
   );
 }
 
-type PanelProps = Omit<IconDrawerProps, "iconId"> & { icon: IconDetail; reload: () => void };
+type PanelProps = Omit<IconDrawerProps, "iconId"> & { icon: IconDetail; reload: () => void; showDrawerToast: (message: string, type: "success" | "error" | "warning") => void };
 
-function IconPanel({ projectId, icon, reload, canEdit, folders, idPrefix, purpose = "font", onClose, onChanged }: PanelProps) {
+function IconPanel({ projectId, icon, reload, canEdit, folders, idPrefix, purpose = "font", onClose, onChanged, showDrawerToast }: PanelProps) {
   const { showToast } = useToast();
   const [surface] = usePersistentChoice(projectId ?? "unknown", "iconSurface", SURFACES, "theme");
   const [appearance] = useIconAppearance(projectId ?? "unknown", icon.folderId);
@@ -134,9 +165,12 @@ function IconPanel({ projectId, icon, reload, canEdit, folders, idPrefix, purpos
   async function copy(label: string, make: () => string) {
     try {
       const ok = await copyText(make());
-      showToast(ok ? `Copied ${label}.` : "Could not copy to the clipboard.", ok ? "success" : "error");
+      const message = ok ? `Copied ${label}.` : "Could not copy to the clipboard.";
+      const type = ok ? "success" : "error";
+      showDrawerToast(message, type);
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Could not copy.", "error");
+      const message = err instanceof Error ? err.message : "Could not copy.";
+      showDrawerToast(message, "error");
     }
   }
 
@@ -361,6 +395,46 @@ function CopySplitButton({ onCopySvg, onCopyReact, onCopyVue }: { onCopySvg: () 
           </button>
         </div>
       )}
+    </div>
+  );
+}
+
+// Toast viewport that renders inside the dialog to appear above it
+function DrawerToastViewport({ toasts, onDismiss }: { toasts: ToastMessage[]; onDismiss: (id: string) => void }) {
+  if (toasts.length === 0) return null;
+
+  const typeConfig: Record<ToastMessage["type"], { bg: string; iconPath: string }> = {
+    success: { bg: "bg-emerald-500", iconPath: "M5 13l4 4L19 7" },
+    error: { bg: "bg-rose-500", iconPath: "M6 18L18 6M6 6l12 12" },
+    warning: { bg: "bg-amber-500", iconPath: "M12 9v2m0 4h.01M12 3l9.5 16.5H2.5L12 3z" },
+  };
+
+  return (
+    <div className="fixed top-5 right-5 flex flex-col gap-3 pointer-events-none">
+      {toasts.map((toast) => {
+        const cfg = typeConfig[toast.type];
+        return (
+          <div
+            key={toast.id}
+            role={toast.type === "success" ? "status" : "alert"}
+            aria-live="polite"
+            className={`${cfg.bg} text-white px-5 py-3.5 rounded-xl shadow-lg flex items-center min-w-65 max-w-md pointer-events-auto animate-slide-in`}
+          >
+            <svg
+              className="w-5 h-5 shrink-0 mr-3"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2.5}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d={cfg.iconPath} />
+            </svg>
+            <span className="text-sm font-medium leading-snug flex-1 min-w-0" title={toast.message}>
+              {toast.message}
+            </span>
+          </div>
+        );
+      })}
     </div>
   );
 }
