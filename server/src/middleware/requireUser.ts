@@ -29,6 +29,21 @@ const READ_POSTS = [/^\/api\/projects\/[^/]+\/icons\/download$/];
 function isReadRequest(req: Request): boolean {
   if (SAFE_METHODS.has(req.method)) return true;
   const path = req.originalUrl.split("?")[0] ?? "";
+  // MCP calls are read-only only when they name one of the read tools. New
+  // write tools must stay outside this allowlist so read tokens cannot mutate.
+  if (req.method === "POST" && /^\/mcp\/?$/.test(path)) {
+    const body = req.body as { method?: unknown; params?: { name?: unknown } } | undefined;
+    const method = body?.method;
+    if (typeof method !== "string") return false;
+    if (["initialize", "server/discover", "notifications/initialized", "ping", "tools/list"].includes(method)) return true;
+    return method === "tools/call" && typeof body?.params?.name === "string" &&
+      [
+        "list_projects", "search_icons", "list_project_icons", "get_icon", "get_project_sprite",
+        "get_project_detail", "get_project_fonticon", "list_project_versions", "get_icon_versions", "export_project",
+        "list_font_builds", "get_font_build_zip", "list_sprite_builds", "get_sprite_build_zip",
+        "search_icons_by_tag", "search_icons_by_folder", "project_activity", "audit_log",
+      ].includes(body.params.name);
+  }
   return req.method === "POST" && READ_POSTS.some((pattern) => pattern.test(path));
 }
 
@@ -66,7 +81,7 @@ export async function requireUser(
       }
       // Read-only tokens may only use methods that do not change data, plus the POST routes that only hand back a download.
       if ((row.scope ?? "write") === "read" && !isReadRequest(req)) {
-        res.status(403).json({ error: "This API token is read-only. Create a token with write access to change data." });
+        res.status(403).json({ error: "This is a read-only API token. Authenticate with a read/write API token to use write tools." });
         return;
       }
       // Recording the last use is a convenience; do it at most once a minute and never fail the request over it.
