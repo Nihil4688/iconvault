@@ -50,7 +50,7 @@ export default function AdminProjectsPage() {
     setTicked({ key: listKey, ids: [] });
   };
 
-  if (!isAdmin) return <Navigate to="/" replace />;
+  if (!isAdmin) return <Navigate to="/dashboard" replace />;
 
   const rows = projects.data?.projects ?? [];
   const pickedProjects = rows.filter((project) => tickedIds.includes(project.id));

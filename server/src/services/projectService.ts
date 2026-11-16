@@ -1,6 +1,7 @@
 // Project operations: list (with the icon counts and sample icons the dashboard shows), detail, create, update, delete with cascade, and duplicate.
 import mongoose, { type HydratedDocument, type Types } from "mongoose";
 import { escapeRegExp, type SignedInActor } from "../lib/http.js";
+import { ConflictError } from "../lib/errors.js";
 import { isFontCodepoint } from "../lib/codepoint.js";
 import { describeAccess, type AccessFlags } from "../lib/permissions.js";
 import type { CreateProjectInput, ListProjectsQuery, UpdateProjectInput } from "../lib/validation.js";
@@ -171,11 +172,23 @@ export async function getProjectDetail(project: HydratedDocument<ProjectDoc>, ac
 
 export async function createProject(actor: SignedInActor, input: CreateProjectInput) {
   await assertProjectRoom(actor.id);
+  const name = input.name.trim();
+  const duplicate = await Project.findOne({ ownerId: new mongoose.Types.ObjectId(actor.id), name: new RegExp(`^${escapeRegExp(name)}$`, "i") }).select({ name: 1 }).lean();
+  if (duplicate) {
+    throw new ConflictError(`Project name "${duplicate.name}" already exists.`);
+  }
   const project = await Project.create({ ...input, ownerId: new mongoose.Types.ObjectId(actor.id) });
   return getProjectDetail(project, actor);
 }
 
 export async function updateProject(project: HydratedDocument<ProjectDoc>, input: UpdateProjectInput, actor: SignedInActor) {
+  if (input.name !== undefined) {
+    const name = input.name.trim();
+    const duplicate = await Project.findOne({ ownerId: project.ownerId, _id: { $ne: project._id }, name: new RegExp(`^${escapeRegExp(name)}$`, "i") }).select({ name: 1 }).lean();
+    if (duplicate) {
+      throw new ConflictError(`Project name "${duplicate.name}" already exists.`);
+    }
+  }
   for (const [key, value] of Object.entries(input)) {
     if (value !== undefined) project.set(key, value);
   }

@@ -1,7 +1,7 @@
-// Root App component. Signing in is required: a signed-out visitor sees the landing page, a signed-in user gets the dashboard (/) and project workspaces (/projects/:id).
+// Root App component. Signed-out visitors see the landing page; signed-in routes use explicit URLs for the dashboard, account, admin tools, and project workspaces.
 import { Loader2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
-import { Navigate, Route, Routes, useNavigate } from "react-router-dom";
+import { Navigate, Route, Routes, useLocation, useNavigate } from "react-router-dom";
 import LoginModal from "./components/LoginModal";
 import AppHeader from "./components/shell/AppHeader";
 import { HeaderActionsContext } from "./context/headerActionsContext";
@@ -20,10 +20,10 @@ const PENDING_LOGIN_TOAST_KEY = "pendingLoginToast";
 const PENDING_LOGOUT_TOAST_KEY = "pendingLogoutToast";
 
 function App() {
-  const [showLoginModal, setShowLoginModal] = useState(false);
   const { currentUser, initializing } = useAuth();
   const { showToast } = useToast();
   const navigate = useNavigate();
+  const location = useLocation();
   const previousAuthKeyRef = useRef<string | null | undefined>(
     undefined,
   );
@@ -46,7 +46,7 @@ function App() {
           PENDING_LOGIN_TOAST_KEY,
           currentUser.displayName || currentUser.email,
         );
-        navigate("/", { replace: true });
+        navigate("/dashboard", { replace: true });
       } else {
         sessionStorage.setItem(PENDING_LOGOUT_TOAST_KEY, "1");
       }
@@ -73,7 +73,10 @@ function App() {
 
   const [crumbSlot, setCrumbSlot] = useState<HTMLElement | null>(null);
   const [actionsSlot, setActionsSlot] = useState<HTMLElement | null>(null);
-  const openLogin = () => setShowLoginModal(true);
+  const openLogin = () => navigate("/signin");
+  const closeLogin = () => {
+    if (location.pathname === "/signin") navigate("/", { replace: true });
+  };
 
   return (
     <div className="min-h-screen bg-background font-sans text-foreground antialiased selection:bg-primary/20">
@@ -94,25 +97,32 @@ function App() {
           <HeaderActionsContext.Provider value={actionsSlot}>
           <AppHeader onSignIn={openLogin} crumbRef={setCrumbSlot} actionsRef={setActionsSlot} />
           <Routes>
-            <Route path="/" element={<DashboardPage />} />
+            <Route path="/" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/signin" element={<Navigate to="/dashboard" replace />} />
+            <Route path="/dashboard" element={<DashboardPage />} />
             <Route path="/projects/:projectId/*" element={<ProjectPage />} />
-            <Route path="/account/tokens" element={<AccountTokensPage />} />
+            <Route path="/account" element={<AccountTokensPage />} />
+            <Route path="/account/tokens" element={<Navigate to="/account" replace />} />
             <Route path="/admin" element={<AdminPage />} />
             <Route path="/admin/projects" element={<AdminProjectsPage />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
+            <Route path="*" element={<Navigate to="/dashboard" replace />} />
           </Routes>
           </HeaderActionsContext.Provider>
         </HeaderSlotContext.Provider>
       ) : (
         <>
           <AppHeader onSignIn={openLogin} />
-          <LandingPage onSignIn={openLogin} />
+          <Routes>
+            <Route path="/" element={<LandingPage onSignIn={openLogin} />} />
+            <Route path="/signin" element={<LandingPage onSignIn={openLogin} />} />
+            <Route path="*" element={<Navigate to="/signin" replace />} />
+          </Routes>
         </>
       )}
 
       <LoginModal
-        isOpen={showLoginModal}
-        onClose={() => setShowLoginModal(false)}
+        isOpen={!initializing && location.pathname === "/signin"}
+        onClose={closeLogin}
       />
     </div>
   );

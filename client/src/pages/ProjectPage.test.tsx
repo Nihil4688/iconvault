@@ -88,7 +88,7 @@ describe("loading and failure", () => {
     getProject.mockRejectedValue(new ApiError("Project not found.", 404));
     renderPage();
     expect(await screen.findByRole("heading", { name: "Project not found" })).toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Back to projects" })).toHaveAttribute("href", "/");
+    expect(screen.getByRole("link", { name: "Back to Projects" })).toHaveAttribute("href", "/dashboard");
     expect(screen.queryByRole("button", { name: "Try again" })).not.toBeInTheDocument();
   });
 
@@ -160,11 +160,11 @@ describe("header", () => {
     expect(screen.getByRole("link", { name: "Font Builder" })).toHaveAttribute("href", "/projects/p1/font");
     expect(screen.queryByRole("link", { name: "Sprite Builder" })).not.toBeInTheDocument();
     expect(screen.queryByText(/^by /)).not.toBeInTheDocument();
-    expect(screen.getByRole("link", { name: "Dashboard" })).toHaveAttribute("href", "/");
+    expect(screen.getByRole("link", { name: "Dashboard" })).toHaveAttribute("href", "/dashboard");
     expect(within(screen.getByRole("navigation", { name: "Breadcrumb" })).getByText("Feather")).toHaveAttribute("aria-current", "page");
     expect(screen.queryByRole("link", { name: "Projects" })).not.toBeInTheDocument();
 
-    const nav = screen.getByRole("navigation", { name: "Project sections" });
+    const nav = screen.getByRole("navigation", { name: "Project Sections" });
     expect(within(nav).getByRole("link", { name: /Icons/ })).toHaveTextContent("7");
     // The Trash tab shows its label alongside the icon and has no count.
     expect(within(nav).getByText("Trash")).not.toHaveClass("sr-only");
@@ -173,7 +173,7 @@ describe("header", () => {
 
     const settingsLink = within(screen.getByRole("banner")).getByRole("link", { name: "Project Settings" });
     expect(settingsLink).toHaveClass("border", "border-border");
-    const uploadButton = within(screen.getByRole("banner")).getAllByRole("button", { name: "Upload icons" })[0];
+    const uploadButton = within(screen.getByRole("banner")).getAllByRole("button", { name: "Upload Icons" })[0];
     expect(settingsLink.compareDocumentPosition(uploadButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 

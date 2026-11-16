@@ -34,7 +34,7 @@ export default function AdminPage() {
   const stats = useAdminStats(statsVersion);
   const users = useResource(isAdmin ? `admin-users:${provider}:${search}:${page}` : null, () => listUsers({ ...(provider !== "all" ? { provider } : {}), ...(search ? { search } : {}), page, limit: PAGE_SIZE }));
 
-  if (!isAdmin) return <Navigate to="/" replace />;
+  if (!isAdmin) return <Navigate to="/dashboard" replace />;
 
   const rows = users.data?.users ?? [];
   const total = users.data?.total ?? 0;
