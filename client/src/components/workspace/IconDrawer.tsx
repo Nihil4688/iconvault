@@ -226,7 +226,7 @@ function IconPanel({ projectId, icon, reload, canEdit, folders, idPrefix, purpos
         </div>
       </section>
 
-      <dl aria-label="Icon facts" className="grid grid-cols-4 gap-2 text-sm text-center">
+      <dl aria-label="Icon facts" className="grid grid-cols-[repeat(4,auto)] gap-2 text-sm text-center">
         <Fact label="Canvas" value={`${icon.width} × ${icon.height}`} />
         <Fact label="Size" value={formatBytes(icon.byteSize)} />
         <Fact label="Added on" value={formatDate(icon.createdAt)} />
@@ -314,7 +314,7 @@ function DetailsTab({ icon, canEdit, folders, purpose, onSaved, onTrash, busyAct
     }
 
     setFooter(
-      <div className="!justify-between flex flex-wrap items-center gap-2 w-full">
+      <div className="justify-between flex flex-wrap items-center gap-2 w-full">
         <button type="button" disabled={busyAction} onClick={onTrash} className="inline-flex items-center gap-1.5 text-sm font-medium text-destructive transition-colors hover:opacity-80 disabled:pointer-events-none disabled:opacity-50">
           <Trash2 aria-hidden="true" className="h-4 w-4" />
           Move to Trash
@@ -333,7 +333,7 @@ function DetailsTab({ icon, canEdit, folders, purpose, onSaved, onTrash, busyAct
 
   return (
     <div className="space-y-4">
-      <div>
+      <div className="space-y-4">
         <TextField label="Name" value={name} maxLength={100} autoComplete="off" disabled={!canEdit} onChange={(event) => setName(event.target.value)} hint="Changing the name also changes the icon's id." />
         <FolderDropdownSelect label="Folder" value={folderId} folders={folders} onChange={setFolderId} disabled={!canEdit} />
         <TextField label="Tags" value={tagText} autoComplete="off" disabled={!canEdit} hint="Separated by commas." onChange={(event) => setTagText(event.target.value)} />
