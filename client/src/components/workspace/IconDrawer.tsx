@@ -1,7 +1,6 @@
 // The panel that opens when an icon is clicked. Preview at the icon's folder-specific size and colour on the background chosen in the toolbar; quick actions (copy as SVG, React or Vue, download, optimize); and the editable details (name, folder, tags, codepoint). People who cannot edit the project see everything read-only.
 import { ChevronDown, Copy, Download, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
-import { createPortal } from "react-dom";
 import { deleteIcon, downloadIcon, getIcon, restoreIcon, updateIcon } from "../../api/icons";
 import type { FolderWithCount, IconDetail, ProjectPurpose } from "../../api/types";
 import { useToast } from "../../context/ToastContext";
@@ -68,15 +67,17 @@ export default function IconDrawer({ iconId, onClose, ...rest }: IconDrawerProps
     }
   };
 
+  const [footer, setFooter] = useState<ReactNode>(null);
+
   return (
-    <Dialog open={iconId !== null} onClose={onClose} title="Icon Details" placement="drawer" size="sm">
-      {iconId && <DrawerBody key={iconId} iconId={iconId} onClose={onClose} showDrawerToast={showDrawerToast} {...rest} />}
+    <Dialog open={iconId !== null} onClose={onClose} title="Icon Details" placement="drawer" size="sm" footer={footer}>
+      {iconId && <DrawerBody key={iconId} iconId={iconId} onClose={onClose} showDrawerToast={showDrawerToast} setFooter={setFooter} {...rest} />}
       <DrawerToastViewport toasts={toasts} onDismiss={dismissDrawerToast} />
     </Dialog>
   );
 }
 
-function DrawerBody({ iconId, onClose, showDrawerToast, ...rest }: Omit<IconDrawerProps, "iconId"> & { iconId: string; showDrawerToast: (message: string, type: "success" | "error" | "warning") => void }) {
+function DrawerBody({ iconId, onClose, showDrawerToast, setFooter, ...rest }: Omit<IconDrawerProps, "iconId"> & { iconId: string; showDrawerToast: (message: string, type: "success" | "error" | "warning") => void; setFooter: (footer: ReactNode) => void }) {
   const icon = useResource(`icon:${iconId}`, () => getIcon(iconId));
 
   if (icon.error && !icon.data) {
@@ -91,7 +92,7 @@ function DrawerBody({ iconId, onClose, showDrawerToast, ...rest }: Omit<IconDraw
     return <IconDrawerSkeleton canEdit={rest.canEdit} purpose={rest.purpose ?? "font"} />;
   }
   // Keyed so the forms start fresh from the saved values after every reload.
-  return <IconPanel key={`${icon.data.id}:${icon.data.updatedAt}`} icon={icon.data} reload={icon.reload} onClose={onClose} showDrawerToast={showDrawerToast} {...rest} />;
+  return <IconPanel key={`${icon.data.id}:${icon.data.updatedAt}`} icon={icon.data} reload={icon.reload} onClose={onClose} showDrawerToast={showDrawerToast} setFooter={setFooter} {...rest} />;
 }
 
 // The placeholders shown while the icon is being fetched. They copy the shape of the real panel - title, id, preview, facts, actions and the fields - so the drawer does not jump when the icon arrives. Every block keeps the size of the thing it stands in for.
@@ -152,9 +153,9 @@ function SkeletonField({ width, hint }: { width: string; hint?: boolean }) {
   );
 }
 
-type PanelProps = Omit<IconDrawerProps, "iconId"> & { icon: IconDetail; reload: () => void; showDrawerToast: (message: string, type: "success" | "error" | "warning") => void };
+type PanelProps = Omit<IconDrawerProps, "iconId"> & { icon: IconDetail; reload: () => void; showDrawerToast: (message: string, type: "success" | "error" | "warning") => void; setFooter: (footer: ReactNode) => void };
 
-function IconPanel({ projectId, icon, reload, canEdit, folders, idPrefix, purpose = "font", onClose, onChanged, showDrawerToast }: PanelProps) {
+function IconPanel({ projectId, icon, reload, canEdit, folders, idPrefix, purpose = "font", onClose, onChanged, showDrawerToast, setFooter }: PanelProps) {
   const { showToast } = useToast();
   const [surface] = usePersistentChoice(projectId ?? "unknown", "iconSurface", SURFACES, "theme");
   const [appearance] = useIconAppearance(projectId ?? "unknown", icon.folderId);
@@ -254,12 +255,12 @@ function IconPanel({ projectId, icon, reload, canEdit, folders, idPrefix, purpos
         </p>
       )}
 
-      <DetailsTab icon={icon} canEdit={canEdit} folders={folders} purpose={purpose} onSaved={() => { reload(); onChanged(); }} onTrash={trash} busyAction={busy !== null} onClose={onClose} />
+      <DetailsTab icon={icon} canEdit={canEdit} folders={folders} purpose={purpose} onSaved={() => { reload(); onChanged(); }} onTrash={trash} busyAction={busy !== null} onClose={onClose} setFooter={setFooter} />
     </div>
   );
 }
 
-function DetailsTab({ icon, canEdit, folders, purpose, onSaved, onTrash, busyAction, onClose }: { icon: IconDetail; canEdit: boolean; folders: FolderWithCount[]; purpose: ProjectPurpose; onSaved: () => void; onTrash: () => void; busyAction: boolean; onClose: () => void }) {
+function DetailsTab({ icon, canEdit, folders, purpose, onSaved, onTrash, busyAction, onClose, setFooter }: { icon: IconDetail; canEdit: boolean; folders: FolderWithCount[]; purpose: ProjectPurpose; onSaved: () => void; onTrash: () => void; busyAction: boolean; onClose: () => void; setFooter: (footer: ReactNode) => void }) {
   const { showToast } = useToast();
   const [name, setName] = useState(icon.name);
   const [folderId, setFolderId] = useState(icon.folderId ?? "");
@@ -305,9 +306,34 @@ function DetailsTab({ icon, canEdit, folders, purpose, onSaved, onTrash, busyAct
     }
   }
 
+  // Update footer whenever canEdit or relevant state changes
+  useEffect(() => {
+    if (!canEdit) {
+      setFooter(null);
+      return;
+    }
+
+    setFooter(
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <button type="button" disabled={busyAction} onClick={onTrash} className="inline-flex items-center gap-1.5 text-sm font-medium text-destructive transition-colors hover:opacity-80 disabled:pointer-events-none disabled:opacity-50">
+          <Trash2 aria-hidden="true" className="h-4 w-4" />
+          Move to Trash
+        </button>
+        <div className="flex gap-2">
+          <Button type="button" variant="secondary" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button type="button" variant="primary" loading={busy} disabled={!changed || problem !== null} onClick={submit}>
+            Save Changes
+          </Button>
+        </div>
+      </div>
+    );
+  }, [canEdit, changed, problem, busy, busyAction, onTrash, onClose, setFooter, submit]);
+
   return (
     <div className="space-y-4">
-      <form onSubmit={submit} noValidate className="space-y-3">
+      <div>
         <TextField label="Name" value={name} maxLength={100} autoComplete="off" disabled={!canEdit} onChange={(event) => setName(event.target.value)} hint="Changing the name also changes the icon's id." />
         <FolderDropdownSelect label="Folder" value={folderId} folders={folders} onChange={setFolderId} disabled={!canEdit} />
         <TextField label="Tags" value={tagText} autoComplete="off" disabled={!canEdit} hint="Separated by commas." onChange={(event) => setTagText(event.target.value)} />
@@ -317,23 +343,7 @@ function DetailsTab({ icon, canEdit, folders, purpose, onSaved, onTrash, busyAct
             {error}
           </p>
         )}
-        {canEdit && (
-          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
-            <button type="button" disabled={busyAction} onClick={onTrash} className="inline-flex items-center gap-1.5 text-sm font-medium text-destructive transition-colors hover:opacity-80 disabled:pointer-events-none disabled:opacity-50">
-              <Trash2 aria-hidden="true" className="h-4 w-4" />
-              Move to Trash
-            </button>
-            <div className="flex gap-2">
-              <Button type="button" variant="secondary" onClick={onClose}>
-                Cancel
-              </Button>
-              <Button type="submit" variant="primary" loading={busy} disabled={!changed || problem !== null}>
-                Save Changes
-              </Button>
-            </div>
-          </div>
-        )}
-      </form>
+      </div>
     </div>
   );
 }
@@ -400,7 +410,7 @@ function CopySplitButton({ onCopySvg, onCopyReact, onCopyVue }: { onCopySvg: () 
 }
 
 // Toast viewport that renders inside the dialog to appear above it
-function DrawerToastViewport({ toasts, onDismiss }: { toasts: ToastMessage[]; onDismiss: (id: string) => void }) {
+function DrawerToastViewport({ toasts }: { toasts: ToastMessage[]; onDismiss: (id: string) => void }) {
   if (toasts.length === 0) return null;
 
   const typeConfig: Record<ToastMessage["type"], { bg: string; iconPath: string }> = {
