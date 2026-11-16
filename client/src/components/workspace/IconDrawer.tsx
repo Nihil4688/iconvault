@@ -306,7 +306,7 @@ function DetailsTab({ icon, canEdit, folders, purpose, onSaved, onTrash, busyAct
     }
 
     setFooter(
-      <div className="flex flex-wrap items-center justify-between gap-2">
+      <div className="!justify-between flex flex-wrap items-center gap-2 w-full">
         <button type="button" disabled={busyAction} onClick={onTrash} className="inline-flex items-center gap-1.5 text-sm font-medium text-destructive transition-colors hover:opacity-80 disabled:pointer-events-none disabled:opacity-50">
           <Trash2 aria-hidden="true" className="h-4 w-4" />
           Move to Trash
