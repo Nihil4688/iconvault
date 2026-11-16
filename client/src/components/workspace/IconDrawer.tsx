@@ -220,12 +220,12 @@ function IconPanel({ projectId, icon, reload, canEdit, folders, idPrefix, purpos
         </p>
       )}
 
-      <DetailsTab icon={icon} canEdit={canEdit} folders={folders} purpose={purpose} onSaved={() => { reload(); onChanged(); }} onTrash={trash} busyAction={busy !== null} />
+      <DetailsTab icon={icon} canEdit={canEdit} folders={folders} purpose={purpose} onSaved={() => { reload(); onChanged(); }} onTrash={trash} busyAction={busy !== null} onClose={onClose} />
     </div>
   );
 }
 
-function DetailsTab({ icon, canEdit, folders, purpose, onSaved, onTrash, busyAction }: { icon: IconDetail; canEdit: boolean; folders: FolderWithCount[]; purpose: ProjectPurpose; onSaved: () => void; onTrash: () => void; busyAction: boolean }) {
+function DetailsTab({ icon, canEdit, folders, purpose, onSaved, onTrash, busyAction, onClose }: { icon: IconDetail; canEdit: boolean; folders: FolderWithCount[]; purpose: ProjectPurpose; onSaved: () => void; onTrash: () => void; busyAction: boolean; onClose: () => void }) {
   const { showToast } = useToast();
   const [name, setName] = useState(icon.name);
   const [folderId, setFolderId] = useState(icon.folderId ?? "");
@@ -235,13 +235,13 @@ function DetailsTab({ icon, canEdit, folders, purpose, onSaved, onTrash, busyAct
   const [error, setError] = useState<string | null>(null);
   const problem = purpose === "font" ? codepointProblem(codepoint) : null;
 
-  function reset() {
-    setName(icon.name);
-    setFolderId(icon.folderId ?? "");
-    setTagText(icon.tags.join(", "));
-    setCodepoint(icon.codepoint ?? "");
-    setError(null);
-  }
+  // function reset() {
+  //   setName(icon.name);
+  //   setFolderId(icon.folderId ?? "");
+  //   setTagText(icon.tags.join(", "));
+  //   setCodepoint(icon.codepoint ?? "");
+  //   setError(null);
+  // }
 
   const patch = {
     ...(name.trim() !== icon.name ? { name: name.trim() } : {}),
@@ -290,7 +290,7 @@ function DetailsTab({ icon, canEdit, folders, purpose, onSaved, onTrash, busyAct
               Move to Trash
             </button>
             <div className="flex gap-2">
-              <Button type="button" variant="secondary" onClick={reset}>
+              <Button type="button" variant="secondary" onClick={onClose}>
                 Cancel
               </Button>
               <Button type="submit" variant="primary" loading={busy} disabled={!changed || problem !== null}>

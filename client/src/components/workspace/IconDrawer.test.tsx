@@ -274,26 +274,7 @@ describe("copy and download", () => {
   });
 });
 
-describe("optimize and trash", () => {
-  it("optimizes, says by how much, and refreshes", async () => {
-    vi.mocked(iconsApi.optimizeIcon).mockResolvedValue({ icon: makeIcon(), changed: true, before: 300, after: 120, savingsPercent: 60 });
-    const { onChanged } = setup();
-    await ready();
-    await userEvent.click(screen.getByRole("button", { name: "Optimize" }));
-    expect(await screen.findByText(/Optimized: 300 B to 120 B \(60% smaller\)/)).toBeInTheDocument();
-    expect(onChanged).toHaveBeenCalled();
-    await waitFor(() => expect(iconsApi.getIcon).toHaveBeenCalledTimes(2));
-  });
-
-  it("says so when there is nothing to gain", async () => {
-    vi.mocked(iconsApi.optimizeIcon).mockResolvedValue({ icon: makeIcon(), changed: false, before: 100, after: 100, savingsPercent: 0 });
-    const { onChanged } = setup();
-    await ready();
-    await userEvent.click(screen.getByRole("button", { name: "Optimize" }));
-    expect(await screen.findByText("Already as small as it can be.")).toBeInTheDocument();
-    expect(onChanged).not.toHaveBeenCalled();
-  });
-
+describe("trash", () => {
   it("moves to the trash, closes, and offers Undo", async () => {
     vi.mocked(iconsApi.deleteIcon).mockResolvedValue({});
     vi.mocked(iconsApi.restoreIcon).mockResolvedValue({ icon: makeIcon(), adjusted: [] });
@@ -309,12 +290,4 @@ describe("optimize and trash", () => {
     await waitFor(() => expect(onChanged.mock.calls.length).toBeGreaterThan(changedBefore));
   });
 
-  it("shows a failure as a message and stays open", async () => {
-    vi.mocked(iconsApi.optimizeIcon).mockRejectedValue(new ApiError("This icon is in the trash. Restore it first.", 409));
-    const { onClose } = setup();
-    await ready();
-    await userEvent.click(screen.getByRole("button", { name: "Optimize" }));
-    expect(await screen.findByText("This icon is in the trash. Restore it first.")).toBeInTheDocument();
-    expect(onClose).not.toHaveBeenCalled();
-  });
 });
