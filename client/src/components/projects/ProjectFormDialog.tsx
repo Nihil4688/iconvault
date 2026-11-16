@@ -1,7 +1,7 @@
 // Create or edit a project. Name, description, prefix and accent colour can be changed later; the purpose (sprite or font) is chosen once. A server error is shown inside the dialog and nothing closes.
 import { Globe, Lock } from "lucide-react";
-import { useId, useState, type FormEvent } from "react";
-import { createProject, updateProject } from "../../api/projects";
+import { useEffect, useId, useState, type FormEvent } from "react";
+import { createProject, listProjects, updateProject } from "../../api/projects";
 import type { ProjectDetail, ProjectPurpose, ProjectSummary, ProjectVisibility } from "../../api/types";
 import { PROJECT_COLORS, suggestPrefix, validateProjectForm, type ProjectFormErrors } from "../../lib/projectForm";
 import { Button } from "../ui/Button";
@@ -38,13 +38,48 @@ function ProjectForm({ mode, project, onClose, onSaved }: Omit<ProjectFormDialog
   const [errors, setErrors] = useState<ProjectFormErrors>({});
   const [serverError, setServerError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [existingNames, setExistingNames] = useState<string[] | null>(mode === "create" ? null : []);
+  const [namesLoadFailed, setNamesLoadFailed] = useState(false);
   const groupId = useId();
+
+  useEffect(() => {
+    if (mode !== "create") return;
+    let active = true;
+    (async () => {
+      const names: string[] = [];
+      let page = 1;
+      let total = 0;
+      do {
+        const result = await listProjects({ scope: "mine", status: "all", page, limit: 100 });
+        names.push(...result.projects.map((item) => item.name));
+        total = result.total;
+        page += 1;
+      } while (names.length < total);
+      return names;
+    })()
+      .then((names) => {
+        if (active) setExistingNames(names);
+      })
+      .catch(() => {
+        if (active) setNamesLoadFailed(true);
+      });
+    return () => {
+      active = false;
+    };
+  }, [mode]);
+
+  const normalizedName = name.trim().toLocaleLowerCase();
+  const duplicateProjectName = mode === "create" && normalizedName
+    ? existingNames?.find((existing) => existing.trim().toLocaleLowerCase() === normalizedName)
+    : undefined;
+  const duplicateName = duplicateProjectName ? `Project name "${duplicateProjectName}" already exists.` : undefined;
+  const namesUnavailable = mode === "create" && (existingNames === null || namesLoadFailed);
 
   async function submit(event: FormEvent) {
     event.preventDefault();
     const found = validateProjectForm({ name, prefix });
     setErrors(found);
-    if (Object.keys(found).length > 0) return;
+    if (Object.keys(found).length > 0 || duplicateName || namesUnavailable) return;
 
     setBusy(true);
     setServerError(null);
@@ -70,9 +105,10 @@ function ProjectForm({ mode, project, onClose, onSaved }: Omit<ProjectFormDialog
         autoFocus
         maxLength={100}
         autoComplete="off"
-        error={errors.name}
+        error={errors.name ?? duplicateName ?? (namesUnavailable && name.trim() ? "Could not check existing project names. Try again." : undefined)}
         onChange={(event) => {
           setName(event.target.value);
+          if (errors.name) setErrors((current) => ({ ...current, name: undefined }));
           if (!prefixEdited) setPrefix(suggestPrefix(event.target.value));
         }}
       />
@@ -124,7 +160,7 @@ function ProjectForm({ mode, project, onClose, onSaved }: Omit<ProjectFormDialog
         <Button variant="secondary" onClick={onClose} disabled={busy}>
           Cancel
         </Button>
-        <Button type="submit" variant="primary" loading={busy}>
+        <Button type="submit" variant="primary" loading={busy || (mode === "create" && existingNames === null && !namesLoadFailed)} disabled={mode === "create" && (existingNames === null || namesLoadFailed || Boolean(duplicateName))}>
           {mode === "create" ? "Create Project" : "Save Changes"}
         </Button>
       </DialogFooter>
