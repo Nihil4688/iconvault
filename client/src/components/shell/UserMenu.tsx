@@ -92,7 +92,7 @@ export default function UserMenu({ user, onSignOut }: { user: CurrentUser; onSig
             {user.role === "admin" && <span className="rounded-md bg-primary px-1.5 py-0.5 font-semibold text-primary-foreground">Admin</span>}
           </div>
           <div className="border-t border-border pt-1">
-            <Link to="/account/tokens" role="menuitem" onClick={() => setOpen(false)} className={menuItemClass}>
+            <Link to="/account" role="menuitem" onClick={() => setOpen(false)} className={menuItemClass}>
               <KeyRound aria-hidden="true" className="h-4 w-4" />
               API Tokens
             </Link>

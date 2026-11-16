@@ -1,7 +1,7 @@
 // Tests for the app shell: loading state, the signed-out landing page, the sign-in dialog, the signed-in workspace, the user menu, and basic accessibility (landmarks, skip link, keyboard).
 import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router-dom";
+import { MemoryRouter, useLocation } from "react-router-dom";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import App from "./App";
 import { ThemeProvider } from "./context/ThemeProvider";
@@ -56,10 +56,16 @@ function appTree(path = "/") {
       <ToastProvider>
         <MemoryRouter initialEntries={[path]}>
           <App />
+          <CurrentPath />
         </MemoryRouter>
       </ToastProvider>
     </ThemeProvider>
   );
+}
+
+function CurrentPath() {
+  const { pathname } = useLocation();
+  return <span data-testid="current-path">{pathname}</span>;
 }
 
 beforeEach(() => {
@@ -112,6 +118,7 @@ describe("signed out", () => {
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
     await userEvent.click(screen.getByRole("button", { name: /sign in to get started/i }));
+    expect(screen.getByTestId("current-path")).toHaveTextContent("/signin");
     const dialog = screen.getByRole("dialog", { name: /library login/i });
     expect(within(dialog).getByRole("button", { name: /sign in with google/i })).toBeInTheDocument();
     expect(within(dialog).getByRole("button", { name: /sign in with microsoft/i })).toBeInTheDocument();
@@ -120,10 +127,22 @@ describe("signed out", () => {
     await userEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
-    await userEvent.click(within(screen.getByRole("banner")).getByRole("button", { name: "Sign in" }));
+    await userEvent.click(within(screen.getByRole("banner")).getByRole("button", { name: /sign in/i }));
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     await userEvent.keyboard("{Escape}");
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByTestId("current-path")).toHaveTextContent("/");
+  });
+
+  it("opens the sign-in dialog when visiting /signin directly", () => {
+    renderApp("/signin");
+    expect(screen.getByRole("dialog", { name: /library login/i })).toBeInTheDocument();
+  });
+
+  it("sends protected URLs to sign-in while signed out", () => {
+    renderApp("/account");
+    expect(screen.getByTestId("current-path")).toHaveTextContent("/signin");
+    expect(screen.getByRole("dialog", { name: /library login/i })).toBeInTheDocument();
   });
 
   it("shows a sign-in failure as an alert", async () => {
@@ -158,7 +177,20 @@ describe("signed in", () => {
   it("shows the dashboard, not the landing page or the classic compiler", () => {
     renderApp();
     expect(screen.getByRole("heading", { level: 1, name: "Your projects" })).toBeInTheDocument();
+    expect(screen.getByTestId("current-path")).toHaveTextContent("/dashboard");
     expect(screen.getByRole("link", { name: /skip to main content/i })).toHaveAttribute("href", "#main");
+  });
+
+  it("opens the dashboard directly at /dashboard", () => {
+    renderApp("/dashboard");
+    expect(screen.getByRole("heading", { level: 1, name: "Your projects" })).toBeInTheDocument();
+    expect(screen.getByTestId("current-path")).toHaveTextContent("/dashboard");
+  });
+
+  it("redirects the legacy API token URL to /account", () => {
+    renderApp("/account/tokens");
+    expect(screen.getByRole("heading", { level: 1, name: "API tokens screen" })).toBeInTheDocument();
+    expect(screen.getByTestId("current-path")).toHaveTextContent("/account");
   });
 
   it("opens a project workspace at /projects/:id", () => {
@@ -193,25 +225,26 @@ describe("signed in", () => {
     const { unmount } = renderApp();
     await userEvent.click(screen.getByRole("button", { name: /account menu/i }));
     const menu = screen.getByRole("menu", { name: "Account" });
-    expect(within(menu).getByRole("menuitem", { name: "API tokens" })).toHaveAttribute("href", "/account/tokens");
-    expect(within(menu).queryByRole("menuitem", { name: "Manage users" })).not.toBeInTheDocument();
+    expect(within(menu).getByRole("menuitem", { name: "API Tokens" })).toHaveAttribute("href", "/account");
+    expect(within(menu).queryByRole("menuitem", { name: "Manage Users" })).not.toBeInTheDocument();
     unmount();
 
     auth.currentUser = user({ role: "admin" });
     renderApp();
     await userEvent.click(screen.getByRole("button", { name: /account menu/i }));
-    expect(screen.getByRole("menuitem", { name: "Manage users" })).toHaveAttribute("href", "/admin");
+    expect(screen.getByRole("menuitem", { name: "Manage Users" })).toHaveAttribute("href", "/admin");
   });
 
   it("opens the token and admin screens from the menu and closes the menu", async () => {
     auth.currentUser = user({ role: "admin" });
     renderApp();
     await userEvent.click(screen.getByRole("button", { name: /account menu/i }));
-    await userEvent.click(screen.getByRole("menuitem", { name: "API tokens" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "API Tokens" }));
     expect(screen.getByRole("heading", { level: 1, name: "API tokens screen" })).toBeInTheDocument();
+    expect(screen.getByTestId("current-path")).toHaveTextContent("/account");
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: /account menu/i }));
-    await userEvent.click(screen.getByRole("menuitem", { name: "Manage users" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Manage Users" }));
     expect(screen.getByRole("heading", { level: 1, name: "Administration screen" })).toBeInTheDocument();
   });
 
@@ -250,7 +283,7 @@ describe("signed in", () => {
     expect(trigger).toHaveAttribute("aria-expanded", "false");
     await userEvent.click(trigger);
     expect(trigger).toHaveAttribute("aria-expanded", "true");
-    expect(screen.getByRole("menuitem", { name: "Sign out" })).toHaveFocus();
+    expect(screen.getByRole("menuitem", { name: "Sign Out" })).toHaveFocus();
 
     await userEvent.keyboard("{Escape}");
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
@@ -271,7 +304,7 @@ describe("signed in", () => {
   it("signs out and reloads the page", async () => {
     renderApp();
     await userEvent.click(screen.getByRole("button", { name: /account menu/i }));
-    await userEvent.click(screen.getByRole("menuitem", { name: "Sign out" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Sign Out" }));
     expect(auth.logout).toHaveBeenCalledTimes(1);
     expect(reloadPage).toHaveBeenCalledTimes(1);
   });
