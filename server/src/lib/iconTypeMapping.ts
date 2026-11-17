@@ -124,11 +124,8 @@ export function canChangeIconColor(svgInfo: {
   hasEmbeddedRaster: boolean;
   hasExternalImage: boolean;
 }): boolean {
-  // Icons with these features cannot be colorized
-  if (svgInfo.hasGradient) return false;      // Gradient SVG
-  if (svgInfo.hasClipPath) return false;      // SVG with ClipPath
-  if (svgInfo.hasMask) return false;          // SVG with Mask
-  if (svgInfo.hasPattern) return false;       // SVG with Pattern
+  // Only the types the matrix marks as not colour-changeable (filter, shadow, blur, blend, animation, raster, external image).
+  // Gradient, ClipPath, Mask and Pattern are colour-changeable per the matrix.
   if (svgInfo.hasFilter) return false;        // SVG with Filter / Drop Shadow / Blur
   if (svgInfo.hasDropShadow) return false;    // SVG with Drop Shadow
   if (svgInfo.hasBlendModes) return false;    // SVG with Blend Modes

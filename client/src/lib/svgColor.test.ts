@@ -14,8 +14,8 @@ describe("applySvgColor", () => {
     expect(applySvgColor(svg, "")).toBe(svg);
   });
 
-  it("keeps gradient fills", () => {
+  it("recolours gradient-filled shapes, which the matrix allows", () => {
     const svg = '<svg xmlns="http://www.w3.org/2000/svg"><path fill="url(#g)" d="M0 0h1v1z"/></svg>';
-    expect(applySvgColor(svg, "#3b82f6")).toBe(svg);
+    expect(applySvgColor(svg, "#3b82f6")).toContain('fill="#3b82f6"');
   });
 });
