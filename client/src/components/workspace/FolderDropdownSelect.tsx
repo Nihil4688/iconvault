@@ -3,7 +3,8 @@ import { createPortal } from "react-dom";
 import { useEffect, useId, useLayoutEffect, useRef, useState, type CSSProperties, type KeyboardEvent } from "react";
 import type { FolderWithCount } from "../../api/types";
 import { cn } from "../../lib/cn";
-import { buildFolderTree, flattenFolderTree } from "../../lib/folderTree";
+import { buildFolderTree, flattenFolderTree, totalIconCount } from "../../lib/folderTree";
+import { pluralize } from "../../lib/format";
 
 type FolderOption = {
   value: string;
@@ -21,11 +22,15 @@ type FolderDropdownSelectProps = {
   id?: string;
   label?: string;
   rootLabel?: string;
+  // When set, adds a leading option (value "all") for filters that can also mean "every folder".
+  allLabel?: string;
+  // Append each folder's icon count (including subfolders), e.g. "Header (3 icons)".
+  showCounts?: boolean;
   error?: string;
   disabled?: boolean;
 };
 
-export default function FolderDropdownSelect({ value, folders, onChange, id, label, rootLabel = "Uncategorized (Project Root)", error, disabled = false }: FolderDropdownSelectProps) {
+export default function FolderDropdownSelect({ value, folders, onChange, id, label, rootLabel = "Uncategorized (Project Root)", allLabel, showCounts = false, error, disabled = false }: FolderDropdownSelectProps) {
   const [open, setOpen] = useState(false);
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
   const [menuPosition, setMenuPosition] = useState<CSSProperties | null>(null);
@@ -53,6 +58,7 @@ export default function FolderDropdownSelect({ value, folders, onChange, id, lab
 
   const getConnectorLeft = (depth: number) => 18 + (depth - 1) * 30;
   const options: FolderOption[] = [
+    ...(allLabel ? [{ value: "all", label: allLabel, menuLabel: allLabel, depth: 0, connectorContinuations: [], hasNextSibling: false }] : []),
     {
       value: "",
       label: rootLabel,
@@ -71,8 +77,8 @@ export default function FolderDropdownSelect({ value, folders, onChange, id, lab
 
       return {
         value: folder.id,
-        label: `${"\u00a0\u00a0".repeat(folder.depth)}${folder.name}`,
-        menuLabel: folder.name,
+        label: `${"\u00a0\u00a0".repeat(folder.depth)}${folder.name}${showCounts ? ` (${pluralize(totalIconCount(folder), "icon")})` : ""}`,
+        menuLabel: showCounts ? `${folder.name} (${pluralize(totalIconCount(folder), "icon")})` : folder.name,
         depth: folder.depth,
         connectorContinuations: ancestors
           .filter((ancestor) => ancestor.depth > 0 && (hasNextSibling.get(ancestor.id) ?? false))

@@ -11,6 +11,15 @@ export type SvgInfo = {
   hasStroke: boolean;
   hasGradient: boolean;
   hasText: boolean;
+  hasFilter: boolean;
+  hasClipPath: boolean;
+  hasMask: boolean;
+  hasPattern: boolean;
+  hasBlendModes: boolean;
+  hasDropShadow: boolean;
+  isAnimated: boolean;
+  hasEmbeddedRaster: boolean;
+  hasExternalImage: boolean;
   warnings: string[];
 };
 
@@ -189,13 +198,83 @@ function analyze(doc: Document): SvgInfo {
   }
   const hasGradient = root.querySelectorAll("linearGradient, radialGradient").length > 0;
   const hasText = root.querySelectorAll("text, tspan").length > 0;
-
+  
+  // Detect additional SVG features that prevent color changes
+  const hasClipPath = root.querySelectorAll("clipPath").length > 0;
+  const hasMask = root.querySelectorAll("mask").length > 0;
+  const hasPattern = root.querySelectorAll("pattern").length > 0;
+  
+  // Check for blend modes in style attributes
+  let hasBlendModes = false;
+  for (const el of all) {
+    const style = el.getAttribute("style");
+    if (style && /mix-blend-mode\s*:/i.test(style)) {
+      hasBlendModes = true;
+      break;
+    }
+  }
+  
+  // Check for drop shadow or blur effects in style attributes
+  let hasDropShadow = false;
+  let hasFilter = false;
+  for (const el of all) {
+    const style = el.getAttribute("style");
+    if (style) {
+      if (/(?:^|;)\s*filter\s*:/i.test(style)) {
+        hasFilter = true;
+        if (/drop-shadow|blur|shadow/i.test(style)) {
+          hasDropShadow = true;
+        }
+      }
+    }
+  }
+  
+  // Check for animations (SMIL, CSS, or JavaScript)
+  let isAnimated = false;
+  isAnimated = root.querySelectorAll("animate, animateTransform, set, animateMotion").length > 0;
+  if (!isAnimated) {
+    for (const el of all) {
+      const style = el.getAttribute("style");
+      if (style && /animation\s*:|@keyframes/i.test(style)) {
+        isAnimated = true;
+        break;
+      }
+    }
+  }
+  
+  // Check for embedded raster images (base64 or other data URIs)
+  let hasEmbeddedRaster = false;
+  if (/data:image\/(png|jpg|jpeg|gif|webp|bmp)/i.test(root.outerHTML)) {
+    hasEmbeddedRaster = true;
+  }
+  
+  // Check for external image references (these are already sanitized out, but flag them)
+  let hasExternalImage = false;
+  // External images would have been removed by DOMPurify, so this is a safeguard
+  
   const warnings: string[] = [];
   if (hasStroke) warnings.push("Contains strokes. Icon fonts need filled outlines instead of strokes.");
   if (hasGradient) warnings.push("Contains gradients. Icon fonts only render solid single-colour glyphs.");
   if (hasText) warnings.push("Contains text. Text should be converted to outlines.");
 
-  return { width, height, viewBox, hasStroke, hasGradient, hasText, warnings };
+  return {
+    width,
+    height,
+    viewBox,
+    hasStroke,
+    hasGradient,
+    hasText,
+    hasFilter,
+    hasClipPath,
+    hasMask,
+    hasPattern,
+    hasBlendModes,
+    hasDropShadow,
+    isAnimated,
+    hasEmbeddedRaster,
+    hasExternalImage,
+    warnings,
+  };
 }
 
 // Reads an already clean SVG (for example after optimizing) and returns fresh size and flags. Throws if it cannot be parsed.

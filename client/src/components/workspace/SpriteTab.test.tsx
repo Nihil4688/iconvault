@@ -99,8 +99,9 @@ describe("building the sprite", () => {
   it("asks for a folder and its subfolders when one is chosen", async () => {
     setup();
     await screen.findByText("2 symbols");
-    await userEvent.click(screen.getByRole("radio", { name: "Selected folder" }));
-    await userEvent.selectOptions(screen.getByLabelText("Folder"), "ui");
+    await userEvent.click(screen.getByRole("radio", { name: /selected folder/i }));
+    await userEvent.click(screen.getByRole("button", { name: /^Folder:/ }));
+    await userEvent.click(screen.getByRole("menuitemradio", { name: /^UI/ }));
     await waitFor(() => expect(listIcons).toHaveBeenLastCalledWith("p1", { sort: "name", limit: 1000, page: 1, folderId: "ui", includeSubfolders: true }));
   });
 
@@ -314,9 +315,10 @@ describe("the page layout and options", () => {
     setup({ project: makeDetail({ id: "p1", prefix: "fth", iconCount: 9 }), folderList: { folders: [makeFolder({ id: "ui", name: "UI", iconCount: 4 })], uncategorizedCount: 5 } });
     const scope = screen.getByRole("region", { name: "1. Scope selection" });
     expect(within(scope).getByText("9 / 9")).toBeInTheDocument();
-    await userEvent.click(within(scope).getByRole("radio", { name: "Selected folder" }));
+    await userEvent.click(within(scope).getByRole("radio", { name: /selected folder/i }));
     expect(screen.getByText("Choose a folder to build its sprite.")).toBeInTheDocument();
-    await userEvent.selectOptions(within(scope).getByLabelText("Folder"), "ui");
+    await userEvent.click(within(scope).getByRole("button", { name: /^Folder:/ }));
+    await userEvent.click(screen.getByRole("menuitemradio", { name: /^UI/ }));
     expect(within(scope).getByText("4 / 9")).toBeInTheDocument();
   });
 
@@ -337,7 +339,8 @@ describe("the page layout and options", () => {
     });
 
     await userEvent.click(screen.getByRole("radio", { name: /Selected folder/i }));
-    await userEvent.selectOptions(screen.getByLabelText("Folder"), "ui");
+    await userEvent.click(screen.getByRole("button", { name: /^Folder:/ }));
+    await userEvent.click(screen.getByRole("menuitemradio", { name: /^UI/ }));
     await userEvent.click(screen.getByRole("button", { name: /Review \/ Edit Checklist/i }));
 
     const review = screen.getByRole("dialog", { name: "Choose icons for the sprite" });

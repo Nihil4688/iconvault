@@ -95,6 +95,13 @@ export const iconSchema = new Schema(
       type: Boolean,
       default: false,
     },
+    // Flag indicating whether this icon's color can be changed via the toolbar.
+    // Based on SVG type features: gradients, filters, masks, patterns, blend modes, animations, etc.
+    // When false, original colors are preserved and cannot be overridden.
+    canBeColorized: {
+      type: Boolean,
+      default: true,
+    },
     // Set when the icon is moved to the trash; null while active. Trashed icons keep their data until emptied.
     deletedAt: {
       type: Date,

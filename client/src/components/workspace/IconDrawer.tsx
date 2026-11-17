@@ -226,7 +226,7 @@ function IconPanel({ projectId, icon, reload, canEdit, folders, idPrefix, purpos
       <div className="grid grid-cols-[270px_1fr] gap-6">
         <section aria-label="Preview">
         <div className={cn("flex min-h-44 items-center justify-center rounded-xl border border-border p-6", surfaceClass(surface))} style={surfaceStyle(surface)}>
-          <SvgPreview svg={icon.svg} size={size} color={appearance.color} label={`${icon.name} at ${size} Pixels`} />
+          <SvgPreview svg={icon.svg} size={size} color={appearance.color} label={`${icon.name} at ${size} Pixels`} canBeColorized={icon.canBeColorized} />
         </div>
       </section>
 

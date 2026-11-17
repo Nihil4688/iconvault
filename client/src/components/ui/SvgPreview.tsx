@@ -13,15 +13,18 @@ type SvgPreviewProps = {
   label?: string;
   // Preview-only colour override. An empty colour keeps the theme's text colour.
   color?: string;
+  // Whether this icon supports color changes. When false, color changes are ignored and original SVG colors are preserved.
+  canBeColorized?: boolean;
 };
 
-export default function SvgPreview({ svg, size = 32, className, label, color }: SvgPreviewProps) {
+export default function SvgPreview({ svg, size = 32, className, label, color, canBeColorized = true }: SvgPreviewProps) {
   // Every preview gets its own ids, so two icons on one page never take each other's gradients or clip paths.
   const prefix = `sv${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
   const markup = useMemo(() => {
     const namespaced = namespaceSvgIds(svg, prefix);
-    return color ? applySvgColor(namespaced, color) : namespaced;
-  }, [svg, prefix, color]);
+    // Only apply color if the icon can be colorized and a color is provided
+    return color && canBeColorized ? applySvgColor(namespaced, color) : namespaced;
+  }, [svg, prefix, color, canBeColorized]);
   return (
     <span
       role={label ? "img" : undefined}
@@ -29,7 +32,7 @@ export default function SvgPreview({ svg, size = 32, className, label, color }: 
       aria-hidden={label ? undefined : true}
       // `fill-current` lets unstyled SVG shapes follow the theme; a chosen preview colour is applied to explicit fills and strokes too.
       className={cn("inline-flex shrink-0 items-center justify-center overflow-hidden fill-current [contain:layout_paint] text-foreground [&>svg]:h-full [&>svg]:w-full", className)}
-      style={{ width: size, height: size, ...(color ? { color } : undefined) }}
+      style={{ width: size, height: size, ...(color && canBeColorized ? { color } : undefined) }}
       dangerouslySetInnerHTML={{ __html: markup }}
     />
   );

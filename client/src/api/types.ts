@@ -91,6 +91,7 @@ export type IconItem = {
   hasStroke: boolean;
   hasGradient: boolean;
   hasText: boolean;
+  canBeColorized: boolean;
   deletedAt: string | null;
   createdAt: string;
   updatedAt: string;
