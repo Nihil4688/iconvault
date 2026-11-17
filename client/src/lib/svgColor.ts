@@ -6,31 +6,15 @@ function recolorDeclarations(stylesheet: string, color: string): string {
   });
 }
 
-function hasMultiplePaintColors(root: Element): boolean {
-  const colors = new Set<string>();
-  const inspectPaint = (value: string | null): boolean => {
-    if (!value) return false;
-    const paint = value.replace(/\s*!important\s*$/i, "").trim().toLowerCase();
-    if (paint.startsWith("url(")) return true;
-    if (!["none", "currentcolor", "inherit", "initial", "unset"].includes(paint) && !paint.startsWith("var(")) {
-      colors.add(paint);
-    }
-    return colors.size > 1;
-  };
-  const inspectDeclarations = (declarations: string): boolean => {
-    const paintPattern = /(?:^|[;{]\s*|\s+)(?:fill|stroke)\s*:\s*([^;}]+)/gi;
-    for (const match of declarations.matchAll(paintPattern)) {
-      if (inspectPaint(match[1] ?? null)) return true;
-    }
-    return false;
-  };
-
+// Gradients and patterns (paint servers) are left alone: a flat colour would destroy them.
+function hasPaintServer(root: Element): boolean {
+  const isServer = (value: string | null) => !!value && /url\(/i.test(value);
+  const inDeclarations = (declarations: string) => /(?:^|[;{\s])(?:fill|stroke)\s*:\s*url\(/i.test(declarations);
   for (const element of [root, ...Array.from(root.querySelectorAll("*"))]) {
-    if (inspectPaint(element.getAttribute("fill")) || inspectPaint(element.getAttribute("stroke"))) return true;
-    if (inspectDeclarations(element.getAttribute("style") ?? "")) return true;
-    if (element.localName === "style" && inspectDeclarations(element.textContent ?? "")) return true;
+    if (isServer(element.getAttribute("fill")) || isServer(element.getAttribute("stroke"))) return true;
+    if (inDeclarations(element.getAttribute("style") ?? "")) return true;
+    if (element.localName === "style" && inDeclarations(element.textContent ?? "")) return true;
   }
-
   return false;
 }
 
@@ -43,7 +27,7 @@ export function applySvgColor(svg: string, color: string): string {
     throw new Error("The SVG could not be recoloured.");
   }
 
-  if (hasMultiplePaintColors(root)) return svg;
+  if (hasPaintServer(root)) return svg;
 
   for (const element of [root, ...Array.from(root.querySelectorAll("*"))]) {
     for (const attribute of ["fill", "stroke"]) {
