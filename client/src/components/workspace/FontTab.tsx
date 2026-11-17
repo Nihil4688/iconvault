@@ -326,7 +326,7 @@ export default function FontTab() {
                   Selected Folder
                 </label>
                 {scopeKind === "folder" && (
-                  <FolderDropdownSelect id="font-scope-folder" rootLabel="Choose a Folder…" showCounts value={folderChoice} folders={folderList.folders} onChange={setFolderChoice} />
+                  <FolderDropdownSelect id="font-scope-folder" rootLabel="Choose a Folder" showCounts value={folderChoice} folders={folderList.folders} onChange={setFolderChoice} />
                 )}
                 <label className="flex cursor-pointer items-center gap-2">
                   <input

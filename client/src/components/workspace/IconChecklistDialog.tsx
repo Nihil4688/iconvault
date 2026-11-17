@@ -275,12 +275,7 @@ function Checklist({
 
   return (
     <div>
-      <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-        <Sparkles aria-hidden="true" className="h-4 w-4" />
-        {mode === "font" ? "Icon font" : "SVG sprite"}
-      </div>
-
-      <div className="mt-3 grid grid-cols-[1fr_1fr_auto] gap-2">
+      <div className="grid grid-cols-[1fr_1fr_auto] gap-2">
         <div className="relative min-w-48 flex-1">
           <label htmlFor="checklist-search" className="sr-only">
             Filter the Checklist by Icon Name or Tag

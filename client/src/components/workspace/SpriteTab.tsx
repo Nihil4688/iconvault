@@ -183,7 +183,7 @@ export default function SpriteTab() {
                 Selected Folder
               </label>
               {scopeKind === "folder" && (
-                <FolderDropdownSelect id="sprite-scope-folder" rootLabel="Choose a Folder…" showCounts value={folderChoice} folders={folderList.folders} onChange={setFolderChoice} />
+                <FolderDropdownSelect id="sprite-scope-folder" rootLabel="Choose a Folder" showCounts value={folderChoice} folders={folderList.folders} onChange={setFolderChoice} />
               )}
               <label className="flex cursor-pointer items-center gap-2">
                 <input
