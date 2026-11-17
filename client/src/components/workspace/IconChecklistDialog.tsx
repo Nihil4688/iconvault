@@ -20,6 +20,7 @@ import { formatBytes, pluralize } from "../../lib/format";
 import { loadAllIcons } from "../../lib/loadAllIcons";
 import { Button } from "../ui/Button";
 import Dialog from "../ui/Dialog";
+import DialogFooter from "../ui/DialogFooter";
 import SvgPreview from "../ui/SvgPreview";
 import FolderDropdownSelect from "./FolderDropdownSelect";
 
@@ -162,10 +163,9 @@ function Checklist({
     () =>
       new Set(
         priorityGroupKeys.size > 0
-          ? [
-              ...folders.map((folder) => folder.id),
-              "root",
-            ].filter((key) => !priorityGroupKeys.has(key))
+          ? [...folders.map((folder) => folder.id), "root"].filter(
+              (key) => !priorityGroupKeys.has(key),
+            )
           : [],
       ),
   );
@@ -249,8 +249,11 @@ function Checklist({
               : "root",
           ),
       );
-      setCollapsed((collapsedGroups) =>
-        new Set([...collapsedGroups].filter((key) => !selectedGroupKeys.has(key))),
+      setCollapsed(
+        (collapsedGroups) =>
+          new Set(
+            [...collapsedGroups].filter((key) => !selectedGroupKeys.has(key)),
+          ),
       );
     }
   };
@@ -473,30 +476,32 @@ function Checklist({
           continue.
         </p>
       )}
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
-        <p className="text-sm text-muted-foreground">
-          {count === 0
-            ? "Tick at least one icon."
-            : `Ready to build with ${pluralize(count, "icon")}.`}
-        </p>
-        <div className="flex gap-2">
-          <Button onClick={onClose}>Cancel</Button>
-          <Button
-            variant="primary"
-            icon={<Sparkles aria-hidden="true" className="h-4 w-4" />}
-            disabled={count === 0 || tooMany}
-            onClick={() =>
-              onConfirm(
-                icons
-                  .filter((icon) => picked.has(icon.id))
-                  .map((icon) => icon.id),
-              )
-            }
-          >
-            Build {noun} ({pluralize(count, "icon")})
-          </Button>
+      <DialogFooter>
+        <div className="flex w-full flex-wrap items-center justify-between gap-2">
+          <p className="text-sm text-muted-foreground">
+            {count === 0
+              ? "Tick at least one icon."
+              : `Ready to build with ${pluralize(count, "icon")}.`}
+          </p>
+          <div className="flex gap-2">
+            <Button onClick={onClose}>Cancel</Button>
+            <Button
+              variant="primary"
+              icon={<Sparkles aria-hidden="true" className="h-4 w-4" />}
+              disabled={count === 0 || tooMany}
+              onClick={() =>
+                onConfirm(
+                  icons
+                    .filter((icon) => picked.has(icon.id))
+                    .map((icon) => icon.id),
+                )
+              }
+            >
+              Build {noun} ({pluralize(count, "icon")})
+            </Button>
+          </div>
         </div>
-      </div>
+      </DialogFooter>
     </div>
   );
 }
