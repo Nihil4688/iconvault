@@ -104,18 +104,21 @@ function IconDrawerSkeleton({ canEdit, purpose }: { canEdit: boolean; purpose: P
         <div className="skeleton-shimmer mt-0.5 h-4 w-52 rounded" />
       </div>
 
-      <div className="flex min-h-44 items-center justify-center rounded-xl border border-border p-6">
-        <div className="skeleton-shimmer h-10 w-10 rounded-lg" />
+      <div className="grid grid-cols-[270px_1fr] gap-6">
+        <div className="flex min-h-44 items-center justify-center rounded-xl border border-border p-6">
+          <div className="skeleton-shimmer h-10 w-10 rounded-lg" />
+        </div>
+
+        <div className="grid grid-cols-[repeat(4, auto)] gap-y-2 text-sm">
+          {[0, 1, 2, 3].map((index) => (
+            <div key={index}>
+              <div className="skeleton-shimmer h-5 w-16 rounded" />
+              <div className="skeleton-shimmer mt-1 h-3 w-20 rounded" />
+            </div>
+          ))}
+        </div>
       </div>
 
-      <div className="grid grid-cols-4 gap-2 text-sm">
-        {[0, 1, 2, 3].map((index) => (
-          <div key={index}>
-            <div className="skeleton-shimmer h-5 w-16 rounded" />
-            <div className="skeleton-shimmer mt-1 h-3 w-20 rounded" />
-          </div>
-        ))}
-      </div>
 
       <div className="flex flex-wrap items-center gap-2">
         <div className="skeleton-shimmer h-9 w-24 rounded-lg" />
