@@ -261,7 +261,9 @@ export default function FolderDropdownSelect({ value, folders, onChange, id, lab
                 {depth === 0 ? (
                   <span className="flex min-w-0 items-center gap-2">
                     <Folder aria-hidden="true" className="h-5 w-5 shrink-0 text-muted-foreground" strokeWidth={1.75} />
-                    <span className="truncate">{option.menuLabel}</span>
+                    <span className="truncate" title={option.menuLabel}>
+                      {option.menuLabel}
+                    </span>
                   </span>
                 ) : (
                   <span className="folder-option-row relative flex min-w-0 flex-1 items-center gap-2 py-2 pr-2" style={{ paddingLeft: `${connectorLeft}px` }}>
@@ -300,7 +302,9 @@ export default function FolderDropdownSelect({ value, folders, onChange, id, lab
                     />
                     <span aria-hidden="true" className="h-3 w-3 shrink-0" />
                     <Folder aria-hidden="true" className="relative z-10 h-5 w-5 shrink-0 text-muted-foreground" strokeWidth={1.75} />
-                    <span className="relative z-10 truncate">{option.menuLabel}</span>
+                    <span className="relative z-10 truncate" title={option.menuLabel}>
+                      {option.menuLabel}
+                    </span>
                   </span>
                 )}
               </button>
