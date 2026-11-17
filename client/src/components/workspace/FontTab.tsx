@@ -19,9 +19,10 @@ import { loadAllIcons, readBuildSelection } from "../../lib/loadAllIcons";
 import { formatBytes, pluralize } from "../../lib/format";
 import { triggerBrowserDownload } from "../../utils/zipBundle";
 import { Button } from "../ui/Button";
-import { SelectField, TextField } from "../ui/Fields";
+import { TextField } from "../ui/Fields";
 import CodepointTable from "./CodepointTable";
 import FontHistory from "./FontHistory";
+import FolderDropdownSelect from "./FolderDropdownSelect";
 import IconChecklistDialog from "./IconChecklistDialog";
 import SaveBuildVersionDialog from "./SaveBuildVersionDialog";
 
@@ -325,19 +326,7 @@ export default function FontTab() {
                   Selected Folder
                 </label>
                 {scopeKind === "folder" && (
-                  <SelectField
-                    label="Folder"
-                    hideLabel
-                    value={folderChoice}
-                    onChange={(event) => setFolderChoice(event.target.value)}
-                  >
-                    <option value="">Choose a Folder…</option>
-                    {folderOptions.map((folder) => (
-                      <option key={folder.id} value={folder.id}>
-                        {`${"  ".repeat(folder.depth)}${folder.name} (${pluralize(totalIconCount(folder), "icon")})`}
-                      </option>
-                    ))}
-                  </SelectField>
+                  <FolderDropdownSelect id="font-scope-folder" rootLabel="Choose a Folder…" showCounts value={folderChoice} folders={folderList.folders} onChange={setFolderChoice} />
                 )}
                 <label className="flex cursor-pointer items-center gap-2">
                   <input
