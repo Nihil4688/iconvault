@@ -1,5 +1,5 @@
 // Tests for the icon drawer: details and editing, read-only view, preview controls, copy and download, optimize, trash with undo, code editing with a safe live preview, and versions.
-import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "../../api/http";
@@ -49,20 +49,39 @@ describe("loading", () => {
     expect(iconsApi.getIcon).not.toHaveBeenCalled();
   });
 
-  it("shows a loading message, then the icon with the id it will have in a sprite", async () => {
+  it("shows a shimmer placeholder, then the icon with the id it will have in a sprite", async () => {
     setup();
-    expect(screen.getByRole("dialog", { name: "Icon details" })).toBeInTheDocument();
-    expect(screen.getByRole("status")).toHaveTextContent("Loading icon");
+    expect(screen.getByRole("dialog", { name: "Icon Details" })).toBeInTheDocument();
+    expect(screen.getByRole("status")).toHaveAttribute("aria-label", "Loading Icon");
+    expect(screen.getByRole("status")).toHaveAttribute("aria-busy", "true");
+    expect(document.querySelectorAll(".skeleton-shimmer").length).toBeGreaterThan(0);
+    expect(screen.queryByText(/Loading icon/)).not.toBeInTheDocument();
     await ready();
     expect(screen.getByText("feather-arrow-left")).toBeInTheDocument();
     expect(iconsApi.getIcon).toHaveBeenCalledWith("ic1");
+  });
+
+  it("keeps every placeholder block the size of the panel it stands in for", async () => {
+    setup();
+    const status = screen.getByRole("status");
+    // The preview keeps the height of the real preview box, so the drawer does not jump when the icon arrives.
+    const preview = status.querySelector(".min-h-44") as HTMLElement;
+    expect(preview).toBeInTheDocument();
+    expect(preview).toHaveClass("min-h-44");
+    // The fields keep the height of a real field.
+    const field = status.querySelector(".h-9.rounded-lg") as HTMLElement;
+    expect(field).toBeInTheDocument();
+    expect(field).toHaveClass("h-9");
+    // The facts row keeps the four columns of the real one.
+    expect(status.querySelectorAll(".grid-cols-4 > div")).toHaveLength(4);
+    await ready();
   });
 
   it("explains a failure and can try again", async () => {
     vi.mocked(iconsApi.getIcon).mockRejectedValueOnce(new ApiError("Icon not found.", 404));
     setup();
     expect(await screen.findByRole("alert")).toHaveTextContent("Icon not found.");
-    await userEvent.click(screen.getByRole("button", { name: "Try again" }));
+    await userEvent.click(screen.getByRole("button", { name: "Try Again" }));
     await ready();
   });
 
@@ -81,20 +100,23 @@ describe("details", () => {
     window.localStorage.setItem(key, JSON.stringify({ size: 64, color: "#123456" }));
     setup({ projectId: "p1" });
 
-    const preview = await screen.findByRole("img", { name: "Arrow Left at 64 pixels" });
+    const preview = await screen.findByRole("img", { name: "Arrow Left at 64 Pixels" });
 
     expect(preview).toHaveStyle({ width: "64px", height: "64px", color: "#123456" });
     window.localStorage.removeItem(key);
   });
 
-  it("shows size and savings, canvas, dates", async () => {
+  it("shows the canvas, size and dates in the facts row", async () => {
     setup();
     await ready();
-    const panel = screen.getByRole("tabpanel");
-    expect(within(panel).getByText(/150 B/)).toBeInTheDocument();
-    expect(within(panel).getByText(/was 300 B, 50% smaller/)).toBeInTheDocument();
-    expect(within(panel).getByText("0 0 24 24")).toBeInTheDocument();
-    expect(within(panel).getByText("Oct 1, 2026")).toBeInTheDocument();
+    const row = screen.getByText("Canvas").closest("dl") as HTMLElement;
+    expect(within(row).getByText("24 × 24")).toBeInTheDocument();
+    expect(within(row).getByText(/150 B/)).toBeInTheDocument();
+    expect(within(row).getByText("Canvas")).toBeInTheDocument();
+    expect(within(row).getByText("Size")).toBeInTheDocument();
+    expect(within(row).getByText("Added on")).toBeInTheDocument();
+    expect(within(row).getByText("Last updated")).toBeInTheDocument();
+    expect(within(row).getByText("Oct 1, 2026")).toBeInTheDocument();
   });
 
   it("warns about what will not become a font glyph", async () => {
@@ -136,26 +158,26 @@ describe("details", () => {
     vi.mocked(iconsApi.updateIcon).mockResolvedValue({ ...makeIcon(), svg: SVG });
     setup();
     await ready();
-    const field = screen.getByLabelText("Font codepoint");
+    const field = screen.getByLabelText("Font Codepoint");
     await userEvent.clear(field);
     await userEvent.type(field, "e0aa");
-    await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await userEvent.click(screen.getByRole("button", { name: "Save Changes" }));
     expect(iconsApi.updateIcon).toHaveBeenLastCalledWith("ic1", { codepoint: "E0AA" });
   });
 
   it("blocks a codepoint that is not private-use or not hex, with the reason", async () => {
     setup();
     await ready();
-    const field = screen.getByLabelText("Font codepoint");
+    const field = screen.getByLabelText("Font Codepoint");
     await userEvent.clear(field);
     await userEvent.type(field, "0041");
     expect(screen.getByText(/E000 to F8FF so it cannot replace/)).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Save changes" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Save Changes" })).toBeDisabled();
     await userEvent.clear(field);
     await userEvent.type(field, "xyz");
     expect(screen.getByText(/exactly 4 hex digits/)).toBeInTheDocument();
     await userEvent.clear(field);
-    expect(screen.getByRole("button", { name: "Save changes" })).toBeEnabled();
+    expect(screen.getByRole("button", { name: "Save Changes" })).toBeEnabled();
   });
 
   it("refuses an empty name, and shows a server refusal", async () => {
@@ -163,24 +185,25 @@ describe("details", () => {
     setup();
     await ready();
     await userEvent.clear(screen.getByLabelText("Name"));
-    await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await userEvent.click(screen.getByRole("button", { name: "Save Changes" }));
     expect(screen.getByRole("alert")).toHaveTextContent("Enter a name.");
     await userEvent.type(screen.getByLabelText("Name"), "Bell");
-    await userEvent.click(screen.getByRole("button", { name: "Save changes" }));
+    await userEvent.click(screen.getByRole("button", { name: "Save Changes" }));
     expect(await screen.findByRole("alert")).toHaveTextContent('Another icon already uses the id "bell".');
   });
 
-  it("is read-only for people who cannot edit", async () => {
+  it("shows the fields disabled for people who cannot edit", async () => {
     setup({ canEdit: false });
     await ready();
-    expect(screen.queryByLabelText("Name")).not.toBeInTheDocument();
-    expect(screen.getByText("UI")).toBeInTheDocument();
-    expect(screen.getByText("nav")).toBeInTheDocument();
-    expect(screen.getByText("E001")).toBeInTheDocument();
+    expect(screen.getByLabelText("Name")).toBeDisabled();
+    expect(screen.getByLabelText("Tags")).toBeDisabled();
+    expect(screen.getByLabelText("Font Codepoint")).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Folder: UI" })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Save Changes" })).not.toBeInTheDocument();
     expect(screen.queryByRole("button", { name: "Optimize" })).not.toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Move to trash" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Move to Trash" })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Download" })).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Copy SVG" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Copy" })).toBeInTheDocument();
   });
 });
 
@@ -188,27 +211,31 @@ describe("preview", () => {
   it("shows the icon at its folder-specific size, with no size buttons or background switch of its own", async () => {
     setup();
     await ready();
-    expect(screen.getByRole("img", { name: "Arrow Left at 40 pixels" })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Arrow Left at 40 Pixels" })).toBeInTheDocument();
     expect(screen.queryByRole("group", { name: "Preview size" })).not.toBeInTheDocument();
 
     expect(screen.queryByLabelText("Preview background")).not.toBeInTheDocument();
   });
 
   it("uses the background chosen in the Icons toolbar", async () => {
-    window.localStorage.setItem("iconSurface", "dark");
-    setup();
+    // The surface is remembered per project, under "project:<id>:iconSurface".
+    const key = "project:p1:iconSurface";
+    window.localStorage.removeItem(key);
+    window.localStorage.setItem(key, "dark");
+    setup({ projectId: "p1" });
     await ready();
-    expect(screen.getByRole("img", { name: /at 40 pixels/ }).parentElement?.className).toContain("bg-neutral-900");
-    window.localStorage.removeItem("iconSurface");
+    expect(screen.getByRole("img", { name: /at 40 Pixels/ }).parentElement?.className).toContain("bg-neutral-900");
+    window.localStorage.removeItem(key);
   });
 
   it("follows the size chosen in the Icons toolbar", async () => {
     const key = "project:p1:folder:ui:iconAppearance";
     window.localStorage.removeItem(key);
+    // 72 is not one of the preset sizes, so it snaps to the closest one (64).
     window.localStorage.setItem(key, JSON.stringify({ size: 72, color: "", style: "natural" }));
     setup({ projectId: "p1" });
     await ready();
-    expect(screen.getByRole("img", { name: "Arrow Left at 72 pixels" })).toBeInTheDocument();
+    expect(screen.getByRole("img", { name: "Arrow Left at 64 Pixels" })).toBeInTheDocument();
     window.localStorage.removeItem(key);
   });
 });
@@ -217,13 +244,15 @@ describe("copy and download", () => {
   it("copies the SVG, and the React and Vue components", async () => {
     setup();
     await ready();
-    await userEvent.click(screen.getByRole("button", { name: "Copy SVG" }));
+    await userEvent.click(screen.getByRole("button", { name: "Copy" }));
     expect(clipboard.copyText).toHaveBeenLastCalledWith(SVG);
     expect(await screen.findByText("Copied the SVG.")).toBeInTheDocument();
 
-    await userEvent.click(screen.getByRole("button", { name: "Copy React" }));
+    await userEvent.click(screen.getByRole("button", { name: "More copy options" }));
+    await userEvent.click(within(screen.getByRole("menu", { name: "Copy as" })).getByRole("menuitem", { name: "Copy React" }));
     expect(vi.mocked(clipboard.copyText).mock.calls.at(-1)?.[0]).toContain("export function ArrowLeftIcon(props: SVGProps<SVGSVGElement>)");
-    await userEvent.click(screen.getByRole("button", { name: "Copy Vue" }));
+    await userEvent.click(screen.getByRole("button", { name: "More copy options" }));
+    await userEvent.click(within(screen.getByRole("menu", { name: "Copy as" })).getByRole("menuitem", { name: "Copy Vue" }));
     expect(vi.mocked(clipboard.copyText).mock.calls.at(-1)?.[0]).toMatch(/^<template>/);
   });
 
@@ -231,7 +260,7 @@ describe("copy and download", () => {
     vi.mocked(clipboard.copyText).mockResolvedValue(false);
     setup();
     await ready();
-    await userEvent.click(screen.getByRole("button", { name: "Copy SVG" }));
+    await userEvent.click(screen.getByRole("button", { name: "Copy" }));
     expect(await screen.findByText("Could not copy to the clipboard.")).toBeInTheDocument();
   });
 
@@ -245,32 +274,13 @@ describe("copy and download", () => {
   });
 });
 
-describe("optimize and trash", () => {
-  it("optimizes, says by how much, and refreshes", async () => {
-    vi.mocked(iconsApi.optimizeIcon).mockResolvedValue({ icon: makeIcon(), changed: true, before: 300, after: 120, savingsPercent: 60 });
-    const { onChanged } = setup();
-    await ready();
-    await userEvent.click(screen.getByRole("button", { name: "Optimize" }));
-    expect(await screen.findByText(/Optimized: 300 B to 120 B \(60% smaller\)/)).toBeInTheDocument();
-    expect(onChanged).toHaveBeenCalled();
-    await waitFor(() => expect(iconsApi.getIcon).toHaveBeenCalledTimes(2));
-  });
-
-  it("says so when there is nothing to gain", async () => {
-    vi.mocked(iconsApi.optimizeIcon).mockResolvedValue({ icon: makeIcon(), changed: false, before: 100, after: 100, savingsPercent: 0 });
-    const { onChanged } = setup();
-    await ready();
-    await userEvent.click(screen.getByRole("button", { name: "Optimize" }));
-    expect(await screen.findByText("Already as small as it can be.")).toBeInTheDocument();
-    expect(onChanged).not.toHaveBeenCalled();
-  });
-
+describe("trash", () => {
   it("moves to the trash, closes, and offers Undo", async () => {
     vi.mocked(iconsApi.deleteIcon).mockResolvedValue({});
     vi.mocked(iconsApi.restoreIcon).mockResolvedValue({ icon: makeIcon(), adjusted: [] });
     const { onChanged, onClose } = setup();
     await ready();
-    await userEvent.click(screen.getByRole("button", { name: "Move to trash" }));
+    await userEvent.click(screen.getByRole("button", { name: "Move to Trash" }));
     expect(iconsApi.deleteIcon).toHaveBeenCalledWith("ic1");
     await waitFor(() => expect(onClose).toHaveBeenCalled());
     expect(await screen.findByText("Moved “Arrow Left” to the trash.")).toBeInTheDocument();
@@ -280,134 +290,4 @@ describe("optimize and trash", () => {
     await waitFor(() => expect(onChanged.mock.calls.length).toBeGreaterThan(changedBefore));
   });
 
-  it("shows a failure as a message and stays open", async () => {
-    vi.mocked(iconsApi.optimizeIcon).mockRejectedValue(new ApiError("This icon is in the trash. Restore it first.", 409));
-    const { onClose } = setup();
-    await ready();
-    await userEvent.click(screen.getByRole("button", { name: "Optimize" }));
-    expect(await screen.findByText("This icon is in the trash. Restore it first.")).toBeInTheDocument();
-    expect(onClose).not.toHaveBeenCalled();
-  });
-});
-
-describe("code", () => {
-  const openCode = async () => userEvent.click(screen.getByRole("tab", { name: /Code/ }));
-
-  it("shows the code with generated snippets, and a safe preview of the draft", async () => {
-    setup();
-    await ready();
-    await openCode();
-    expect(screen.getByLabelText("SVG code")).toHaveValue(SVG);
-    expect(screen.getByRole("region", { name: "React component (TSX)" })).toHaveTextContent("export function ArrowLeftIcon");
-    expect(screen.getByRole("region", { name: "Vue 3 component" })).toHaveTextContent("<template>");
-    const preview = screen.getByAltText("Preview of the code") as HTMLImageElement;
-    expect(preview.src).toMatch(/^data:image\/svg\+xml;charset=utf-8,/);
-    expect(decodeURIComponent(preview.src.split(",")[1] as string)).toBe(SVG);
-  });
-
-  it("never injects the draft into the page as markup", async () => {
-    setup();
-    await ready();
-    await openCode();
-    fireEvent.change(screen.getByLabelText("SVG code"), { target: { value: '<svg xmlns="http://www.w3.org/2000/svg"><script>alert(1)</script><image href="https://evil.example/x"/></svg>' } });
-    expect(document.querySelector("dialog script")).toBeNull();
-    expect(document.querySelector("dialog image")).toBeNull();
-    expect((screen.getByAltText("Preview of the code") as HTMLImageElement).src).toMatch(/^data:image\/svg\+xml/);
-  });
-
-  it("saves edited code, and can revert", async () => {
-    vi.mocked(iconsApi.updateIcon).mockResolvedValue({ ...makeIcon(), svg: SVG });
-    const { onChanged } = setup();
-    await ready();
-    await openCode();
-    expect(screen.getByRole("button", { name: "Save SVG" })).toBeDisabled();
-    const edited = SVG.replace("M2 2", "M3 3");
-    fireEvent.change(screen.getByLabelText("SVG code"), { target: { value: edited } });
-    await userEvent.click(screen.getByRole("button", { name: "Revert" }));
-    expect(screen.getByLabelText("SVG code")).toHaveValue(SVG);
-
-    fireEvent.change(screen.getByLabelText("SVG code"), { target: { value: edited } });
-    await userEvent.click(screen.getByRole("button", { name: "Save SVG" }));
-    expect(iconsApi.updateIcon).toHaveBeenCalledWith("ic1", { rawSvg: edited });
-    expect(await screen.findByText("Saved. The previous version is kept.")).toBeInTheDocument();
-    expect(onChanged).toHaveBeenCalled();
-  });
-
-  it("shows the server's reason when the code is refused", async () => {
-    vi.mocked(iconsApi.updateIcon).mockRejectedValue(new ApiError("Invalid SVG: the markup could not be parsed.", 400));
-    setup();
-    await ready();
-    await openCode();
-    fireEvent.change(screen.getByLabelText("SVG code"), { target: { value: "<svg><path" } });
-    await userEvent.click(screen.getByRole("button", { name: "Save SVG" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("Invalid SVG: the markup could not be parsed.");
-  });
-
-  it("is read-only for people who cannot edit", async () => {
-    setup({ canEdit: false });
-    await ready();
-    await openCode();
-    expect(screen.getByLabelText("SVG code")).toHaveAttribute("readonly");
-    expect(screen.queryByRole("button", { name: "Save SVG" })).not.toBeInTheDocument();
-    expect(screen.queryByAltText("Preview of the code")).not.toBeInTheDocument();
-  });
-
-  it("copies a snippet", async () => {
-    setup();
-    await ready();
-    await openCode();
-    const section = screen.getByRole("region", { name: "Vue 3 component" });
-    await userEvent.click(within(section).getByRole("button", { name: "Copy" }));
-    expect(vi.mocked(clipboard.copyText).mock.calls.at(-1)?.[0]).toMatch(/^<template>/);
-  });
-});
-
-describe("versions", () => {
-  const versions = [
-    { id: "v2", byteSize: 140, createdAt: "2026-10-18T09:00:00.000Z" },
-    { id: "v1", byteSize: 200, createdAt: "2026-10-10T09:00:00.000Z" },
-  ];
-  const openVersions = async () => userEvent.click(screen.getByRole("tab", { name: /Versions/ }));
-
-  it("explains when there are none", async () => {
-    setup();
-    await ready();
-    expect(screen.getByRole("tab", { name: "Versions (0)" })).toBeInTheDocument();
-    await openVersions();
-    expect(screen.getByText(/No earlier versions yet/)).toBeInTheDocument();
-  });
-
-  it("lists versions and restores one", async () => {
-    vi.mocked(iconsApi.getIcon).mockResolvedValue(detail({ versions }));
-    vi.mocked(iconsApi.restoreVersion).mockResolvedValue(detail({ versions }));
-    const { onChanged } = setup();
-    await ready();
-    await openVersions();
-    const list = screen.getByRole("list", { name: "Earlier versions" });
-    expect(within(list).getAllByRole("listitem")).toHaveLength(2);
-    expect(within(list).getByText("Most recent change")).toBeInTheDocument();
-    expect(within(list).getByText(/200 B/)).toBeInTheDocument();
-    await userEvent.click(within(list).getAllByRole("button", { name: /Restore the version/ })[1] as HTMLElement);
-    expect(iconsApi.restoreVersion).toHaveBeenCalledWith("ic1", "v1");
-    expect(await screen.findByText("Restored. The version you replaced is kept too.")).toBeInTheDocument();
-    expect(onChanged).toHaveBeenCalled();
-  });
-
-  it("has no restore buttons for read-only viewers", async () => {
-    vi.mocked(iconsApi.getIcon).mockResolvedValue(detail({ versions }));
-    setup({ canEdit: false });
-    await ready();
-    await openVersions();
-    expect(screen.queryByRole("button", { name: /Restore/ })).not.toBeInTheDocument();
-  });
-
-  it("reports a failed restore", async () => {
-    vi.mocked(iconsApi.getIcon).mockResolvedValue(detail({ versions }));
-    vi.mocked(iconsApi.restoreVersion).mockRejectedValue(new ApiError("Version not found.", 404));
-    setup();
-    await ready();
-    await openVersions();
-    await userEvent.click(screen.getAllByRole("button", { name: /Restore the version/ })[0] as HTMLElement);
-    expect(await screen.findByText("Version not found.")).toBeInTheDocument();
-  });
 });

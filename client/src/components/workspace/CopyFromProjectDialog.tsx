@@ -145,7 +145,7 @@ export function CopyFromProjectForm({ targetProjectId, targetFolders, defaultFol
             {icons.error.message}
           </p>
         ) : projectsLoading || (icons.loading && !icons.data) ? (
-          <ul aria-hidden="true" className="grid max-h-54 grid-cols-2 gap-2 p-1 overflow-y-auto sm:grid-cols-4 lg:grid-cols-6">
+          <ul aria-hidden="true" className="grid max-h-53 grid-cols-2 gap-2 p-1 overflow-y-auto sm:grid-cols-4 lg:grid-cols-6">
             {Array.from({ length: 12 }).map((_, index) => (
               <li key={index} className="min-h-24 animate-pulse rounded-lg border border-border bg-muted" />
             ))}

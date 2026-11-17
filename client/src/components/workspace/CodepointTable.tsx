@@ -128,7 +128,7 @@ function Row({ glyph, family, canEdit, busy, onSave, onCopyClass }: { glyph: Fon
                 autoComplete="off"
                 spellCheck={false}
                 maxLength={4}
-                className={cn("h-8 w-20 rounded-md border bg-background px-2 font-mono text-sm uppercase focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring disabled:opacity-60", error ? "border-destructive" : "border-input")}
+                className={cn("h-8 w-20 rounded-md border bg-background px-2 font-mono text-sm uppercase focus-visible:outline-none focus:border-[#1555E0] focus:shadow-[0_0_0_3px_rgba(21,85,224,0.2)] disabled:opacity-60", error ? "border-destructive" : "border-input")}
               />
               {saving && <span className="text-xs text-muted-foreground">Saving…</span>}
               {glyph.isNew && !saving && <span className="rounded bg-primary/10 px-1 text-xs text-primary">new</span>}

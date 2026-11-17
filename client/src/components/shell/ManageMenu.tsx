@@ -71,7 +71,7 @@ export default function ManageMenu() {
         aria-controls={open ? menuId : undefined}
         onClick={() => setOpen((value) => !value)}
         onKeyDown={onTriggerKeyDown}
-        className= {cn("inline-flex h-9 items-center gap-1.5 rounded-lg border border-primary-500/40 bg-primary-500/10 px-3 text-sm font-semibold text-primary transition-colors hover:bg-primary-500/20 dark:text-primary-300", open && "shadow-[0_0_0_3px_rgba(21,85,224,0.2)]")}
+        className= {cn("inline-flex h-9 items-center gap-1.5 rounded-lg border border-primary/40 hover:bg-primary/10 px-3 text-sm font-semibold text-primary transition-colors dark:text-primary-300", open && "shadow-[0_0_0_3px_rgba(21,85,224,0.2)]")}
       >
         <ShieldCheck aria-hidden="true" className="h-4 w-4" />
         Manage

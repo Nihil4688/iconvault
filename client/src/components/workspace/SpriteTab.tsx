@@ -1,5 +1,5 @@
 // The Sprite Builder, laid out like the Font Builder and like Icon Vault's sprite page: the actions in the project bar (Download sprite ZIP is the main one, with Copy sprite), then three columns: 1. Scope selection (whole project, a folder or the chosen icons, with the icon checklist), 2. Sprite architecture (symbols, a stack, or symbols with a CSS stylesheet), 3. Processing options (the symbol id pattern, colours to currentColor, namespaced ids). The sprite builds by itself in the browser whenever the icons or an option change, so the ZIP (sprite, grid sprite, demo page, preview image) is ready to download as soon as the page shows it. Below: the symbol ids with the code for each, and the sprite build history (there is no preview panel; the demo page is inside the ZIP). Anyone who can see the project can build and download; editors can save ZIPs to history.
-import { CheckSquare, Copy, FileArchive } from "lucide-react";
+import { CheckSquare, Copy, FileArchive, Search } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useLocation } from "react-router-dom";
@@ -295,7 +295,10 @@ export default function SpriteTab() {
               <h3 id="sprite-ids" className="text-sm font-semibold">
                 Symbol IDs
               </h3>
-              {built.ids.length > 10 && <input type="search" aria-label="Filter Symbol IDs" placeholder="Filter ids" value={filter} onChange={(event) => setFilter(event.target.value)} className="h-9 rounded-lg border border-input bg-background px-3 text-sm" />}
+              {built.ids.length > 10 &&
+                <div className="relative min-w-36 max-w-64 flex-1">
+                  <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <input type="search" aria-label="Filter Symbol IDs" placeholder="Search by IDs" value={filter} onChange={(event) => setFilter(event.target.value)} className="h-9 w-full rounded-lg border border-input bg-background pl-9 pr-3 text-sm placeholder:text-muted-foreground focus:border-[#1555E0] focus:shadow-[0_0_0_3px_rgba(21,85,224,0.2)] focus:outline-none" /></div>}
             </div>
             <div className="mt-2 max-h-[40vh] overflow-y-auto rounded-xl border border-border py-3 pl-3">
               <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">

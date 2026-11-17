@@ -1,7 +1,7 @@
-// The panel that opens when an icon is clicked. Preview at the icon's folder-specific size and colour on the background chosen in the toolbar; quick actions (copy as SVG, React or Vue, download, optimize, move to trash); and three tabs: Details (name, folder, tags, codepoint), Code (edit the SVG with a live preview, and the generated snippets) and Versions (restore an earlier state). People who cannot edit the project see everything read-only.
-import { Copy, Download, Sparkles, Trash2 } from "lucide-react";
-import { useState, type FormEvent } from "react";
-import { deleteIcon, downloadIcon, getIcon, optimizeIcon, restoreIcon, restoreVersion, updateIcon } from "../../api/icons";
+// The panel that opens when an icon is clicked. Preview at the icon's folder-specific size and colour on the background chosen in the toolbar; quick actions (copy as SVG, React or Vue, download, optimize); and the editable details (name, folder, tags, codepoint). People who cannot edit the project see everything read-only.
+import { ChevronDown, Copy, Download, Trash2 } from "lucide-react";
+import { useEffect, useRef, useState, type FormEvent, type ReactNode } from "react";
+import { deleteIcon, downloadIcon, getIcon, restoreIcon, updateIcon } from "../../api/icons";
 import type { FolderWithCount, IconDetail, ProjectPurpose } from "../../api/types";
 import { useToast } from "../../context/ToastContext";
 import { useIconAppearance } from "../../hooks/useIconAppearance";
@@ -10,8 +10,7 @@ import { usePersistentChoice } from "../../hooks/usePersistentChoice";
 import { cn } from "../../lib/cn";
 import { copyText } from "../../lib/clipboard";
 import { codepointProblem } from "../../lib/codepoint";
-import { folderPath } from "../../lib/folderTree";
-import { formatBytes, formatDate, formatRelative, savingsPercent } from "../../lib/format";
+import { formatBytes, formatDate, formatRelative } from "../../lib/format";
 import { iconWarnings } from "../../lib/iconInfo";
 import { SURFACES, surfaceClass, surfaceStyle } from "../../lib/previewSurface";
 import { toReactComponent, toVueComponent } from "../../lib/svgSnippets";
@@ -19,10 +18,15 @@ import { parseTags } from "../../lib/upload";
 import { triggerBrowserDownload } from "../../utils/zipBundle";
 import { Button } from "../ui/Button";
 import Dialog from "../ui/Dialog";
-import { TextAreaField, TextField } from "../ui/Fields";
+import { TextField } from "../ui/Fields";
 import SvgPreview from "../ui/SvgPreview";
-import Tabs from "../ui/Tabs";
 import FolderDropdownSelect from "./FolderDropdownSelect";
+
+type ToastMessage = {
+  id: string;
+  message: string;
+  type: "success" | "error" | "warning";
+};
 
 
 type IconDrawerProps = {
@@ -40,18 +44,41 @@ type IconDrawerProps = {
 };
 
 export default function IconDrawer({ iconId, onClose, ...rest }: IconDrawerProps) {
+  const [toasts, setToasts] = useState<ToastMessage[]>([]);
+  const timers = useRef(new Map<string, ReturnType<typeof setTimeout>>());
+  let toastCounter = useRef(0);
+
+  const showDrawerToast = (message: string, type: "success" | "error" | "warning" = "success") => {
+    const id = `drawer-toast-${++toastCounter.current}`;
+    setToasts((current) => [...current, { id, message, type }]);
+    const timer = setTimeout(() => {
+      setToasts((current) => current.filter((t) => t.id !== id));
+      timers.current.delete(id);
+    }, 3000);
+    timers.current.set(id, timer);
+  };
+
+  const dismissDrawerToast = (id: string) => {
+    setToasts((current) => current.filter((t) => t.id !== id));
+    const timer = timers.current.get(id);
+    if (timer) {
+      clearTimeout(timer);
+      timers.current.delete(id);
+    }
+  };
+
+  const [footer, setFooter] = useState<ReactNode>(null);
+
   return (
-    <Dialog open={iconId !== null} onClose={onClose} title="Icon Details" placement="drawer">
-      {iconId && <DrawerBody key={iconId} iconId={iconId} onClose={onClose} {...rest} />}
+    <Dialog open={iconId !== null} onClose={onClose} title="Icon Details" placement="drawer" size="sm" footer={footer}>
+      {iconId && <DrawerBody key={iconId} iconId={iconId} onClose={onClose} showDrawerToast={showDrawerToast} setFooter={setFooter} {...rest} />}
+      <DrawerToastViewport toasts={toasts} onDismiss={dismissDrawerToast} />
     </Dialog>
   );
 }
 
-type Tab = "details" | "code" | "versions";
-
-function DrawerBody({ iconId, onClose, ...rest }: Omit<IconDrawerProps, "iconId"> & { iconId: string }) {
+function DrawerBody({ iconId, onClose, showDrawerToast, setFooter, ...rest }: Omit<IconDrawerProps, "iconId"> & { iconId: string; showDrawerToast: (message: string, type: "success" | "error" | "warning") => void; setFooter: (footer: ReactNode) => void }) {
   const icon = useResource(`icon:${iconId}`, () => getIcon(iconId));
-  const [tab, setTab] = useState<Tab>("details");
 
   if (icon.error && !icon.data) {
     return (
@@ -62,33 +89,89 @@ function DrawerBody({ iconId, onClose, ...rest }: Omit<IconDrawerProps, "iconId"
     );
   }
   if (!icon.data) {
-    return (
-      <p role="status" className="text-sm text-muted-foreground">
-        Loading icon…
-      </p>
-    );
+    return <IconDrawerSkeleton canEdit={rest.canEdit} purpose={rest.purpose ?? "font"} />;
   }
   // Keyed so the forms start fresh from the saved values after every reload.
-  return <IconPanel key={`${icon.data.id}:${icon.data.updatedAt}`} icon={icon.data} tab={tab} onTab={setTab} reload={icon.reload} onClose={onClose} {...rest} />;
+  return <IconPanel key={`${icon.data.id}:${icon.data.updatedAt}`} icon={icon.data} reload={icon.reload} onClose={onClose} showDrawerToast={showDrawerToast} setFooter={setFooter} {...rest} />;
 }
 
-type PanelProps = Omit<IconDrawerProps, "iconId"> & { icon: IconDetail; tab: Tab; onTab: (tab: Tab) => void; reload: () => void };
+// The placeholders shown while the icon is being fetched. They copy the shape of the real panel - title, id, preview, facts, actions and the fields - so the drawer does not jump when the icon arrives. Every block keeps the size of the thing it stands in for.
+function IconDrawerSkeleton({ canEdit, purpose }: { canEdit: boolean; purpose: ProjectPurpose }) {
+  return (
+    <div role="status" aria-busy="true" aria-label="Loading Icon" className="space-y-5">
+      <div>
+        <div className="skeleton-shimmer h-7 w-44 rounded-md" />
+        <div className="skeleton-shimmer mt-0.5 h-4 w-52 rounded" />
+      </div>
 
-function IconPanel({ projectId, icon, tab, onTab, reload, canEdit, folders, idPrefix, purpose = "font", onClose, onChanged }: PanelProps) {
+      <div className="flex min-h-44 items-center justify-center rounded-xl border border-border p-6">
+        <div className="skeleton-shimmer h-10 w-10 rounded-lg" />
+      </div>
+
+      <div className="grid grid-cols-4 gap-2 text-sm">
+        {[0, 1, 2, 3].map((index) => (
+          <div key={index}>
+            <div className="skeleton-shimmer h-5 w-16 rounded" />
+            <div className="skeleton-shimmer mt-1 h-3 w-20 rounded" />
+          </div>
+        ))}
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="skeleton-shimmer h-9 w-24 rounded-lg" />
+        <div className="skeleton-shimmer h-9 w-32 rounded-lg" />
+        {canEdit && <div className="skeleton-shimmer h-9 w-28 rounded-lg" />}
+      </div>
+
+      <div className="space-y-4">
+        <SkeletonField width="w-full" />
+        <SkeletonField width="w-full" />
+        <SkeletonField width="w-full" hint />
+        {purpose === "font" && <SkeletonField width="w-full" hint />}
+        {canEdit && (
+          <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
+            <div className="skeleton-shimmer h-4 w-28 rounded" />
+            <div className="flex gap-2">
+              <div className="skeleton-shimmer h-9 w-20 rounded-lg" />
+              <div className="skeleton-shimmer h-9 w-32 rounded-lg" />
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// A label and a field, with the label and the hint as bars in place of the words.
+function SkeletonField({ width, hint }: { width: string; hint?: boolean }) {
+  return (
+    <div>
+      <div className="skeleton-shimmer mb-1.5 h-4 w-24 rounded" aria-hidden="true" />
+      <div className={cn("skeleton-shimmer h-9 rounded-lg", width)} />
+      {hint && <div className="skeleton-shimmer mt-1 h-3 w-48 rounded" />}
+    </div>
+  );
+}
+
+type PanelProps = Omit<IconDrawerProps, "iconId"> & { icon: IconDetail; reload: () => void; showDrawerToast: (message: string, type: "success" | "error" | "warning") => void; setFooter: (footer: ReactNode) => void };
+
+function IconPanel({ projectId, icon, reload, canEdit, folders, idPrefix, purpose = "font", onClose, onChanged, showDrawerToast, setFooter }: PanelProps) {
   const { showToast } = useToast();
   const [surface] = usePersistentChoice(projectId ?? "unknown", "iconSurface", SURFACES, "theme");
   const [appearance] = useIconAppearance(projectId ?? "unknown", icon.folderId);
   const size = appearance.size;
   const [busy, setBusy] = useState<string | null>(null);
   const warnings = iconWarnings(icon);
-  const saved = savingsPercent(icon.originalByteSize, icon.byteSize);
 
   async function copy(label: string, make: () => string) {
     try {
       const ok = await copyText(make());
-      showToast(ok ? `Copied ${label}.` : "Could not copy to the clipboard.", ok ? "success" : "error");
+      const message = ok ? `Copied ${label}.` : "Could not copy to the clipboard.";
+      const type = ok ? "success" : "error";
+      showDrawerToast(message, type);
     } catch (err) {
-      showToast(err instanceof Error ? err.message : "Could not copy.", "error");
+      const message = err instanceof Error ? err.message : "Could not copy.";
+      showDrawerToast(message, "error");
     }
   }
 
@@ -103,14 +186,14 @@ function IconPanel({ projectId, icon, tab, onTab, reload, canEdit, folders, idPr
     }
   }
 
-  const optimize = () =>
-    act("optimize", () => optimizeIcon(icon.id), (result) => {
-      showToast(result.changed ? `Optimized: ${formatBytes(result.before)} to ${formatBytes(result.after)} (${result.savingsPercent}% smaller). The old version is kept.` : "Already as small as it can be.", "success");
-      if (result.changed) {
-        reload();
-        onChanged();
-      }
-    });
+  // const optimize = () =>
+  //   act("optimize", () => optimizeIcon(icon.id), (result) => {
+  //     showToast(result.changed ? `Optimized: ${formatBytes(result.before)} to ${formatBytes(result.after)} (${result.savingsPercent}% smaller). The old version is kept.` : "Already as small as it can be.", "success");
+  //     if (result.changed) {
+  //       reload();
+  //       onChanged();
+  //     }
+  //   });
 
   const download = () =>
     act("download", () => downloadIcon(icon.id), ({ blob, filename }) => triggerBrowserDownload(blob, filename));
@@ -136,36 +219,37 @@ function IconPanel({ projectId, icon, tab, onTab, reload, canEdit, folders, idPr
         <h3 className="text-xl font-semibold">{icon.name}</h3>
         <p className="mt-0.5 font-mono text-xs text-muted-foreground">{`${idPrefix}-${icon.slug}`}</p>
       </div>
-
-      <section aria-label="Preview">
+      
+      <div className="grid grid-cols-[270px_1fr] gap-6">
+        <section aria-label="Preview">
         <div className={cn("flex min-h-44 items-center justify-center rounded-xl border border-border p-6", surfaceClass(surface))} style={surfaceStyle(surface)}>
           <SvgPreview svg={icon.svg} size={size} color={appearance.color} label={`${icon.name} at ${size} Pixels`} />
         </div>
       </section>
 
-      <section aria-label="Actions" className="flex flex-wrap gap-2">
-        <Button size="sm" icon={<Copy aria-hidden="true" className="h-4 w-4" />} onClick={() => copy("the SVG", () => icon.svg)}>
-          Copy SVG
-        </Button>
-        <Button size="sm" onClick={() => copy("the React component", () => toReactComponent(icon.svg, icon.name))}>
-          Copy React
-        </Button>
-        <Button size="sm" onClick={() => copy("the Vue component", () => toVueComponent(icon.svg))}>
-          Copy Vue
-        </Button>
-        <Button size="sm" icon={<Download aria-hidden="true" className="h-4 w-4" />} loading={busy === "download"} disabled={busy !== null} onClick={download}>
+      <dl aria-label="Icon facts" className="grid grid-rows-[repeat(4,auto)] gap-y-2 text-sm">
+        <Fact label="Canvas" value={`${icon.width} × ${icon.height}`} />
+        <Fact label="Size" value={formatBytes(icon.byteSize)} />
+        <Fact label="Added on" value={formatDate(icon.createdAt)} />
+        <Fact label="Last updated" value={formatRelative(icon.updatedAt)} />
+      </dl>
+      </div>
+      
+
+      <section aria-label="Actions" className="flex flex-wrap items-center gap-2">
+        <CopySplitButton
+          onCopySvg={() => copy("the SVG", () => icon.svg)}
+          onCopyReact={() => copy("the React component", () => toReactComponent(icon.svg, icon.name))}
+          onCopyVue={() => copy("the Vue component", () => toVueComponent(icon.svg))}
+        />
+        <Button variant="secondary" icon={<Download aria-hidden="true" className="h-4 w-4" />} loading={busy === "download"} disabled={busy !== null} onClick={download}>
           Download
         </Button>
-        {canEdit && (
-          <>
-            <Button size="sm" icon={<Sparkles aria-hidden="true" className="h-4 w-4" />} loading={busy === "optimize"} disabled={busy !== null} onClick={optimize}>
-              Optimize
-            </Button>
-            <Button size="sm" variant="destructive" icon={<Trash2 aria-hidden="true" className="h-4 w-4" />} loading={busy === "trash"} disabled={busy !== null} onClick={trash}>
-              Move to Trash
-            </Button>
-          </>
-        )}
+        {/* {canEdit && (
+          <Button variant="secondary" icon={<Sparkles aria-hidden="true" className="h-4 w-4" />} loading={busy === "optimize"} disabled={busy !== null} onClick={optimize}>
+            Optimize
+          </Button>
+        )} */}
       </section>
 
       {warnings.length > 0 && (
@@ -174,34 +258,12 @@ function IconPanel({ projectId, icon, tab, onTab, reload, canEdit, folders, idPr
         </p>
       )}
 
-      <Tabs
-        label="Icon Sections"
-        value={tab}
-        onChange={onTab}
-        tabs={[
-          { value: "details", label: "Details" },
-          { value: "code", label: "Code" },
-          { value: "versions", label: `Versions (${icon.versions.length})` },
-        ]}
-      >
-        {tab === "details" && <DetailsTab icon={icon} canEdit={canEdit} folders={folders} purpose={purpose} saved={saved} onSaved={() => { reload(); onChanged(); }} />}
-        {tab === "code" && <CodeTab icon={icon} canEdit={canEdit} onSaved={() => { reload(); onChanged(); }} />}
-        {tab === "versions" && (
-          <VersionsTab
-            icon={icon}
-            canEdit={canEdit}
-            onRestored={() => {
-              reload();
-              onChanged();
-            }}
-          />
-        )}
-      </Tabs>
+      <DetailsTab icon={icon} canEdit={canEdit} folders={folders} purpose={purpose} onSaved={() => { reload(); onChanged(); }} onTrash={trash} busyAction={busy !== null} onClose={onClose} setFooter={setFooter} />
     </div>
   );
 }
 
-function DetailsTab({ icon, canEdit, folders, purpose, saved, onSaved }: { icon: IconDetail; canEdit: boolean; folders: FolderWithCount[]; purpose: ProjectPurpose; saved: number; onSaved: () => void }) {
+function DetailsTab({ icon, canEdit, folders, purpose, onSaved, onTrash, busyAction, onClose, setFooter }: { icon: IconDetail; canEdit: boolean; folders: FolderWithCount[]; purpose: ProjectPurpose; onSaved: () => void; onTrash: () => void; busyAction: boolean; onClose: () => void; setFooter: (footer: ReactNode) => void }) {
   const { showToast } = useToast();
   const [name, setName] = useState(icon.name);
   const [folderId, setFolderId] = useState(icon.folderId ?? "");
@@ -210,6 +272,14 @@ function DetailsTab({ icon, canEdit, folders, purpose, saved, onSaved }: { icon:
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const problem = purpose === "font" ? codepointProblem(codepoint) : null;
+
+  // function reset() {
+  //   setName(icon.name);
+  //   setFolderId(icon.folderId ?? "");
+  //   setTagText(icon.tags.join(", "));
+  //   setCodepoint(icon.codepoint ?? "");
+  //   setError(null);
+  // }
 
   const patch = {
     ...(name.trim() !== icon.name ? { name: name.trim() } : {}),
@@ -239,186 +309,145 @@ function DetailsTab({ icon, canEdit, folders, purpose, saved, onSaved }: { icon:
     }
   }
 
-  return (
-    <div className="space-y-4">
-      {canEdit ? (
-        <form onSubmit={submit} noValidate className="space-y-3">
-          <TextField label="Name" value={name} maxLength={100} autoComplete="off" onChange={(event) => setName(event.target.value)} hint="Changing the name also changes the icon's id." />
-          <FolderDropdownSelect label="Folder" value={folderId} folders={folders} onChange={setFolderId} />
-          <TextField label="Tags" value={tagText} autoComplete="off" hint="Separated by commas." onChange={(event) => setTagText(event.target.value)} />
-          {purpose === "font" && <TextField label="Font Codepoint" value={codepoint} autoComplete="off" spellCheck={false} maxLength={4} className="font-mono" hint="Optional: 4 hex digits from E000 to F8FF, for example E001. Kept the same every time a font is built." error={problem ?? undefined} onChange={(event) => setCodepoint(event.target.value)} />}
-          {error && (
-            <p role="alert" className="text-sm font-medium text-destructive">
-              {error}
-            </p>
-          )}
-          <Button type="submit" variant="primary" loading={busy} disabled={!changed || problem !== null}>
+  // Update footer whenever canEdit or relevant state changes
+  useEffect(() => {
+    if (!canEdit) {
+      setFooter(null);
+      return;
+    }
+
+    setFooter(
+      <div className="justify-between flex flex-wrap items-center gap-2 w-full">
+        <button type="button" disabled={busyAction} onClick={onTrash} className="inline-flex items-center gap-1.5 text-sm font-medium text-destructive transition-colors hover:opacity-80 disabled:pointer-events-none disabled:opacity-50">
+          <Trash2 aria-hidden="true" className="h-4 w-4" />
+          Move to Trash
+        </button>
+        <div className="flex gap-2">
+          <Button type="button" variant="secondary" onClick={onClose}>
+            Cancel
+          </Button>
+          <Button type="button" variant="primary" loading={busy} disabled={!changed || problem !== null} onClick={submit}>
             Save Changes
           </Button>
-        </form>
-      ) : (
-        <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-2 text-sm">
-          <dt className="text-muted-foreground">Folder</dt>
-          <dd>{folderPath(folders, icon.folderId)}</dd>
-          <dt className="text-muted-foreground">Tags</dt>
-          <dd>{icon.tags.length > 0 ? icon.tags.join(", ") : "None"}</dd>
-          {purpose === "font" && <><dt className="text-muted-foreground">Font codepoint</dt><dd className="font-mono">{icon.codepoint ?? "Not set"}</dd></>}
-        </dl>
-      )}
-
-      <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1 border-t border-border pt-3 text-sm">
-        <dt className="text-muted-foreground">Size</dt>
-        <dd>
-          {formatBytes(icon.byteSize)}
-          {saved > 0 && <span className="text-muted-foreground"> (was {formatBytes(icon.originalByteSize)}, {saved}% smaller)</span>}
-        </dd>
-        <dt className="text-muted-foreground">Canvas</dt>
-        <dd>
-          {icon.width} × {icon.height}, viewBox <span className="font-mono text-xs">{icon.viewBox}</span>
-        </dd>
-        <dt className="text-muted-foreground">Added</dt>
-        <dd>{formatDate(icon.createdAt)}</dd>
-        <dt className="text-muted-foreground">Last changed</dt>
-        <dd>{formatRelative(icon.updatedAt)}</dd>
-      </dl>
-    </div>
-  );
-}
-
-// Live preview of code being typed. It has not been cleaned by the server yet, so it is shown as an image: an SVG used as an image can never run scripts or load other files.
-function DraftPreview({ code }: { code: string }) {
-  return <img alt="Preview of the code" src={`data:image/svg+xml;charset=utf-8,${encodeURIComponent(code)}`} className="h-24 w-24 object-contain" />;
-}
-
-function CodeTab({ icon, canEdit, onSaved }: { icon: IconDetail; canEdit: boolean; onSaved: () => void }) {
-  const { showToast } = useToast();
-  const [code, setCode] = useState(icon.svg);
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const dirty = code !== icon.svg;
-
-  let react = "";
-  let vue = "";
-  try {
-    react = toReactComponent(icon.svg, icon.name);
-    vue = toVueComponent(icon.svg);
-  } catch {
-    // The snippets are a convenience; the editor still works.
-  }
-
-  async function save() {
-    setBusy(true);
-    setError(null);
-    try {
-      await updateIcon(icon.id, { rawSvg: code });
-      showToast("Saved. The previous version is kept.", "success");
-      onSaved();
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not save.");
-    } finally {
-      setBusy(false);
-    }
-  }
+        </div>
+      </div>
+    );
+  }, [canEdit, changed, problem, busy, busyAction, onTrash, onClose, setFooter, submit]);
 
   return (
     <div className="space-y-4">
-      <TextAreaField label="SVG Code" value={code} readOnly={!canEdit} rows={10} spellCheck={false} className="font-mono text-xs" onChange={(event) => setCode(event.target.value)} />
-      {canEdit && (
-        <>
-          <div className="flex items-center gap-3">
-            <div className="rounded-lg border border-border bg-white p-1">
-              <DraftPreview code={code} />
-            </div>
-            <p className="text-xs text-muted-foreground">Live preview of what you typed. It is cleaned and checked when you save.</p>
-          </div>
-          {error && (
-            <p role="alert" className="text-sm font-medium text-destructive">
-              {error}
-            </p>
-          )}
-          <div className="flex gap-2">
-            <Button variant="primary" loading={busy} disabled={!dirty} onClick={save}>
-              Save SVG
-            </Button>
-            <Button variant="secondary" disabled={!dirty || busy} onClick={() => { setCode(icon.svg); setError(null); }}>
-              Revert
-            </Button>
-          </div>
-        </>
-      )}
+      <div className="space-y-4">
+        <TextField label="Name" value={name} maxLength={100} autoComplete="off" disabled={!canEdit} onChange={(event) => setName(event.target.value)} hint="Changing the name also changes the icon's id." />
+        <FolderDropdownSelect label="Folder" value={folderId} folders={folders} onChange={setFolderId} disabled={!canEdit} />
+        <TextField label="Tags" value={tagText} autoComplete="off" disabled={!canEdit} hint="Separated by commas." onChange={(event) => setTagText(event.target.value)} />
+        {purpose === "font" && <TextField label="Font Codepoint" value={codepoint} autoComplete="off" spellCheck={false} maxLength={4} disabled={!canEdit} className="font-mono" hint="Optional: 4 hex digits from E000 to F8FF, for example E001. Kept the same every time a font is built." error={problem ?? undefined} onChange={(event) => setCodepoint(event.target.value)} />}
+        {error && (
+          <p role="alert" className="text-sm font-medium text-destructive">
+            {error}
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
 
-      {react && (
-        <>
-          <Snippet title="React Component (TSX)" code={react} />
-          <Snippet title="Vue 3 Component" code={vue} />
-        </>
+// One Canvas / Size / Added / Updated fact in the stats row.
+function Fact({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex flex-col gap-0.5">
+      <span className="text-foreground">{value}</span>
+      <span className="text-xs text-muted-foreground">{label}</span>
+    </div>
+  );
+}
+
+// A split button: the main part copies the SVG; the chevron opens a small menu to copy the React or Vue component instead.
+function CopySplitButton({ onCopySvg, onCopyReact, onCopyVue }: { onCopySvg: () => void; onCopyReact: () => void; onCopyVue: () => void }) {
+  const [open, setOpen] = useState(false);
+  const rootRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!open) return undefined;
+    function onPointerDown(event: MouseEvent) {
+      if (!rootRef.current?.contains(event.target as Node)) setOpen(false);
+    }
+    document.addEventListener("mousedown", onPointerDown);
+    return () => document.removeEventListener("mousedown", onPointerDown);
+  }, [open]);
+
+  function choose(run: () => void) {
+    setOpen(false);
+    run();
+  }
+
+  return (
+    <div ref={rootRef} className="relative inline-flex">
+      <Button variant="primary" className="rounded-r-none" icon={<Copy aria-hidden="true" className="h-4 w-4" />} onClick={onCopySvg}>
+        Copy
+      </Button>
+      <Button
+        variant="primary"
+        aria-label="More copy options"
+        aria-haspopup="menu"
+        aria-expanded={open}
+        className="-ml-px rounded-l-none border-l border-white/80 px-2"
+        onClick={() => setOpen((value) => !value)}
+      >
+        <ChevronDown aria-hidden="true" className="h-4 w-4" />
+      </Button>
+      {open && (
+        <div role="menu" aria-label="Copy as" className="absolute left-0 top-full z-30 mt-1 min-w-40 rounded-xl border border-border bg-popover p-1 text-popover-foreground shadow-lg">
+          <button type="button" role="menuitem" className="flex w-full items-center rounded-lg px-2.5 py-2 text-left text-sm transition-colors hover:bg-accent focus-visible:bg-accent focus-visible:outline-none" onClick={() => choose(onCopySvg)}>
+            Copy SVG
+          </button>
+          <button type="button" role="menuitem" className="flex w-full items-center rounded-lg px-2.5 py-2 text-left text-sm transition-colors hover:bg-accent focus-visible:bg-accent focus-visible:outline-none" onClick={() => choose(onCopyReact)}>
+            Copy React
+          </button>
+          <button type="button" role="menuitem" className="flex w-full items-center rounded-lg px-2.5 py-2 text-left text-sm transition-colors hover:bg-accent focus-visible:bg-accent focus-visible:outline-none" onClick={() => choose(onCopyVue)}>
+            Copy Vue
+          </button>
+        </div>
       )}
     </div>
   );
 }
 
-function Snippet({ title, code }: { title: string; code: string }) {
-  const { showToast } = useToast();
-  return (
-    <section aria-label={title}>
-      <div className="mb-1 flex items-center justify-between">
-        <h4 className="text-sm font-semibold">{title}</h4>
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={async () => {
-            const ok = await copyText(code);
-            showToast(ok ? "Copied." : "Could not copy to the clipboard.", ok ? "success" : "error");
-          }}
-        >
-          Copy
-        </Button>
-      </div>
-      <pre className="max-h-48 overflow-auto rounded-lg border border-border bg-muted p-3 text-xs">
-        <code>{code}</code>
-      </pre>
-    </section>
-  );
-}
+// Toast viewport that renders inside the dialog to appear above it
+function DrawerToastViewport({ toasts }: { toasts: ToastMessage[]; onDismiss: (id: string) => void }) {
+  if (toasts.length === 0) return null;
 
-function VersionsTab({ icon, canEdit, onRestored }: { icon: IconDetail; canEdit: boolean; onRestored: () => void }) {
-  const { showToast } = useToast();
-  const [busy, setBusy] = useState<string | null>(null);
-
-  if (icon.versions.length === 0) {
-    return <p className="text-sm text-muted-foreground">No earlier versions yet. One is saved each time the SVG changes (the newest 20 are kept).</p>;
-  }
-
-  async function restore(versionId: string) {
-    setBusy(versionId);
-    try {
-      await restoreVersion(icon.id, versionId);
-      showToast("Restored. The version you replaced is kept too.", "success");
-      onRestored();
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : "Could not restore.", "error");
-    } finally {
-      setBusy(null);
-    }
-  }
+  const typeConfig: Record<ToastMessage["type"], { bg: string; iconPath: string }> = {
+    success: { bg: "bg-emerald-500", iconPath: "M5 13l4 4L19 7" },
+    error: { bg: "bg-rose-500", iconPath: "M6 18L18 6M6 6l12 12" },
+    warning: { bg: "bg-amber-500", iconPath: "M12 9v2m0 4h.01M12 3l9.5 16.5H2.5L12 3z" },
+  };
 
   return (
-    <ul aria-label="Earlier Versions" className="divide-y divide-border rounded-lg border border-border text-sm">
-      {icon.versions.map((version, index) => (
-        <li key={version.id} className="flex items-center justify-between gap-3 px-3 py-2">
-          <span>
-            {index === 0 ? "Most recent change" : formatDate(version.createdAt)}
-            <span className="block text-xs text-muted-foreground">
-              {formatRelative(version.createdAt)} · {formatBytes(version.byteSize)}
+    <div className="fixed top-5 right-5 flex flex-col gap-3 pointer-events-none">
+      {toasts.map((toast) => {
+        const cfg = typeConfig[toast.type];
+        return (
+          <div
+            key={toast.id}
+            role={toast.type === "success" ? "status" : "alert"}
+            aria-live="polite"
+            className={`${cfg.bg} text-white px-5 py-3.5 rounded-xl shadow-lg flex items-center min-w-65 max-w-md pointer-events-auto animate-slide-in`}
+          >
+            <svg
+              className="w-5 h-5 shrink-0 mr-3"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2.5}
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d={cfg.iconPath} />
+            </svg>
+            <span className="text-sm font-medium leading-snug flex-1 min-w-0" title={toast.message}>
+              {toast.message}
             </span>
-          </span>
-          {canEdit && (
-            <Button size="sm" loading={busy === version.id} disabled={busy !== null} onClick={() => restore(version.id)} aria-label={`Restore the Version From ${formatRelative(version.createdAt)}`}>
-              Restore
-            </Button>
-          )}
-        </li>
-      ))}
-    </ul>
+          </div>
+        );
+      })}
+    </div>
   );
 }

@@ -180,8 +180,6 @@ describe("project workspace", () => {
     await userEvent.click(await screen.findByRole("button", { name: "Open Home" }, { timeout: 8000 }));
     await screen.findByRole("heading", { level: 3, name: "Home" }, { timeout: 8000 });
     await clean();
-    await userEvent.click(screen.getByRole("tab", { name: "Code" }));
-    await clean();
   });
 
   it("the Add icons dialog keeps paste and project-copy paths in tabs without separate import tabs", async () => {

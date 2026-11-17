@@ -4,7 +4,7 @@ import { cn } from "../../lib/cn";
 import { RequiredIndicator } from "./RequiredIndicator";
 
 const CONTROL =
-  "w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-[#1555E0] focus:shadow-[0_0_0_3px_rgba(21,85,224,0.2)] focus:outline-none";
+  "w-full rounded-lg border border-input bg-background px-3 py-2 text-sm text-foreground placeholder:text-muted-foreground focus:border-[#1555E0] focus:shadow-[0_0_0_3px_rgba(21,85,224,0.2)] focus:outline-none disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground disabled:opacity-70";
 
 type FieldShellProps = { id: string; label: string; hint?: string | undefined; error?: string | undefined; required?: boolean; children: ReactNode };
 

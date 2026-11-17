@@ -26,6 +26,8 @@
   --border: 240 5.9% 88%;
   --input: 240 4% 54%;
   --ring: 221 83% 48%;
+  /* The lighter band that sweeps across a shimmer block. */
+  --skeleton-sheen: 240 16% 92%;
 }
 
 .dark {
@@ -48,6 +50,7 @@
   --border: 240 3.7% 20%;
   --input: 240 4% 44%;
   --ring: 217 91% 60%;
+  --skeleton-sheen: 240 6% 22%;
 }
 
 /* Makes the tokens available as utilities: bg-background, text-foreground, border-border, ring-ring, bg-primary, text-muted-foreground, ... */
@@ -182,7 +185,7 @@ pre {
   }
 
   .skeleton-shimmer {
-    background: linear-gradient(90deg, #f8fafc 25%, #f1f5f9 50%, #f8fafc 75%);
+    background: linear-gradient(90deg, hsl(var(--muted)) 25%, hsl(var(--skeleton-sheen)) 50%, hsl(var(--muted)) 75%);
     background-size: 200% 100%;
     animation: shimmer 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite;
   }
