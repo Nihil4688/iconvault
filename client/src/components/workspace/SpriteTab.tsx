@@ -25,7 +25,8 @@ function spriteFingerprint(value: string): string {
   return (hash >>> 0).toString(16).padStart(8, "0");
 }
 import { Button } from "../ui/Button";
-import { SelectField, TextField } from "../ui/Fields";
+import { TextField } from "../ui/Fields";
+import FolderDropdownSelect from "./FolderDropdownSelect";
 import IconChecklistDialog from "./IconChecklistDialog";
 import SpriteHistory from "./SpriteHistory";
 import SaveBuildVersionDialog from "./SaveBuildVersionDialog";
@@ -182,14 +183,7 @@ export default function SpriteTab() {
                 Selected Folder
               </label>
               {scopeKind === "folder" && (
-                <SelectField label="Folder" hideLabel value={folderChoice} onChange={(event) => setFolderChoice(event.target.value)}>
-                  <option value="">Choose a Folder…</option>
-                  {folderOptions.map((folder) => (
-                    <option key={folder.id} value={folder.id}>
-                      {`${"  ".repeat(folder.depth)}${folder.name} (${pluralize(totalIconCount(folder), "icon")})`}
-                    </option>
-                  ))}
-                </SelectField>
+                <FolderDropdownSelect id="sprite-scope-folder" rootLabel="Choose a Folder…" showCounts value={folderChoice} folders={folderList.folders} onChange={setFolderChoice} />
               )}
               <label className="flex cursor-pointer items-center gap-2">
                 <input

@@ -157,8 +157,9 @@ describe("building", () => {
 
   it("sends a folder, other formats and advanced values as chosen", async () => {
     setup();
-    await userEvent.click(screen.getByRole("radio", { name: "Selected folder" }));
-    await userEvent.selectOptions(screen.getByLabelText("Folder"), "ui");
+    await userEvent.click(screen.getByRole("radio", { name: /selected folder/i }));
+    await userEvent.click(screen.getByRole("button", { name: /^Folder:/ }));
+    await userEvent.click(screen.getByRole("menuitemradio", { name: /^UI/ }));
     await userEvent.clear(screen.getByLabelText("Font name"));
     await userEvent.type(screen.getByLabelText("Base class"), "fth");
     await userEvent.type(screen.getByLabelText("Font name"), "Mine");
@@ -429,8 +430,9 @@ describe("the page layout", () => {
     const scope = screen.getByRole("region", { name: "1. Scope selection" });
     expect(within(scope).getByRole("radio", { name: "Whole project (9 icons)" })).toBeChecked();
     expect(within(scope).getByText("9 / 9")).toBeInTheDocument();
-    await userEvent.click(within(scope).getByRole("radio", { name: "Selected folder" }));
-    await userEvent.selectOptions(within(scope).getByLabelText("Folder"), "ui");
+    await userEvent.click(within(scope).getByRole("radio", { name: /selected folder/i }));
+    await userEvent.click(within(scope).getByRole("button", { name: /^Folder:/ }));
+    await userEvent.click(screen.getByRole("menuitemradio", { name: /^UI/ }));
     expect(within(scope).getByText("4 / 9")).toBeInTheDocument();
   });
 
@@ -456,7 +458,8 @@ describe("the page layout", () => {
     });
 
     await userEvent.click(screen.getByRole("radio", { name: /Selected folder/i }));
-    await userEvent.selectOptions(screen.getByLabelText("Folder"), "ui");
+    await userEvent.click(screen.getByRole("button", { name: /^Folder:/ }));
+    await userEvent.click(screen.getByRole("menuitemradio", { name: /^UI/ }));
     await userEvent.click(screen.getByRole("button", { name: /Review \/ Edit Checklist/i }));
 
     const review = screen.getByRole("dialog", { name: "Choose icons for the font" });
@@ -479,7 +482,7 @@ describe("the page layout", () => {
     setup();
     await builtAutomatically();
     buildFont.mockClear();
-    await userEvent.click(screen.getByRole("radio", { name: "Selected folder" }));
+    await userEvent.click(screen.getByRole("radio", { name: /selected folder/i }));
     await new Promise((resolve) => setTimeout(resolve, 120));
     expect(buildFont).not.toHaveBeenCalled();
     await userEvent.click(screen.getByRole("radio", { name: /^Whole project/ }));
