@@ -277,7 +277,7 @@ function Checklist({
         {mode === "font" ? "Icon font" : "SVG sprite"}
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-2">
+      <div className="mt-3 grid grid-cols-[1fr_1fr_auto] gap-2">
         <div className="relative min-w-48 flex-1">
           <label htmlFor="checklist-search" className="sr-only">
             Filter the Checklist by Icon Name or Tag
@@ -291,12 +291,12 @@ function Checklist({
             type="search"
             value={search}
             onChange={(event) => setSearch(event.target.value)}
-            placeholder="Filter by icon name or tag"
+            placeholder="Search by Icon Name or Tag"
             autoComplete="off"
             className="h-9 w-full rounded-lg border border-input bg-background pl-9 pr-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:border-[#1555E0] focus-visible:shadow-[0_0_0_3px_rgba(21,85,224,0.2)]"
           />
         </div>
-        <div className="w-48 shrink-0">
+        <div className="shrink-0">
           <FolderDropdownSelect
             id="checklist-folder"
             allLabel="All Folders"
