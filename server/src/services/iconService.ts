@@ -29,7 +29,7 @@ const UPLOAD_CONCURRENCY = 8;
 type IconLike = Pick<
   IconDocument,
   | "_id" | "projectId" | "folderId" | "name" | "slug" | "svg" | "tags" | "byteSize" | "originalByteSize"
-  | "codepoint" | "width" | "height" | "viewBox" | "hasStroke" | "hasGradient" | "hasText"
+  | "codepoint" | "width" | "height" | "viewBox" | "hasStroke" | "hasGradient" | "hasText" | "canBeColorized"
   | "deletedAt" | "createdAt" | "updatedAt"
 >;
 
@@ -50,6 +50,7 @@ export function serializeIcon(icon: IconLike, withSvg = true) {
     hasStroke: icon.hasStroke ?? false,
     hasGradient: icon.hasGradient ?? false,
     hasText: icon.hasText ?? false,
+    canBeColorized: icon.canBeColorized ?? true,
     deletedAt: icon.deletedAt ?? null,
     createdAt: icon.createdAt,
     updatedAt: icon.updatedAt,
@@ -71,6 +72,7 @@ function applyPrepared(icon: IconDocument, prepared: PreparedSvg, keepOriginalSi
   icon.hasStroke = prepared.hasStroke;
   icon.hasGradient = prepared.hasGradient;
   icon.hasText = prepared.hasText;
+  icon.canBeColorized = prepared.canBeColorized;
 }
 
 // Saves the icon's current markup as a version, keeping only the newest MAX_VERSIONS_PER_ICON.
@@ -160,6 +162,7 @@ async function importPreparedSvg(projectId: Id, input: ImportInput, options: Imp
           hasStroke: prepared.hasStroke,
           hasGradient: prepared.hasGradient,
           hasText: prepared.hasText,
+          canBeColorized: prepared.canBeColorized,
         });
       });
       return { status: "created", icon };

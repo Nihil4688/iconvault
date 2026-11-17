@@ -65,7 +65,7 @@ export default function IconList({ icons, folders, purpose, idPrefix, isSelected
                 </td>
                 <td className="px-1 py-1.5">
                   <span className={cn("flex h-10 w-10 items-center justify-center rounded-md", surfaceClass(surface))} style={surfaceStyle(surface)}>
-                    <SvgPreview svg={icon.svg ?? ""} size={24} color={appearance.color} />
+                    <SvgPreview svg={icon.svg ?? ""} size={24} color={appearance.color} canBeColorized={icon.canBeColorized} />
                   </span>
                 </td>
                 <td className="px-3 py-2">

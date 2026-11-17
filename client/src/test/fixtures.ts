@@ -53,6 +53,7 @@ export function makeIcon(over: Partial<IconItem> = {}): IconItem {
     hasStroke: false,
     hasGradient: false,
     hasText: false,
+    canBeColorized: true,
     deletedAt: null,
     createdAt: "2026-10-01T10:00:00.000Z",
     updatedAt: "2026-10-18T10:00:00.000Z",
