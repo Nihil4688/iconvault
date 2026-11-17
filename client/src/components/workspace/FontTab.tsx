@@ -1,5 +1,5 @@
 // The Font section: font-only codepoint edits last for the current visit. Opening it resets the table to uploaded codepoints, then builds the preview and downloads from that mapping.
-import { CheckSquare, Copy, Download } from "lucide-react";
+import { CheckSquare, Copy, Download, Search } from "lucide-react";
 import { useEffect, useEffectEvent, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { buildFont, downloadFont } from "../../api/fonts";
@@ -538,21 +538,24 @@ export default function FontTab() {
                 </h3>
                 <p className="mt-0.5 text-sm text-muted-foreground">
                   Each icon keeps its character when the font is rebuilt, so CSS
-                  you already published keeps working.
+                  you already published keeps working.<br />
                   {canEdit
                     ? " Change a value (E000 to F8FF) and the font is rebuilt with it."
                     : ""}
                 </p>
               </div>
               {built.codepoints.length > 10 && (
-                <input
-                  type="search"
-                  aria-label="Filter Characters"
-                  placeholder="Filter"
-                  value={filter}
-                  onChange={(event) => setFilter(event.target.value)}
-                  className="rounded-lg border border-input bg-background px-3 py-1.5 text-sm"
-                />
+                <div className="relative min-w-48 max-w-64 flex-1">
+                  <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <input
+                    type="search"
+                    aria-label="Filter Characters"
+                    placeholder="Search"
+                    value={filter}
+                    onChange={(event) => setFilter(event.target.value)}
+                    className="h-9 w-full rounded-lg border border-input bg-background pl-9 pr-3 text-sm placeholder:text-muted-foreground focus:border-[#1555E0] focus:shadow-[0_0_0_3px_rgba(21,85,224,0.2)] focus:outline-none"
+                  />
+                </div>
               )}
             </div>
             <div className="mt-3">

@@ -219,19 +219,22 @@ function IconPanel({ projectId, icon, reload, canEdit, folders, idPrefix, purpos
         <h3 className="text-xl font-semibold">{icon.name}</h3>
         <p className="mt-0.5 font-mono text-xs text-muted-foreground">{`${idPrefix}-${icon.slug}`}</p>
       </div>
-
-      <section aria-label="Preview">
+      
+      <div className="grid grid-cols-[270px_1fr] gap-6">
+        <section aria-label="Preview">
         <div className={cn("flex min-h-44 items-center justify-center rounded-xl border border-border p-6", surfaceClass(surface))} style={surfaceStyle(surface)}>
           <SvgPreview svg={icon.svg} size={size} color={appearance.color} label={`${icon.name} at ${size} Pixels`} />
         </div>
       </section>
 
-      <dl aria-label="Icon facts" className="grid grid-cols-[repeat(4,auto)] gap-2 text-sm text-center">
+      <dl aria-label="Icon facts" className="grid grid-rows-[repeat(4,auto)] gap-y-2 text-sm">
         <Fact label="Canvas" value={`${icon.width} × ${icon.height}`} />
         <Fact label="Size" value={formatBytes(icon.byteSize)} />
         <Fact label="Added on" value={formatDate(icon.createdAt)} />
         <Fact label="Last updated" value={formatRelative(icon.updatedAt)} />
       </dl>
+      </div>
+      
 
       <section aria-label="Actions" className="flex flex-wrap items-center gap-2">
         <CopySplitButton
@@ -352,7 +355,7 @@ function DetailsTab({ icon, canEdit, folders, purpose, onSaved, onTrash, busyAct
 function Fact({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex flex-col gap-0.5">
-      <span className="font-medium text-foreground">{value}</span>
+      <span className="text-foreground">{value}</span>
       <span className="text-xs text-muted-foreground">{label}</span>
     </div>
   );
@@ -387,7 +390,7 @@ function CopySplitButton({ onCopySvg, onCopyReact, onCopyVue }: { onCopySvg: () 
         aria-label="More copy options"
         aria-haspopup="menu"
         aria-expanded={open}
-        className="-ml-px rounded-l-none border-l border-primary-foreground/20 px-2"
+        className="-ml-px rounded-l-none border-l border-white/80 px-2"
         onClick={() => setOpen((value) => !value)}
       >
         <ChevronDown aria-hidden="true" className="h-4 w-4" />
