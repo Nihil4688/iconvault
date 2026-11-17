@@ -66,11 +66,11 @@ const EXTERNAL_URL_VALUE = /url\(\s*['"]?\s*(?!#)/i;
 const BAD_STYLE_PROPERTY = /^\s*(position|z-index|top|right|bottom|left|inset[\w-]*|pointer-events|filter|backdrop-filter|animation[\w-]*|transition[\w-]*|will-change|content)\s*:/i;
 const EXTERNAL_HREF = /^\s*(https?:|\/\/|javascript:|data:)/i;
 
-// Runs the stylesheet rules from <style> blocks into style="" attributes, so colours survive when the blocks are removed. onlyMatchedOnce is off because classes such as .st0 are shared by many shapes. Failure is harmless: the markup just goes on unchanged.
+// Runs the stylesheet rules from <style> blocks into style="" attributes, so colours survive when the blocks are removed. Failure is harmless: the markup just goes on unchanged.
 function inlineStyleBlocks(markup: string): string {
   if (!/<style[\s>]/i.test(markup)) return markup;
   try {
-    return optimize(markup, { plugins: [{ name: "inlineStyles", params: { onlyMatchedOnce: false } }] }).data;
+    return optimize(markup, { plugins: ["inlineStyles"] }).data;
   } catch {
     return markup;
   }
