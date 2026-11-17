@@ -291,11 +291,13 @@ describe("finding and choosing", () => {
   it("filters by folder including its subfolders, or by uncategorized", async () => {
     setup();
     await ready();
-    await userEvent.selectOptions(within(dialog()).getByLabelText("Folder"), "ui");
+    await userEvent.click(within(dialog()).getByRole("button", { name: /^Folder:/ }));
+    await userEvent.click(screen.getByRole("menuitemradio", { name: "UI" }));
     expect(within(dialog()).queryByRole("checkbox", { name: /Star/ })).not.toBeInTheDocument();
     expect(row(/Left/)).toBeInTheDocument();
     expect(row(/Home/)).toBeInTheDocument();
-    await userEvent.selectOptions(within(dialog()).getByLabelText("Folder"), "root");
+    await userEvent.click(within(dialog()).getByRole("button", { name: /^Folder:/ }));
+    await userEvent.click(screen.getByRole("menuitemradio", { name: "Uncategorized" }));
     expect(row(/Star/)).toBeInTheDocument();
     expect(within(dialog()).queryByRole("checkbox", { name: /Home/ })).not.toBeInTheDocument();
   });

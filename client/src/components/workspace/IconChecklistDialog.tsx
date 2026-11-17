@@ -21,6 +21,7 @@ import { loadAllIcons } from "../../lib/loadAllIcons";
 import { Button } from "../ui/Button";
 import Dialog from "../ui/Dialog";
 import SvgPreview from "../ui/SvgPreview";
+import FolderDropdownSelect from "./FolderDropdownSelect";
 
 export type ChecklistMode = "sprite" | "font";
 const MAX_FONT_ICONS = 1000;
@@ -292,26 +293,19 @@ function Checklist({
             onChange={(event) => setSearch(event.target.value)}
             placeholder="Filter by icon name or tag"
             autoComplete="off"
-            className="h-9 w-full rounded-lg border border-input bg-background pl-9 pr-3 text-sm placeholder:text-muted-foreground focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
+            className="h-9 w-full rounded-lg border border-input bg-background pl-9 pr-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:border-[#1555E0] focus-visible:shadow-[0_0_0_3px_rgba(21,85,224,0.2)]"
           />
         </div>
-        <label htmlFor="checklist-folder" className="sr-only">
-          Folder
-        </label>
-        <select
-          id="checklist-folder"
-          value={folderFilter}
-          onChange={(event) => setFolderFilter(event.target.value)}
-          className="h-9 rounded-lg border border-input bg-background px-3 text-sm focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
-        >
-          <option value="all">All Folders</option>
-          <option value="root">Uncategorized</option>
-          {folderOptions.map((folder) => (
-            <option key={folder.id} value={folder.id}>
-              {`${"  ".repeat(folder.depth)}${folder.name}`}
-            </option>
-          ))}
-        </select>
+        <div className="w-48 shrink-0">
+          <FolderDropdownSelect
+            id="checklist-folder"
+            allLabel="All Folders"
+            rootLabel="Uncategorized"
+            value={folderFilter === "root" ? "" : folderFilter}
+            folders={folders}
+            onChange={(value) => setFolderFilter(value === "" ? "root" : value)}
+          />
+        </div>
         <div
           role="group"
           aria-label="Grouping"

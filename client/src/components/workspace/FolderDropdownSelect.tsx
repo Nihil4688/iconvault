@@ -21,11 +21,13 @@ type FolderDropdownSelectProps = {
   id?: string;
   label?: string;
   rootLabel?: string;
+  // When set, adds a leading option (value "all") for filters that can also mean "every folder".
+  allLabel?: string;
   error?: string;
   disabled?: boolean;
 };
 
-export default function FolderDropdownSelect({ value, folders, onChange, id, label, rootLabel = "Uncategorized (Project Root)", error, disabled = false }: FolderDropdownSelectProps) {
+export default function FolderDropdownSelect({ value, folders, onChange, id, label, rootLabel = "Uncategorized (Project Root)", allLabel, error, disabled = false }: FolderDropdownSelectProps) {
   const [open, setOpen] = useState(false);
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
   const [menuPosition, setMenuPosition] = useState<CSSProperties | null>(null);
@@ -53,6 +55,7 @@ export default function FolderDropdownSelect({ value, folders, onChange, id, lab
 
   const getConnectorLeft = (depth: number) => 18 + (depth - 1) * 30;
   const options: FolderOption[] = [
+    ...(allLabel ? [{ value: "all", label: allLabel, menuLabel: allLabel, depth: 0, connectorContinuations: [], hasNextSibling: false }] : []),
     {
       value: "",
       label: rootLabel,
