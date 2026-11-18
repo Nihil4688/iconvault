@@ -6,6 +6,7 @@ import { useAuth } from "../../context/AuthContext";
 import { pluralize } from "../../lib/format";
 import ActionMenu, { type MenuAction } from "../ui/ActionMenu";
 import Badge from "../ui/Badge";
+import HighlightText from "../ui/HighlightText";
 import SvgPreview from "../ui/SvgPreview";
 import ProjectAvatar from "./ProjectAvatar";
 import { PurposeBadge } from "./ProjectBadges";
@@ -17,9 +18,10 @@ export type ProjectCardActions = {
   onDelete: (project: ProjectSummary) => void;
 };
 
-type ProjectCardProps = ProjectCardActions & { project: ProjectSummary; currentUserId: string };
+// `highlight` marks the search text in the project name.
+type ProjectCardProps = ProjectCardActions & { project: ProjectSummary; currentUserId: string; highlight?: string };
 
-export default function ProjectCard({ project, currentUserId, onEdit, onDuplicate, onToggleArchive, onDelete }: ProjectCardProps) {
+export default function ProjectCard({ project, currentUserId, highlight, onEdit, onDuplicate, onToggleArchive, onDelete }: ProjectCardProps) {
   const { currentUser } = useAuth();
   const mine = project.owner.id === currentUserId;
   const showCreator = project.visibility === "public" || currentUser?.role === "admin";
@@ -48,7 +50,7 @@ export default function ProjectCard({ project, currentUserId, onEdit, onDuplicat
           <ProjectAvatar name={project.name} color={project.color} className="h-7 w-7 rounded-lg text-xs" />
           <h3 title={project.name} className="min-w-0 flex-1 truncate text-sm font-semibold">
             <Link to={`/projects/${project.id}`} className="rounded-sm after:absolute after:inset-0 after:rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
-              {project.name}
+              <HighlightText text={project.name} query={highlight} />
             </Link>
           </h3>
         </div>
