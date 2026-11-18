@@ -26,6 +26,7 @@ function App() {
   const previousAuthKeyRef = useRef<string | null | undefined>(
     undefined,
   );
+ const [loginOpen, setLoginOpen] = useState(false);
   const [suppressLoginModal, setSuppressLoginModal] = useState(false);
   useEffect(() => {
     if (initializing) return;
@@ -73,6 +74,7 @@ function App() {
     setSuppressLoginModal(false);
   }
   const openLogin = () => {
+    setLoginOpen(true);
     setSuppressLoginModal(false);
     navigate("/signin");
   };
@@ -82,6 +84,7 @@ function App() {
     navigate("/", { replace: true });
   };
   const closeLogin = () => {
+setLoginOpen(false);
     if (location.pathname === "/signin") navigate("/", { replace: true });
   };
 
@@ -128,7 +131,7 @@ function App() {
       )}
 
       <LoginModal
-        isOpen={!initializing && !suppressLoginModal && location.pathname === "/signin"}
+        isOpen={!initializing && !suppressLoginModal && loginOpen && location.pathname === "/"}
         onClose={closeLogin}
       />
     </div>
