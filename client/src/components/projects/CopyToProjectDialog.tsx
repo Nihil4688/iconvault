@@ -83,9 +83,15 @@ function CopyForm({ icon, onClose, onCopied }: { icon: IconSearchResult; onClose
       </section>
 
       {projects.loading && !projects.data ? (
-        <p role="status" className="text-sm text-muted-foreground">
-          Loading your projects…
-        </p>
+        // Placeholders with the shape of the Project, Folder and duplicate fields, so the dialog does not jump when they arrive.
+        <div role="status" aria-busy="true" aria-label="Loading your projects" className="space-y-4">
+          {[0, 1, 2].map((index) => (
+            <div key={index}>
+              <div className="skeleton-shimmer mb-1.5 h-5 w-24 rounded" />
+              <div className="skeleton-shimmer h-9 w-full rounded-lg" />
+            </div>
+          ))}
+        </div>
       ) : editable.length === 0 ? (
         <p className="text-sm text-muted-foreground">You have no project you can add icons to yet. Create one first.</p>
       ) : (
@@ -127,7 +133,6 @@ function CopyForm({ icon, onClose, onCopied }: { icon: IconSearchResult; onClose
             >
               <span className="min-w-0 flex-1 truncate">{duplicateOptions.find((option) => option.value === strategy)?.label}</span>
             </DropdownSelect>
-            {strategy === "rename" && <p className="mt-1 text-xs text-muted-foreground">The copy will get a unique name, such as {icon.slug}-1.</p>}
           </div>
         </>
       )}
