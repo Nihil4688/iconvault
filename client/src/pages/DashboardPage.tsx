@@ -13,6 +13,7 @@ import ProjectFormDialog from "../components/projects/ProjectFormDialog";
 import { Button } from "../components/ui/Button";
 import ConfirmDialog from "../components/ui/ConfirmDialog";
 import DropdownSelect from "../components/ui/DropdownSelect";
+import HighlightText from "../components/ui/HighlightText";
 import SegmentedGroup from "../components/ui/SegmentedGroup";
 import SvgPreview from "../components/ui/SvgPreview";
 import { HeaderActionsContext } from "../context/headerActionsContext";
@@ -124,7 +125,7 @@ export default function DashboardPage() {
   const renderCards = (items: ProjectSummary[]) => (
     <ul className={cn("grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5", projects.loading && "opacity-60")}>
       {items.map((project) => (
-        <ProjectCard key={project.id} project={project} currentUserId={currentUser?.id ?? ""} onEdit={(p) => setForm({ mode: "edit", project: p })} onDuplicate={handleDuplicate} onToggleArchive={handleToggleArchive} onDelete={setDeleting} />
+        <ProjectCard key={project.id} project={project} currentUserId={currentUser?.id ?? ""} highlight={search} onEdit={(p) => setForm({ mode: "edit", project: p })} onDuplicate={handleDuplicate} onToggleArchive={handleToggleArchive} onDelete={setDeleting} />
       ))}
     </ul>
   );
@@ -216,12 +217,18 @@ export default function DashboardPage() {
 
       <div role="region" aria-label="Project Results" className="min-h-0 flex-1 overflow-y-auto p-6">
         {showIcons && (
+          <h2 className="mb-4 text-2xl font-semibold">
+            Search results for “{search}”
+          </h2>
+        )}
+        {showIcons && (
           <section aria-labelledby="icon-results-title">
-            <h2 id="icon-results-title" className="text-lg font-semibold">
-              Icons Matching “{search}”
+            <h2 id="icon-results-title" className="flex items-center gap-2 text-lg font-semibold">
+              Icons
+              {iconResults.data && <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium">{iconResults.data.total}</span>}
             </h2>
-            <div role="status" aria-live="polite" className="mt-1 text-sm text-muted-foreground">
-              {iconResults.error ? <span className="text-destructive">{iconResults.error.message}</span> : iconResults.loading && !iconResults.data ? "Searching…" : pluralize(iconResults.data?.total ?? 0, "icon") + " found"}
+            <div role="status" aria-live="polite" className="text-sm text-muted-foreground">
+              {iconResults.error ? <span className="mt-1 block text-destructive">{iconResults.error.message}</span> : iconResults.loading && !iconResults.data ? <span className="mt-1 block">Searching…</span> : <span className="sr-only">{pluralize(iconResults.data?.total ?? 0, "icon")} found</span>}
             </div>
             {(iconResults.data?.icons.length ?? 0) > 0 && (
               <ul className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
@@ -229,7 +236,9 @@ export default function DashboardPage() {
                   <li key={icon.id} className="flex items-center gap-3 rounded-xl border border-border bg-card p-3">
                     <SvgPreview svg={icon.svg ?? ""} size={36} className="rounded-md bg-muted p-1.5" />
                     <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold">{icon.name}</p>
+                      <p className="truncate text-sm font-semibold">
+                        <HighlightText text={icon.name} query={search} />
+                      </p>
                       {icon.project && (
                         <div className="flex min-w-0 items-center gap-2">
                           <Link to={`/projects/${icon.project.id}`} className="min-w-0 truncate rounded-sm text-xs text-muted-foreground underline-offset-2 hover:text-foreground hover:underline focus-visible:outline-2 focus-visible:outline-ring">
