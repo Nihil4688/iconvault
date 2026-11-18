@@ -134,15 +134,17 @@ describe("signed out", () => {
     expect(screen.getByTestId("current-path")).toHaveTextContent("/");
   });
 
-  it("opens the sign-in dialog when visiting /signin directly", () => {
+  it("shows the landing page without a dialog when visiting /signin directly", () => {
     renderApp("/signin");
-    expect(screen.getByRole("dialog", { name: /library login/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(/all your icons/i);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
-  it("sends protected URLs to sign-in while signed out", () => {
+  it("sends protected URLs to the landing page without opening the sign-in dialog", () => {
     renderApp("/account");
     expect(screen.getByTestId("current-path")).toHaveTextContent("/signin");
-    expect(screen.getByRole("dialog", { name: /library login/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(/all your icons/i);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
   it("shows a sign-in failure as an alert", async () => {

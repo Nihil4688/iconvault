@@ -131,7 +131,7 @@ export default function ActionMenu({ label, actions, className }: ActionMenuProp
         aria-label={label}
         title={label}
         onClick={() => setOpen((value) => !value)}
-        className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
+        className="inline-flex h-6 w-6 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring"
       >
         <MoreVertical aria-hidden="true" className="h-4 w-4" />
       </button>

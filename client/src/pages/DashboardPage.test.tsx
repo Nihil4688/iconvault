@@ -103,6 +103,19 @@ describe("listing", () => {
     expect(within(card).queryByRole("img")).not.toBeInTheDocument();
   });
 
+  it("keeps the sample row in the card's full-width content flow", async () => {
+    listProjects.mockResolvedValue(reply([makeProject({
+      name: "Wide card",
+      visibility: "public",
+      sampleIcons: [{ id: "s1", name: "a", svg: "<svg viewBox='0 0 1 1'><path d='M0 0'/></svg>" }],
+    })]));
+    renderPage();
+    const card = (await screen.findByRole("heading", { name: "Wide card" })).closest("li") as HTMLElement;
+    const samples = within(card).getByRole("img", { name: "1 Sample Icon" });
+
+    expect(samples.parentElement).toBe(card);
+  });
+
   it("names the owner of someone else's project and shows sample icons", async () => {
     listProjects.mockResolvedValue(reply([makeProject({ name: "Shared", owner: { id: "u2", displayName: "Grace Hopper" }, access: READ_ONLY, sampleIcons: [{ id: "s1", name: "a", svg: "<svg viewBox='0 0 1 1'><path d='M0 0'/></svg>" }] })]));
     renderPage();

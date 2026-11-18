@@ -24,6 +24,7 @@ function App() {
   const { showToast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
+  const [loginOpen, setLoginOpen] = useState(false);
   const previousAuthKeyRef = useRef<string | null | undefined>(
     undefined,
   );
@@ -73,8 +74,12 @@ function App() {
 
   const [crumbSlot, setCrumbSlot] = useState<HTMLElement | null>(null);
   const [actionsSlot, setActionsSlot] = useState<HTMLElement | null>(null);
-  const openLogin = () => navigate("/signin");
+  const openLogin = () => {
+    setLoginOpen(true);
+    navigate("/signin");
+  };
   const closeLogin = () => {
+    setLoginOpen(false);
     if (location.pathname === "/signin") navigate("/", { replace: true });
   };
 
@@ -121,7 +126,7 @@ function App() {
       )}
 
       <LoginModal
-        isOpen={!initializing && location.pathname === "/signin"}
+        isOpen={!initializing && loginOpen}
         onClose={closeLogin}
       />
     </div>
