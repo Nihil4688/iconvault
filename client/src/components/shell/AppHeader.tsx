@@ -2,26 +2,21 @@
 import { LayoutGrid } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
-import { reloadPage } from "../../lib/navigation";
 import ThemeToggle from "../ui/ThemeToggle";
 import ManageMenu from "./ManageMenu";
 import UserMenu from "./UserMenu";
 
 type AppHeaderProps = {
   onSignIn: () => void;
+  onSignOut: () => Promise<void>;
   // Receives the element where a screen can place its breadcrumb (see HeaderSlotContext).
   crumbRef?: (node: HTMLDivElement | null) => void;
   // Receives the element where a screen can place its main buttons (see HeaderActionsContext).
   actionsRef?: (node: HTMLDivElement | null) => void;
 };
 
-export default function AppHeader({ onSignIn, crumbRef, actionsRef }: AppHeaderProps) {
-  const { currentUser, logout } = useAuth();
-
-  async function handleSignOut() {
-    await logout();
-    reloadPage();
-  }
+export default function AppHeader({ onSignIn, onSignOut, crumbRef, actionsRef }: AppHeaderProps) {
+  const { currentUser } = useAuth();
 
   return (
     <header className="fixed inset-x-0 top-0 z-40 flex h-14.25 items-center justify-between border-b border-border bg-background/85 px-4 backdrop-blur-md">
@@ -42,7 +37,7 @@ export default function AppHeader({ onSignIn, crumbRef, actionsRef }: AppHeaderP
         {currentUser?.role === "admin" && <ManageMenu />}
         <ThemeToggle />
         {currentUser ? (
-          <UserMenu user={currentUser} onSignOut={handleSignOut} />
+          <UserMenu user={currentUser} onSignOut={onSignOut} />
         ) : (
           <button
             type="button"

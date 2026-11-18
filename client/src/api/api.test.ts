@@ -1,6 +1,7 @@
 // Tests for the shared HTTP client and the project, folder and icon API modules. Requests are intercepted at the adapter, so these check exactly what would be sent (method, URL, query, body, headers) and how failures are reported.
-import { AxiosError, type InternalAxiosRequestConfig } from "axios";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import axios, { AxiosError, type InternalAxiosRequestConfig } from "axios";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import * as auth from "./auth";
 import * as folders from "./folders";
 import * as fonts from "./fonts";
 import { ApiError, http } from "./http";
@@ -32,6 +33,29 @@ beforeEach(() => {
 afterEach(() => {
   http.defaults.adapter = originalAdapter;
   window.__svgCompilerSessionToken = null;
+  vi.restoreAllMocks();
+});
+
+describe("auth API", () => {
+  it("preserves the server status when session verification fails", async () => {
+    const config = { headers: {} } as InternalAxiosRequestConfig;
+    const response = {
+      data: { error: "This session was signed out." },
+      status: 401,
+      statusText: "Unauthorized",
+      headers: {},
+      config,
+      request: {},
+    };
+    vi.spyOn(axios, "get").mockRejectedValue(
+      new AxiosError("Request failed", "ERR_BAD_REQUEST", config, {}, response),
+    );
+
+    await expect(auth.fetchCurrentUser("saved-token")).rejects.toMatchObject({
+      message: "Failed to refresh session: This session was signed out.",
+      status: 401,
+    });
+  });
 });
 
 describe("http client", () => {
