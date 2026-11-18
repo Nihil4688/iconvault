@@ -17,10 +17,9 @@ import ProjectPage from "./pages/ProjectPage";
 import { reloadPage } from "./lib/navigation";
 
 const PENDING_LOGIN_TOAST_KEY = "pendingLoginToast";
-const PENDING_LOGOUT_TOAST_KEY = "pendingLogoutToast";
 
 function App() {
-  const { currentUser, initializing } = useAuth();
+  const { currentUser, initializing, logout } = useAuth();
   const { showToast } = useToast();
   const navigate = useNavigate();
   const location = useLocation();
@@ -28,6 +27,7 @@ function App() {
   const previousAuthKeyRef = useRef<string | null | undefined>(
     undefined,
   );
+  const [suppressLoginModal, setSuppressLoginModal] = useState(false);
   useEffect(() => {
     if (initializing) return;
     const currentKey = currentUser ? currentUser.id : null;
@@ -49,11 +49,11 @@ function App() {
         );
         navigate("/dashboard", { replace: true });
       } else {
-        sessionStorage.setItem(PENDING_LOGOUT_TOAST_KEY, "1");
+        showToast("Logged out successfully", "success");
       }
-      reloadPage();
+      if (currentKey) reloadPage();
     }
-  }, [currentUser, initializing, navigate]);
+  }, [currentUser, initializing, navigate, showToast]);
 
   useEffect(() => {
     if (initializing) return;
@@ -65,10 +65,6 @@ function App() {
       // Show either as the friendly greeting the user expects.
       showToast(`Welcome, ${loginName}`, "success");
       return;
-    }
-    if (sessionStorage.getItem(PENDING_LOGOUT_TOAST_KEY) === "1") {
-      sessionStorage.removeItem(PENDING_LOGOUT_TOAST_KEY);
-      showToast("Logged out successfully", "success");
     }
   }, [initializing, showToast]);
 
@@ -100,7 +96,7 @@ function App() {
       ) : currentUser ? (
         <HeaderSlotContext.Provider value={crumbSlot}>
           <HeaderActionsContext.Provider value={actionsSlot}>
-          <AppHeader onSignIn={openLogin} crumbRef={setCrumbSlot} actionsRef={setActionsSlot} />
+          <AppHeader onSignIn={openLogin} onSignOut={handleSignOut} crumbRef={setCrumbSlot} actionsRef={setActionsSlot} />
           <Routes>
             <Route path="/" element={<Navigate to="/dashboard" replace />} />
             <Route path="/signin" element={<Navigate to="/dashboard" replace />} />
@@ -116,7 +112,7 @@ function App() {
         </HeaderSlotContext.Provider>
       ) : (
         <>
-          <AppHeader onSignIn={openLogin} />
+          <AppHeader onSignIn={openLogin} onSignOut={handleSignOut} />
           <Routes>
             <Route path="/" element={<LandingPage onSignIn={openLogin} />} />
             <Route path="/signin" element={<LandingPage onSignIn={openLogin} />} />

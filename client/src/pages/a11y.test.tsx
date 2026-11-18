@@ -80,7 +80,7 @@ describe("labels contain the visible text", () => {
     render(
       <ThemeProvider>
         <MemoryRouter>
-          <AppHeader onSignIn={() => undefined} />
+          <AppHeader onSignIn={() => undefined} onSignOut={async () => undefined} />
         </MemoryRouter>
       </ThemeProvider>,
     );
@@ -115,7 +115,7 @@ describe("signed-out and shell", () => {
     render(
       <ThemeProvider>
         <MemoryRouter>
-          <AppHeader onSignIn={() => undefined} />
+          <AppHeader onSignIn={() => undefined} onSignOut={async () => undefined} />
         </MemoryRouter>
       </ThemeProvider>,
     );

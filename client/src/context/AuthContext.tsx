@@ -15,6 +15,7 @@ import {
   loginWithMicrosoft as loginWithMicrosoftApi,
   type ServerUser,
 } from "../api/auth";
+import { ApiError } from "../api/http";
 
 export type CurrentUser = {
   id: string;
@@ -417,11 +418,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const next = toCurrentUser(fresh);
         setCurrentUser(next);
         persistSession({ user: next, token: stored.token });
-      } catch {
-        // Server rejected the token (expired / revoked). Wipe the local session and force the user to sign in again.
+      } catch (err) {
         if (cancelled) return;
-        persistSession(null);
-        setCurrentUser(null);
+        if (err instanceof ApiError && err.status === 401) {
+          persistSession(null);
+          setCurrentUser(null);
+        } else {
+          console.error(
+            "[auth] Could not verify the saved session; retaining it until the server is reachable.",
+            err,
+          );
+        }
       } finally {
         if (!cancelled) setInitializing(false);
       }
