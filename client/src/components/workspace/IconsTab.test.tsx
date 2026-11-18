@@ -210,7 +210,7 @@ describe("showing icons", () => {
   it("places the background control opposite Select all with even vertical spacing", async () => {
     setup();
     await screen.findByRole("button", { name: "Open Alpha" });
-    const selectAll = screen.getByRole("checkbox", { name: "Select all 3 shown" });
+    const selectAll = screen.getByRole("checkbox", { name: /Select all 3 icons/i });
     const more = screen.getByRole("button", { name: "Preview background" });
     expect(selectAll.parentElement?.parentElement).toBe(more.parentElement?.parentElement);
     expect(more.parentElement?.parentElement).toHaveClass("justify-between", "py-2");
@@ -467,6 +467,54 @@ describe("show more", () => {
 });
 
 describe("selection", () => {
+  it("selects every icon in the selected folder, including icons not currently shown", async () => {
+    const allIcons = Array.from({ length: 602 }, (_, i) => makeIcon({ id: `i${i}`, name: `Icon ${i}`, folderId: "ui" }));
+    listIcons.mockImplementation(async (_projectId, params) => ({
+      icons: params?.limit === 1000 ? allIcons : allIcons.slice(0, 200),
+      total: allIcons.length,
+      page: params?.page ?? 1,
+      limit: params?.limit ?? 200,
+    }));
+    setup({ selectedFolder: "ui" });
+    await screen.findByRole("button", { name: "Open Icon 0" });
+
+    await userEvent.click(screen.getByRole("checkbox", { name: /Select all 602 icons/i }));
+
+    expect(await screen.findByText("602 icons selected")).toBeInTheDocument();
+    expect(listIcons).toHaveBeenLastCalledWith("p1", {
+      sort: "newest",
+      limit: 1000,
+      folderId: "ui",
+      includeSubfolders: false,
+      page: 1,
+      svg: false,
+    });
+  });
+
+  it("loads additional pages when a folder contains more icons than one response", async () => {
+    const allIcons = Array.from({ length: 1101 }, (_, i) => makeIcon({ id: `i${i}`, name: `Icon ${i}`, folderId: "ui" }));
+    listIcons.mockImplementation(async (_projectId, params) => {
+      const limit = params?.limit ?? 200;
+      const page = params?.page ?? 1;
+      const start = (page - 1) * limit;
+      return { icons: allIcons.slice(start, start + limit), total: allIcons.length, page, limit };
+    });
+    setup({ selectedFolder: "ui" });
+    await screen.findByRole("button", { name: "Open Icon 0" });
+
+    await userEvent.click(screen.getByRole("checkbox", { name: /Select all 1101 icons/i }));
+
+    expect(await screen.findByText("1101 icons selected")).toBeInTheDocument();
+    expect(listIcons).toHaveBeenLastCalledWith("p1", {
+      sort: "newest",
+      limit: 1000,
+      folderId: "ui",
+      includeSubfolders: false,
+      page: 2,
+      svg: false,
+    });
+  });
+
   it("shows the bulk bar for a selection and clears it", async () => {
     setup();
     await screen.findByRole("button", { name: "Open Alpha" });
@@ -481,9 +529,9 @@ describe("selection", () => {
   it("selects every icon shown", async () => {
     setup();
     await screen.findByRole("button", { name: "Open Alpha" });
-    await userEvent.click(screen.getByRole("checkbox", { name: "Select all 3 shown" }));
+    await userEvent.click(screen.getByRole("checkbox", { name: /Select all 3 icons/i }));
     expect(screen.getByText("3 icons selected")).toBeInTheDocument();
-    await userEvent.click(screen.getByRole("checkbox", { name: "Select all 3 shown" }));
+    await userEvent.click(screen.getByRole("checkbox", { name: /Select all 3 icons/i }));
     expect(screen.queryByText("3 icons selected")).not.toBeInTheDocument();
   });
 
@@ -492,7 +540,7 @@ describe("selection", () => {
     act(() => selection.set(["a"]));
 
     await screen.findByRole("button", { name: "Open Alpha" });
-    expect(screen.getByRole("checkbox", { name: /select all 3 shown/i })).toBeDisabled();
+    expect(screen.getByRole("checkbox", { name: /select all 3 icons/i })).toBeDisabled();
     expect(screen.getByRole("checkbox", { name: "Select Alpha" })).toBeDisabled();
     expect(screen.getByRole("checkbox", { name: "Select Alpha" })).not.toBeChecked();
 
@@ -537,11 +585,11 @@ describe("selection", () => {
 
     await screen.findByRole("button", { name: "Open UI Alpha" });
     await userEvent.click(screen.getByRole("checkbox", { name: "Select UI Alpha" }));
-    expect(screen.getByRole("checkbox", { name: /select all 2 shown/i })).toHaveProperty("indeterminate", true);
+    expect(screen.getByRole("checkbox", { name: /select all 2 icons/i })).toHaveProperty("indeterminate", true);
 
     rerender({ selectedFolder: "assets" });
     await screen.findByRole("button", { name: "Open Asset Alpha" });
-    const selectAll = screen.getByRole("checkbox", { name: /select all 2 shown/i });
+    const selectAll = screen.getByRole("checkbox", { name: /select all 2 icons/i });
     expect(selectAll).not.toBeChecked();
     expect(selectAll).toHaveProperty("indeterminate", false);
 
@@ -558,7 +606,7 @@ describe("selection", () => {
     rerender({ selectedFolder: "ui" });
     await screen.findByRole("button", { name: "Open UI Alpha" });
     expect(screen.getByRole("checkbox", { name: "Select UI Alpha" })).toBeChecked();
-    expect(screen.getByRole("checkbox", { name: /select all 2 shown/i })).toHaveProperty("indeterminate", true);
+    expect(screen.getByRole("checkbox", { name: /select all 2 icons/i })).toHaveProperty("indeterminate", true);
   });
 
   it("keeps the selection when the list is refreshed", async () => {
@@ -630,7 +678,7 @@ describe("bulk actions", () => {
   };
   const expectSelectionCleared = () => {
     expect(screen.queryByRole("region", { name: "Selected icons" })).not.toBeInTheDocument();
-    const selectAll = screen.getByRole("checkbox", { name: "Select all 3 shown" });
+    const selectAll = screen.getByRole("checkbox", { name: /Select all 3 icons/i });
     expect(selectAll).not.toBeChecked();
     expect(selectAll).toHaveProperty("indeterminate", false);
   };
@@ -639,7 +687,7 @@ describe("bulk actions", () => {
     vi.mocked(iconsApi.batchOptimizeIcons).mockResolvedValue({ requested: 3, matched: 3, optimized: 3, bytesBefore: 300, bytesAfter: 150, failed: [] });
     setup();
     await screen.findByRole("button", { name: "Open Alpha" });
-    const selectAll = screen.getByRole("checkbox", { name: "Select all 3 shown" });
+    const selectAll = screen.getByRole("checkbox", { name: /Select all 3 icons/i });
     await userEvent.click(selectAll);
     expect(selectAll).toBeChecked();
     expect(screen.getByRole("region", { name: "Selected icons" })).toBeInTheDocument();

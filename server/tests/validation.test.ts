@@ -107,10 +107,15 @@ describe("batch schemas", () => {
     assert.equal(batchDeleteSchema.parse({ iconIds: [ID] }).permanent, false);
   });
 
+  it("accepts bulk actions for folders with more than 500 icons", () => {
+    const iconIds = Array.from({ length: 602 }, () => ID);
+    assert.equal(batchDeleteSchema.parse({ iconIds }).iconIds.length, 602);
+  });
+
   it("refuse empty, oversized and malformed lists", () => {
     assert.throws(() => batchMoveSchema.parse({ iconIds: [], folderId: null }));
     assert.throws(() => batchMoveSchema.parse({ iconIds: ["x"], folderId: null }));
-    assert.throws(() => batchDeleteSchema.parse({ iconIds: Array.from({ length: 501 }, () => ID) }));
+    assert.throws(() => batchDeleteSchema.parse({ iconIds: Array.from({ length: 1001 }, () => ID) }));
     assert.throws(() => batchTagSchema.parse({ iconIds: [ID], tags: [] }));
     assert.throws(() => batchTagSchema.parse({ iconIds: [ID], tags: ["a"], mode: "toggle" }));
   });

@@ -54,6 +54,7 @@ export default function IconsTab() {
   const [openId, setOpenId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [building, setBuilding] = useState(false);
+  const [selectingAll, setSelectingAll] = useState(false);
 
   // "Show more" only lasts while the filters stay the same.
   const filterKey = [project.id, selectedFolder, search, sort].join("|");
@@ -69,10 +70,13 @@ export default function IconsTab() {
   const icons = useResource(`icons:${filterKey}:${limit}:${iconsVersion}`, () => listIcons(project.id, params));
   const shown = icons.data?.icons ?? [];
   const total = icons.data?.total ?? 0;
+  const selectionScopeKey = [project.id, selectedFolder, search, iconsVersion].join("|");
+  const [allScopeIcons, setAllScopeIcons] = useState<{ key: string; ids: string[] } | null>(null);
   const selectionDisabled = selection.size > 0 && selectionOrigin != null && selectionOrigin !== "all" && selectedFolder === "all";
   const selectedIds = new Set(selectionDisabled ? [] : selection.ids);
   const shownIds = new Set(shown.map((icon) => icon.id));
-  const selectedShown = shown.reduce((count, icon) => count + Number(selectedIds.has(icon.id)), 0);
+  const scopeIds = allScopeIcons?.key === selectionScopeKey ? allScopeIcons.ids : [...shownIds];
+  const selectedInScope = scopeIds.reduce((count, id) => count + Number(selectedIds.has(id)), 0);
   // Keep selection stable across list refreshes; a completed action or "Clear selection" explicitly consumes it.
   const currentFolderId = selectedFolder === "all" || selectedFolder === "root" ? null : selectedFolder;
 
@@ -86,6 +90,40 @@ export default function IconsTab() {
   function toggleSelectedIcon(id: string) {
     if (selectionDisabled) return;
     setSelectedIcons(selection.has(id) ? selection.ids.filter((selectedId) => selectedId !== id) : [...selection.ids, id]);
+  }
+
+  async function selectAllIcons(checked: boolean) {
+    if (selectionDisabled) return;
+    if (!checked) {
+      const idsToRemove = new Set(scopeIds);
+      setSelectedIcons(selection.ids.filter((id) => !idsToRemove.has(id)));
+      return;
+    }
+
+    setSelectingAll(true);
+    try {
+      const ids = new Set<string>();
+      const pageSize = 1000;
+      let page = 1;
+      let matchingTotal = 0;
+      do {
+        const result = await listIcons(project.id, { ...params, page, limit: pageSize, svg: false });
+        matchingTotal = result.total;
+        result.icons.forEach((icon) => ids.add(icon.id));
+        if (result.icons.length === 0 && ids.size < matchingTotal) {
+          throw new Error("Could not load every matching icon.");
+        }
+        page += 1;
+      } while (ids.size < matchingTotal);
+
+      const allIds = [...ids];
+      setAllScopeIcons({ key: selectionScopeKey, ids: allIds });
+      setSelectedIcons([...new Set([...selectedIds, ...allIds])]);
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : "Could not select all icons.", "error");
+    } finally {
+      setSelectingAll(false);
+    }
   }
 
   const refreshAll = () => {
@@ -209,12 +247,10 @@ export default function IconsTab() {
           <div className="flex min-h-0 flex-1 flex-col">
             <div className="flex shrink-0 items-center justify-between py-2 pr-7">
               <SelectAllBar
-                loaded={shown.length}
-                selected={selectedShown}
-                disabled={selectionDisabled}
-                onSelectAll={(checked) =>
-                  setSelectedIcons(checked ? [...new Set([...selectedIds, ...shownIds])] : selection.ids.filter((id) => !shownIds.has(id)))
-                }
+                total={total}
+                selected={selectedInScope}
+                disabled={selectionDisabled || selectingAll}
+                onSelectAll={(checked) => { void selectAllIcons(checked); }}
               />
               <MoreMenu surface={surface} onSurface={setSurface} disabled={noIconsInScope} />
             </div>
