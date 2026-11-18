@@ -426,7 +426,7 @@ function UploadForm({ projectId, prefix, folders, defaultFolderId, onClose, onUp
         </form>
       )}
       {/* Mounted while the dialog is open (even when another tab is active) so its projects and icons load in the background. This way switching to it shows content instead of a loading state, like the other tabs. Hidden rather than unmounted so the fetched data and any selection are kept. */}
-      <div hidden={tab !== "copy"}>
+      <div hidden={tab !== "copy"} className={tab === "copy" ? "flex min-h-0 flex-1 flex-col" : undefined}>
         <CopyFromProjectForm
           targetProjectId={projectId}
           targetFolders={folders}

@@ -19,9 +19,10 @@ type DropdownSelectProps = {
   showSelectedCheck?: boolean;
   showChevron?: boolean;
   title?: string;
+  renderOption?: (option: DropdownOption) => ReactNode;
 };
 
-export default function DropdownSelect({ id, label, value, options, onChange, children, triggerClassName, rootClassName, menuClassName, portalMenu = false, showSelectedCheck = true, showChevron = true, title }: DropdownSelectProps) {
+export default function DropdownSelect({ id, label, value, options, onChange, children, triggerClassName, rootClassName, menuClassName, portalMenu = false, showSelectedCheck = true, showChevron = true, title, renderOption }: DropdownSelectProps) {
   const [open, setOpen] = useState(false);
   const [portalTarget, setPortalTarget] = useState<HTMLElement | null>(null);
   const [menuPosition, setMenuPosition] = useState<CSSProperties | null>(null);
@@ -156,7 +157,7 @@ export default function DropdownSelect({ id, label, value, options, onChange, ch
               {value === option.value && <Check aria-hidden="true" className="h-4 w-4 text-primary" />}
             </span>
           )}
-          <span className="whitespace-nowrap truncate">{option.label}</span>
+          {renderOption ? renderOption(option) : <span className="whitespace-nowrap truncate">{option.label}</span>}
         </button>
       ))}
     </div>

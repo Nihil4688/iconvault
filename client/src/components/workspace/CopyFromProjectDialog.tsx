@@ -54,7 +54,7 @@ export function CopyFromProjectForm({ targetProjectId, targetFolders, defaultFol
   const sourceId = chosen || sources[0]?.id || "";
   const sourceOptions = sources.map((project) => ({
     value: project.id,
-    label: `${project.name} (${project.access.canEdit ? "yours" : `by ${project.owner.displayName}`}) (${pluralize(project.iconCount, "icon")})`,
+    label: `${project.name} ${pluralize(project.iconCount, "icon")}`,
   }));
   const selectedSource = sourceOptions.find((option) => option.value === sourceId) ?? sourceOptions[0] ?? { value: "", label: "Loading projects…" };
   const query = useDebounced(search.trim(), 300);
@@ -106,7 +106,7 @@ export function CopyFromProjectForm({ targetProjectId, targetFolders, defaultFol
   }
 
   return (
-    <form onSubmit={submit} className="space-y-4">
+    <form onSubmit={submit} className="flex h-full min-h-0 flex-col gap-4">
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
           <label htmlFor="copy-source" className="mb-1.5 block text-sm font-medium text-foreground">
@@ -118,6 +118,15 @@ export function CopyFromProjectForm({ targetProjectId, targetFolders, defaultFol
             value={sourceId}
             options={sourceOptions}
             showSelectedCheck={false}
+            renderOption={(option) => {
+              const project = sources.find((item) => item.id === option.value);
+              return (
+                <span className="flex min-w-0 flex-1 items-center justify-between gap-3">
+                  <span className="min-w-0 flex-1 truncate">{project?.name ?? option.label}</span>
+                  {project && <span className="shrink-0 text-muted-foreground">{pluralize(project.iconCount, "icon")}</span>}
+                </span>
+              );
+            }}
             onChange={(value) => {
               setChosen(value);
               setPicked([]);
@@ -125,7 +134,10 @@ export function CopyFromProjectForm({ targetProjectId, targetFolders, defaultFol
             portalMenu
             triggerClassName="flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-input bg-background px-3 text-left text-sm text-foreground transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring"
           >
-            <span className="min-w-0 flex-1 truncate text-left">{selectedSource.label}</span>
+            <span className="flex min-w-0 flex-1 items-center justify-between gap-3 text-left">
+              <span className="min-w-0 flex-1 truncate">{sources.find((project) => project.id === sourceId)?.name ?? selectedSource.label}</span>
+              {sources.find((project) => project.id === sourceId) && <span className="shrink-0 text-muted-foreground">{pluralize(sources.find((project) => project.id === sourceId)!.iconCount, "icon")}</span>}
+            </span>
           </DropdownSelect>
         </div>
         <div>
@@ -139,13 +151,13 @@ export function CopyFromProjectForm({ targetProjectId, targetFolders, defaultFol
         </div>
       </div>
 
-      <section aria-label="Icons">
+      <section aria-label="Icons" className="flex min-h-0 flex-1 flex-col">
         {icons.error ? (
           <p role="alert" className="text-sm text-destructive">
             {icons.error.message}
           </p>
         ) : projectsLoading || (icons.loading && !icons.data) ? (
-          <ul aria-hidden="true" className="grid max-h-53 grid-cols-2 gap-2 p-1 overflow-y-auto sm:grid-cols-4 lg:grid-cols-6">
+          <ul aria-hidden="true" className="grid min-h-0 flex-1 grid-cols-2 gap-2 overflow-y-auto p-1 sm:grid-cols-4 lg:grid-cols-6">
             {Array.from({ length: 12 }).map((_, index) => (
               <li key={index} className="min-h-24 animate-pulse rounded-lg border border-border bg-muted" />
             ))}
@@ -183,7 +195,7 @@ export function CopyFromProjectForm({ targetProjectId, targetFolders, defaultFol
                 )}
               </div>
             </div>
-            <ul className="grid max-h-54 grid-cols-2 gap-2 p-1 overflow-y-auto sm:grid-cols-4 lg:grid-cols-6">
+            <ul className="grid min-h-0 flex-1 grid-cols-2 gap-2 overflow-y-auto p-1 sm:grid-cols-4 lg:grid-cols-6">
               {shown.map((icon) => {
                 const on = pickedHere.includes(icon.id);
                 return (

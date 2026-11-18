@@ -57,7 +57,7 @@ export default function Tabs<T extends string>({ label, value, onChange, tabs, c
           </button>
         ))}
       </div>
-      <div role="tabpanel" id={`${baseId}-panel`} aria-labelledby={`${baseId}-tab-${value}`} className={cn("pt-4", fill && "min-h-0 flex-1 px-4 pb-4 overflow-y-auto scrollbar-thin")}>
+      <div role="tabpanel" id={`${baseId}-panel`} aria-labelledby={`${baseId}-tab-${value}`} className={cn("pt-4", fill && "flex min-h-0 flex-1 flex-col overflow-hidden px-4 pb-4")}>
         {children}
       </div>
     </div>
