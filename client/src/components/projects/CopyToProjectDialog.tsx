@@ -5,12 +5,20 @@ import { copyIcons } from "../../api/icons";
 import { listProjects } from "../../api/projects";
 import type { DuplicateStrategy, IconSearchResult, UploadSummary } from "../../api/types";
 import { useResource } from "../../hooks/useResource";
-import { buildFolderTree, flattenFolderTree } from "../../lib/folderTree";
 import { Button } from "../ui/Button";
 import Dialog from "../ui/Dialog";
 import DialogFooter from "../ui/DialogFooter";
-import { SelectField } from "../ui/Fields";
+import DropdownSelect from "../ui/DropdownSelect";
 import SvgPreview from "../ui/SvgPreview";
+import FolderDropdownSelect from "../workspace/FolderDropdownSelect";
+
+const duplicateOptions = [
+  { value: "rename", label: "Keep Both (Add a Number)" },
+  { value: "replace", label: "Replace It" },
+  { value: "skip", label: "Skip" },
+];
+
+const triggerClassName = "flex h-9 w-full items-center justify-between gap-2 rounded-lg border border-input bg-background px-3 text-left text-sm text-foreground transition-colors hover:bg-accent focus-visible:outline-2 focus-visible:outline-ring";
 
 type CopyToProjectDialogProps = {
   open: boolean;
@@ -21,7 +29,7 @@ type CopyToProjectDialogProps = {
 
 export default function CopyToProjectDialog({ open, icon, onClose, onCopied }: CopyToProjectDialogProps) {
   return (
-    <Dialog open={open} onClose={onClose} title="Copy to Project" description="Add a copy of this icon to one of your projects.">
+    <Dialog open={open} onClose={onClose} title="Copy to Project" description="Choose where to copy this icon.">
       {icon && <CopyForm icon={icon} onClose={onClose} onCopied={onCopied} />}
     </Dialog>
   );
@@ -40,7 +48,6 @@ function CopyForm({ icon, onClose, onCopied }: { icon: IconSearchResult; onClose
   // Until the user picks one, the first project is selected.
   const projectId = chosen || editable[0]?.id || "";
   const folders = useResource(projectId ? `folders:${projectId}` : null, () => listFolders(projectId));
-  const folderOptions = flattenFolderTree(buildFolderTree(folders.data?.folders ?? []));
 
   async function submit(event: FormEvent) {
     event.preventDefault();
@@ -60,13 +67,20 @@ function CopyForm({ icon, onClose, onCopied }: { icon: IconSearchResult; onClose
 
   return (
     <form onSubmit={submit} className="space-y-4">
-      <div className="flex items-center gap-3 rounded-xl border border-border bg-muted p-3">
-        <SvgPreview svg={icon.svg ?? ""} size={40} />
-        <div className="min-w-0">
-          <p className="truncate text-sm font-semibold">{icon.name}</p>
-          {icon.project && <p className="truncate text-xs text-muted-foreground">from {icon.project.name}</p>}
+      <section aria-labelledby="copy-icon-heading">
+        <h3 id="copy-icon-heading" className="mb-1.5 text-sm font-medium text-foreground">
+          Icon to Copy
+        </h3>
+        <div className="flex items-center gap-3 rounded-xl border border-border bg-muted p-3">
+          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-border bg-background">
+            <SvgPreview svg={icon.svg ?? ""} size={28} />
+          </span>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold">{icon.name}</p>
+            {icon.project && <p className="truncate text-sm text-muted-foreground">Source: {icon.project.name}</p>}
+          </div>
         </div>
-      </div>
+      </section>
 
       {projects.loading && !projects.data ? (
         <p role="status" className="text-sm text-muted-foreground">
@@ -76,33 +90,45 @@ function CopyForm({ icon, onClose, onCopied }: { icon: IconSearchResult; onClose
         <p className="text-sm text-muted-foreground">You have no project you can add icons to yet. Create one first.</p>
       ) : (
         <>
-          <SelectField
-            label="Project"
-            value={projectId}
-            onChange={(event) => {
-              setChosen(event.target.value);
-              setFolderId("");
-            }}
-          >
-            {editable.map((project) => (
-              <option key={project.id} value={project.id}>
-                {project.name}
-              </option>
-            ))}
-          </SelectField>
-          <SelectField label="Folder" value={folderId} onChange={(event) => setFolderId(event.target.value)}>
-            <option value="">Project Root</option>
-            {folderOptions.map((folder) => (
-              <option key={folder.id} value={folder.id}>
-                {`${"  ".repeat(folder.depth)}${folder.name}`}
-              </option>
-            ))}
-          </SelectField>
-          <SelectField label="If an Icon with That Name Exists" value={strategy} onChange={(event) => setStrategy(event.target.value as DuplicateStrategy)}>
-            <option value="rename">Keep Both (Add a Number)</option>
-            <option value="replace">Replace It</option>
-            <option value="skip">Skip</option>
-          </SelectField>
+          <div>
+            <label htmlFor="copy-to-project" className="mb-1.5 block text-sm font-medium text-foreground">
+              Project
+            </label>
+            <DropdownSelect
+              id="copy-to-project"
+              label="Project"
+              value={projectId}
+              options={editable.map((project) => ({ value: project.id, label: project.name }))}
+              showSelectedCheck={false}
+              onChange={(value) => {
+                setChosen(value);
+                setFolderId("");
+              }}
+              portalMenu
+              triggerClassName={triggerClassName}
+            >
+              <span className="min-w-0 flex-1 truncate">{editable.find((project) => project.id === projectId)?.name}</span>
+            </DropdownSelect>
+          </div>
+          <FolderDropdownSelect id="copy-to-folder" label="Folder" rootLabel="Project Root" value={folderId} folders={folders.data?.folders ?? []} onChange={setFolderId} />
+          <div>
+            <label htmlFor="copy-to-strategy" className="mb-1.5 block text-sm font-medium text-foreground">
+              If an Icon with That Name Exists
+            </label>
+            <DropdownSelect
+              id="copy-to-strategy"
+              label="If an Icon with That Name Exists"
+              value={strategy}
+              options={duplicateOptions}
+              showSelectedCheck={false}
+              onChange={(value) => setStrategy(value as DuplicateStrategy)}
+              portalMenu
+              triggerClassName={triggerClassName}
+            >
+              <span className="min-w-0 flex-1 truncate">{duplicateOptions.find((option) => option.value === strategy)?.label}</span>
+            </DropdownSelect>
+            {strategy === "rename" && <p className="mt-1 text-xs text-muted-foreground">The copy will get a unique name, such as {icon.slug}-1.</p>}
+          </div>
         </>
       )}
 
