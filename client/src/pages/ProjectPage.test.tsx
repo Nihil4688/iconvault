@@ -315,7 +315,7 @@ describe("icon selection across tabs", () => {
 
     await userEvent.click(screen.getByRole("button", { name: /^All Icons/ }));
 
-    const selectAll = screen.getByRole("checkbox", { name: /Select all 3 shown/i });
+    const selectAll = screen.getByRole("checkbox", { name: /Select all 3 icons/i });
     const alpha = screen.getByRole("checkbox", { name: "Select Alpha" });
     expect(screen.getByText("1 icon selected")).toBeInTheDocument();
     expect(selectAll).toBeDisabled();

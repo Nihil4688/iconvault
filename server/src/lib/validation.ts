@@ -77,7 +77,7 @@ export const updateIconSchema = z
   .strict()
   .refine((value) => Object.keys(value).length > 0, "provide at least one field to change");
 
-const iconIds = z.array(objectId).min(1, "select at least one icon").max(500, "at most 500 icons at a time");
+const iconIds = z.array(objectId).min(1, "select at least one icon").max(1000, "at most 1000 icons at a time");
 
 export const batchMoveSchema = z.object({ iconIds, folderId: nullableId }).strict();
 export const batchTagSchema = z
