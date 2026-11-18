@@ -1,5 +1,6 @@
 // Auth API client for the /api/auth/* routes (sign-in, sign-out, session lookup).
 import axios from "axios";
+import { ApiError } from "./http";
 
 const API_BASE = import.meta.env.VITE_API_URL ?? "http://localhost:5000";
 
@@ -67,7 +68,10 @@ function wrapAxiosError(err: unknown, action: string): Error {
     const message =
       (err.response?.data as { error?: string } | undefined)?.error ??
       err.message;
-    return new Error(`Failed to ${action}: ${message}`);
+    return new ApiError(
+      `Failed to ${action}: ${message}`,
+      err.response?.status ?? null,
+    );
   }
   return err instanceof Error ? err : new Error(`Failed to ${action}.`);
 }

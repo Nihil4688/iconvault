@@ -301,12 +301,31 @@ describe("signed in", () => {
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
   });
 
-  it("signs out and reloads the page", async () => {
-    renderApp();
+  it("returns to the landing page with the sign-in dialog closed after signing out", async () => {
+    let finishLogout: (() => void) | undefined;
+    auth.logout = vi.fn(() => {
+      auth.currentUser = null;
+      return new Promise<void>((resolve) => {
+        finishLogout = resolve;
+      });
+    });
+    const app = renderApp();
     await userEvent.click(screen.getByRole("button", { name: /account menu/i }));
     await userEvent.click(screen.getByRole("menuitem", { name: "Sign Out" }));
+    app.rerender(appTree());
+
     expect(auth.logout).toHaveBeenCalledTimes(1);
-    expect(reloadPage).toHaveBeenCalledTimes(1);
+    expect(screen.getByTestId("current-path")).toHaveTextContent("/signin");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    finishLogout?.();
+    expect(await screen.findByRole("heading", { name: /all your icons/i })).toBeInTheDocument();
+    expect(screen.getByTestId("current-path")).toHaveTextContent("/");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(await screen.findByText("Logged out successfully")).toBeInTheDocument();
+    expect(reloadPage).not.toHaveBeenCalled();
+
+    await userEvent.click(screen.getByRole("button", { name: /sign in to get started/i }));
+    expect(screen.getByRole("dialog", { name: /library login/i })).toBeInTheDocument();
   });
 
   it("greets the user once after signing in", async () => {
