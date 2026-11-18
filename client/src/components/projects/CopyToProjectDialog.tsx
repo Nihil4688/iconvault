@@ -127,7 +127,6 @@ function CopyForm({ icon, onClose, onCopied }: { icon: IconSearchResult; onClose
             >
               <span className="min-w-0 flex-1 truncate">{duplicateOptions.find((option) => option.value === strategy)?.label}</span>
             </DropdownSelect>
-            {strategy === "rename" && <p className="mt-1 text-xs text-muted-foreground">The copy will get a unique name, such as {icon.slug}-1.</p>}
           </div>
         </>
       )}
