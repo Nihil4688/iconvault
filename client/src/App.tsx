@@ -131,7 +131,7 @@ setLoginOpen(false);
       )}
 
       <LoginModal
-        isOpen={!initializing && !suppressLoginModal && loginOpen && location.pathname === "/"}
+        isOpen={!initializing && !suppressLoginModal && loginOpen && location.pathname === "/signin"}
         onClose={closeLogin}
       />
     </div>
