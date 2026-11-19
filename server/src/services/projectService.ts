@@ -172,15 +172,25 @@ export async function listProjects(actor: SignedInActor, query: ListProjectsQuer
 }
 
 export async function getProjectDetail(project: HydratedDocument<ProjectDoc>, actor: SignedInActor) {
-  const [owners, stats, folderCount, trashCount] = await Promise.all([
+  const [owners, stats, folderCount, trashCount, legacyMcpActivity] = await Promise.all([
     ownerSummaries([project.ownerId], actor),
     countsAndSamples([project._id]),
     Folder.countDocuments({ projectId: project._id }),
     Icon.countDocuments({ projectId: project._id, deletedAt: { $ne: null } }),
+    project.createdVia
+      ? Promise.resolve(null)
+      : ActivityLog.exists({
+          projectId: project._id,
+          actionDone: { $in: ["create", "import", "duplicate"] },
+          entityType: "project",
+          "details.source": "mcp",
+        }),
   ]);
   const stat = stats.get(String(project._id));
+  const summary = serialize(project, actor, owners.get(String(project.ownerId)), stat?.iconCount ?? 0, stat?.samples ?? []);
+  if (!project.createdVia && legacyMcpActivity) summary.createdVia = "mcp";
   return {
-    ...serialize(project, actor, owners.get(String(project.ownerId)), stat?.iconCount ?? 0, stat?.samples ?? []),
+    ...summary,
     folderCount,
     trashCount,
   };
