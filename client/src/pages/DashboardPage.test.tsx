@@ -92,6 +92,19 @@ describe("listing", () => {
     expect(within(card).getByRole("link", { name: "Feather" })).toHaveAttribute("href", expect.stringMatching(/^\/projects\/p\d+$/));
   });
 
+  it("marks MCP-created projects with an AI icon beside their type badge", async () => {
+    listProjects.mockResolvedValue(reply([
+      makeProject({ name: "Agent Project", createdVia: "mcp" }),
+      makeProject({ name: "Manual Project" }),
+    ]));
+    renderPage();
+
+    const agentCard = (await screen.findByRole("heading", { name: "Agent Project" })).closest("li") as HTMLElement;
+    const manualCard = (await screen.findByRole("heading", { name: "Manual Project" })).closest("li") as HTMLElement;
+    expect(within(agentCard).getByRole("img", { name: "Created with MCP" })).toBeInTheDocument();
+    expect(within(manualCard).queryByLabelText("Created with MCP")).not.toBeInTheDocument();
+  });
+
   it("keeps the description to one line that is cut off, and the card small, with the sample icons on a row of their own", async () => {
     listProjects.mockResolvedValue(reply([makeProject({ name: "Long", description: "A very long description that would otherwise wrap over several lines of the card" })]));
     renderPage();
@@ -102,6 +115,19 @@ describe("listing", () => {
     expect(card).toHaveClass("p-3.5");
     expect(within(card).queryByRole("img")).not.toBeInTheDocument();
   });
+
+    it("keeps the sample row in the card's full-width content flow", async () => {
+        listProjects.mockResolvedValue(reply([makeProject({
+        name: "Wide card",
+        visibility: "public",
+        sampleIcons: [{ id: "s1", name: "a", svg: "<svg viewBox='0 0 1 1'><path d='M0 0'/></svg>" }],
+        })]));
+        renderPage();
+        const card = (await screen.findByRole("heading", { name: "Wide card" })).closest("li") as HTMLElement;
+        const samples = within(card).getByRole("img", { name: "1 Sample Icon" });
+
+        expect(samples.parentElement).toBe(card);
+    });
 
   it("names the owner of someone else's project and shows sample icons", async () => {
     listProjects.mockResolvedValue(reply([makeProject({ name: "Shared", owner: { id: "u2", displayName: "Grace Hopper" }, access: READ_ONLY, sampleIcons: [{ id: "s1", name: "a", svg: "<svg viewBox='0 0 1 1'><path d='M0 0'/></svg>" }] })]));

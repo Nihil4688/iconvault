@@ -58,7 +58,7 @@ export function CopyFromProjectForm({ targetProjectId, targetFolders, defaultFol
   }));
   const selectedSource = sourceOptions.find((option) => option.value === sourceId) ?? sourceOptions[0] ?? { value: "", label: "Loading projects…" };
   const query = useDebounced(search.trim(), 300);
-  const icons = useResource(sourceId ? `copy-icons:${sourceId}:${query}` : null, () => listIcons(sourceId, { sort: "name", limit: 200, ...(query ? { search: query } : {}) }));
+  const icons = useResource(sourceId ? `copy-icons:${sourceId}:${query}` : null, () => listIcons(sourceId, { sort: "name", limit: 1000, ...(query ? { search: query } : {}) }));
   const shown = icons.data?.icons ?? [];
 
   // Ticks that belong to a project that is no longer chosen are ignored.

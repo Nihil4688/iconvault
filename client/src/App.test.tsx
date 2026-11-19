@@ -113,7 +113,7 @@ describe("signed out", () => {
     expect(screen.getByRole("heading", { name: /organize in projects and folders/i })).toBeInTheDocument();
   });
 
-  it("opens the sign-in dialog from the landing page button and from the header, and closes it again", async () => {
+  it("opens the sign-in dialog from the landing page button and from the header", async () => {
     renderApp();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
@@ -134,15 +134,26 @@ describe("signed out", () => {
     expect(screen.getByTestId("current-path")).toHaveTextContent("/");
   });
 
+  it("does not open the sign-in dialog when the logo is clicked", async () => {
+    renderApp();
+
+    await userEvent.click(screen.getByRole("link", { name: /iconvault/i }));
+
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByTestId("current-path")).toHaveTextContent("/");
+  });
+
   it("opens the sign-in dialog when visiting /signin directly", () => {
     renderApp("/signin");
-    expect(screen.getByRole("dialog", { name: /library login/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(/all your icons/i);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
   it("sends protected URLs to sign-in while signed out", () => {
     renderApp("/account");
     expect(screen.getByTestId("current-path")).toHaveTextContent("/signin");
-    expect(screen.getByRole("dialog", { name: /library login/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(/all your icons/i);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
   });
 
   it("shows a sign-in failure as an alert", async () => {

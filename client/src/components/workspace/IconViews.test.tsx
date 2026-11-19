@@ -453,8 +453,8 @@ describe("bulk dialogs", () => {
 describe("SelectAllBar", () => {
   it("reflects none, some and all selected, and reports the choice", async () => {
     const onSelectAll = vi.fn();
-    render(<SelectAllBar loaded={5} selected={0} onSelectAll={onSelectAll} />);
-    const box = screen.getByRole("checkbox", { name: "Select all 5 shown" }) as HTMLInputElement;
+    render(<SelectAllBar total={5} selected={0} onSelectAll={onSelectAll} />);
+    const box = screen.getByRole("checkbox", { name: /Select all 5 icons/i }) as HTMLInputElement;
     expect(box.checked).toBe(false);
     expect(box.indeterminate).toBe(false);
     await userEvent.click(box);
@@ -462,15 +462,15 @@ describe("SelectAllBar", () => {
   });
 
   it("shows a partial selection as indeterminate and a full one as checked", () => {
-    const { unmount } = render(<SelectAllBar loaded={4} selected={2} onSelectAll={() => {}} />);
-    expect((screen.getByRole("checkbox", { name: "Select all 4 shown" }) as HTMLInputElement).indeterminate).toBe(true);
+    const { unmount } = render(<SelectAllBar total={4} selected={2} onSelectAll={() => {}} />);
+    expect((screen.getByRole("checkbox", { name: /Select all 4 icons/i }) as HTMLInputElement).indeterminate).toBe(true);
     unmount();
-    render(<SelectAllBar loaded={4} selected={4} onSelectAll={() => {}} />);
-    expect(screen.getByRole("checkbox", { name: "Select all 4 shown" })).toBeChecked();
+    render(<SelectAllBar total={4} selected={4} onSelectAll={() => {}} />);
+    expect(screen.getByRole("checkbox", { name: /Select all 4 icons/i })).toBeChecked();
   });
 
   it("is off when there is nothing to select", () => {
-    render(<SelectAllBar loaded={0} selected={0} onSelectAll={() => {}} />);
-    expect(screen.getByRole("checkbox", { name: "Select all 0 shown" })).toBeDisabled();
+    render(<SelectAllBar total={0} selected={0} onSelectAll={() => {}} />);
+    expect(screen.getByRole("checkbox", { name: /Select all 0 icons/i })).toBeDisabled();
   });
 });

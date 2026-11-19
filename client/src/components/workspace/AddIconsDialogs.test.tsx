@@ -419,7 +419,25 @@ describe("CopyFromProjectDialog", () => {
     expect(within(sourceMenu).getAllByRole("menuitemradio").map((option) => option.textContent?.trim())).toEqual(["Feather (yours) (0 icons)", "Shared (by Grace) (0 icons)"]);
     expect(await screen.findByRole("checkbox", { name: "Arrow" })).not.toHaveClass("sr-only");
     expect(screen.queryByRole("button", { name: /Grid view|List view/i })).not.toBeInTheDocument();
-    expect(iconsApi.listIcons).toHaveBeenCalledWith("s1", { sort: "name", limit: 200 });
+    expect(iconsApi.listIcons).toHaveBeenCalledWith("s1", { sort: "name", limit: 1000 });
+  });
+
+  it("shows all 602 icons in the source project and lets Select All pick them", async () => {
+    const allIcons = Array.from({ length: 602 }, (_, i) => makeIcon({ id: `icon-${i}`, name: `Icon ${i}` }));
+    vi.mocked(projectsApi.listProjects).mockResolvedValue({ projects: sources, total: 3, page: 1, limit: 100 });
+    vi.mocked(iconsApi.listIcons).mockImplementation(async (_projectId, params) => ({
+      icons: params?.limit === 1000 ? allIcons : allIcons.slice(0, 200),
+      total: allIcons.length,
+      page: 1,
+      limit: params?.limit ?? 200,
+    }));
+    render(<CopyFromProjectDialog open targetProjectId="p1" targetFolders={folders} defaultFolderId={null} onClose={vi.fn()} onCopied={vi.fn()} />);
+
+    expect(await screen.findByRole("checkbox", { name: "Icon 601" })).toBeInTheDocument();
+    expect(iconsApi.listIcons).toHaveBeenCalledWith("s1", { sort: "name", limit: 1000 });
+    await userEvent.click(screen.getByRole("checkbox", { name: "Select all icons" }));
+
+    expect(screen.getByText("602 icons selected")).toBeInTheDocument();
   });
 
   it("copies the ticked icons into the chosen folder", async () => {
@@ -468,7 +486,7 @@ describe("CopyFromProjectDialog", () => {
     setup();
     await screen.findByRole("checkbox", { name: "Arrow" });
     await userEvent.type(screen.getByRole("searchbox", { name: "Search Icons" }), "bel");
-    await waitFor(() => expect(iconsApi.listIcons).toHaveBeenLastCalledWith("s1", { sort: "name", limit: 200, search: "bel" }));
+    await waitFor(() => expect(iconsApi.listIcons).toHaveBeenLastCalledWith("s1", { sort: "name", limit: 1000, search: "bel" }));
   });
 
   it("shows a failed copy inside the dialog", async () => {

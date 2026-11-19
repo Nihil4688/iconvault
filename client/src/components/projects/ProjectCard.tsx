@@ -2,6 +2,7 @@
 import { Archive, ArchiveRestore, Copy, Pencil, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import type { ProjectSummary } from "../../api/types";
+import aiIconUrl from "../../assets/ai-icon.svg";
 import { useAuth } from "../../context/AuthContext";
 import { pluralize } from "../../lib/format";
 import ActionMenu, { type MenuAction } from "../ui/ActionMenu";
@@ -39,53 +40,59 @@ export default function ProjectCard({ project, currentUserId, highlight, onEdit,
   }
 
   return (
-    <li className="relative flex items-start rounded-xl border border-border bg-card p-3.5 text-card-foreground shadow-sm hover:border-primary/60 transition-all duration-200 hover:shadow-xl hover:-translate-y-1">
-      <div className="flex min-w-0 flex-1 flex-col gap-2.5">
-        <div className="flex flex-wrap items-center gap-1.5">
+    <li className="relative flex flex-col gap-2.5 rounded-xl border border-border bg-card p-3.5 text-card-foreground shadow-sm hover:border-primary/60 transition-all duration-200 hover:shadow-xl hover:-translate-y-1">
+      <div className="flex items-start justify-between gap-2.5">
+        <div className="flex min-w-0 flex-wrap items-center gap-1.5">
           <PurposeBadge purpose={project.purpose} />
+          {project.createdVia === "mcp" && (
+            <span role="img" aria-label="Created with MCP" title="Created with MCP">
+              <img src={aiIconUrl} alt="" aria-hidden="true" className="h-4 w-4" />
+            </span>
+          )}
           {project.isArchived && <Badge icon={<Archive aria-hidden="true" className="h-3 w-3" />}>Draft</Badge>}
         </div>
+        <ActionMenu label={`Actions for ${project.name}`} actions={actions} className="relative z-10 shrink-0" />
+      </div>
 
-        <div className="flex items-center gap-2.5">
-          <ProjectAvatar name={project.name} color={project.color} className="h-7 w-7 rounded-lg text-xs" />
-          <h3 title={project.name} className="min-w-0 flex-1 truncate text-sm font-semibold">
-            <Link to={`/projects/${project.id}`} className="rounded-sm after:absolute after:inset-0 after:rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
-              <HighlightText text={project.name} query={highlight} />
-            </Link>
-          </h3>
-        </div>
+      <div className="flex items-center gap-2.5">
+        <ProjectAvatar name={project.name} color={project.color} className="h-7 w-7 rounded-lg text-xs" />
+        <h3 title={project.name} className="min-w-0 flex-1 truncate text-sm font-semibold">
+          <Link to={`/projects/${project.id}`} className="rounded-sm after:absolute after:inset-0 after:rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring">
+            <HighlightText text={project.name} query={highlight} />
+          </Link>
+        </h3>
+      </div>
 
-        <p className="-mt-1 truncate pr-1 text-xs text-muted-foreground" title={project.description || undefined}>
-          {project.description || "No description."}
-        </p>
-        <div
-          className="flex min-h-9 items-center gap-2 overflow-hidden rounded-lg bg-muted px-3 py-2"
-          role="img"
-          aria-label={pluralize(project.sampleIcons.length, "Sample Icon")}
-        >
-          {project.sampleIcons.length > 0 ? (
-            <>
-              {project.sampleIcons.slice(0, 4).map((icon) => (
-                <SvgPreview key={icon.id} svg={icon.svg} size={18} />
-              ))}
-              <span className="text-xs text-muted-foreground">
-                {project.iconCount > 4 ? `+${project.iconCount - 4} more` : ""}
+      <p className="-mt-1 truncate pr-1 text-xs text-muted-foreground" title={project.description || undefined}>
+        {project.description || "No description."}
+      </p>
+      <div
+        className="flex min-h-9 min-w-0 items-center gap-2 overflow-hidden rounded-lg bg-muted px-3 py-2"
+        role="img"
+        aria-label={pluralize(project.sampleIcons.length, "Sample Icon")}
+      >
+        {project.sampleIcons.length > 0 ? (
+          <>
+            {project.sampleIcons.slice(0, 4).map((icon) => (
+              <SvgPreview key={icon.id} svg={icon.svg} size={18} />
+            ))}
+            {project.iconCount > 4 && (
+              <span className="ml-auto min-w-0 truncate text-xs text-muted-foreground">
+                +{project.iconCount - 4} more
               </span>
-            </>
-          ) : (
-            <p className="text-sm text-center text-muted-foreground">
-              No icons uploaded
-            </p>
-          )}
-        </div>
-        {showCreator && (
-          <p className="truncate pt-0.5 text-[11px] text-muted-foreground">
-            Created by <span className="font-medium text-foreground">{mine ? "You" : project.owner.displayName}</span>
+            )}
+          </>
+        ) : (
+          <p className="w-full text-xs text-center text-muted-foreground">
+            No icons uploaded
           </p>
         )}
       </div>
-
-      <ActionMenu label={`Actions for ${project.name}`} actions={actions} className="relative z-10 -mr-1 shrink-0" />
+      {showCreator && (
+        <p className="truncate pt-0.5 text-[11px] text-muted-foreground">
+          Created by <span className="font-medium text-foreground">{mine ? "You" : project.owner.displayName}</span>
+        </p>
+      )}
     </li>
   );
 }
