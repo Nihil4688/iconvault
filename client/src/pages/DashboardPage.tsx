@@ -241,7 +241,7 @@ export default function DashboardPage() {
         )}
         {nothingFound ? (
           <div role="status" className="flex flex-1 flex-col items-center justify-center text-center">
-            <p className="text-base font-semibold">No icons or projects found</p>
+            <p className="text-base font-semibold">No icons or projects match</p>
             <p className="mt-1 text-sm text-muted-foreground">Try a different search or filter.</p>
           </div>
         ) : (

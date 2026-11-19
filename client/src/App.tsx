@@ -98,8 +98,8 @@ setLoginOpen(false);
       </a>
 
       {initializing ? (
-        <div role="status" aria-live="polite" className="flex min-h-screen items-center justify-center gap-2 text-muted-foreground">
-          <Loader2 aria-hidden="true" className="h-5 w-5 animate-spin" />
+        <div role="status" aria-live="polite" className="flex flex-col min-h-screen items-center justify-center gap-2 text-muted-foreground">
+          <Loader2 aria-hidden="true" className="h-5 w-5 animate-spin text-primary" />
           <span>Loading…</span>
         </div>
       ) : currentUser ? (
