@@ -2,6 +2,7 @@
 
 export type ProjectPurpose = "sprite" | "font";
 export type ProjectVisibility = "public" | "private";
+export type ProjectCreationSource = "manual" | "mcp";
 export type DuplicateStrategy = "rename" | "replace" | "skip";
 
 // What the signed-in user may do with a project. Use these to decide which controls to show.
@@ -25,6 +26,7 @@ export type ProjectSummary = {
   color: string;
   purpose: ProjectPurpose;
   visibility: ProjectVisibility;
+  createdVia: ProjectCreationSource;
   isArchived: boolean;
   // The sidebar's name for icons in no folder; empty means "Uncategorized".
   uncategorizedName: string;

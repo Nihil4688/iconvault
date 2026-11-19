@@ -141,7 +141,7 @@ export function readArchive(buffer: Buffer): { manifest: Manifest; files: Map<st
 }
 
 // Creates a new private project owned by the actor from an archive. Icons that cannot be imported are listed, not fatal; if nothing at all can be created the half-made project is removed.
-export async function importProject(actor: SignedInActor, buffer: Buffer): Promise<ImportResult> {
+export async function importProject(actor: SignedInActor, buffer: Buffer, createdVia: "manual" | "mcp" = "manual"): Promise<ImportResult> {
   const { manifest, files } = readArchive(buffer);
   const ownerId = new mongoose.Types.ObjectId(actor.id);
   await assertProjectRoom(ownerId);
@@ -151,6 +151,7 @@ export async function importProject(actor: SignedInActor, buffer: Buffer): Promi
     name: sameName ? `${manifest.project.name} (Imported)`.slice(0, 100) : manifest.project.name,
     ownerId,
     visibility: "private",
+    createdVia,
   });
 
   const problems: ImportProblem[] = [];

@@ -19,6 +19,7 @@ export function makeProject(over: Partial<ProjectSummary> = {}): ProjectSummary 
     color: "#2563eb",
     purpose: "sprite",
     visibility: "private",
+    createdVia: "manual",
     isArchived: false,
     uncategorizedName: "",
     createdAt: "2026-10-01T10:00:00.000Z",

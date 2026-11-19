@@ -3,6 +3,7 @@ import mongoose, { Schema, type InferSchemaType, type Model } from "mongoose";
 
 export const PROJECT_PURPOSES = ["sprite", "font"] as const;
 export const PROJECT_VISIBILITIES = ["public", "private"] as const;
+export const PROJECT_CREATION_SOURCES = ["manual", "mcp"] as const;
 
 export const projectSchema = new Schema(
   {
@@ -51,6 +52,12 @@ export const projectSchema = new Schema(
       type: String,
       enum: PROJECT_VISIBILITIES,
       default: "private",
+    },
+    createdVia: {
+      type: String,
+      enum: PROJECT_CREATION_SOURCES,
+      default: "manual",
+      immutable: true,
     },
     // What the sidebar calls the icons that are in no folder. Empty means "Uncategorized".
     uncategorizedName: {
