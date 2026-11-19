@@ -92,6 +92,19 @@ describe("listing", () => {
     expect(within(card).getByRole("link", { name: "Feather" })).toHaveAttribute("href", expect.stringMatching(/^\/projects\/p\d+$/));
   });
 
+  it("marks MCP-created projects with an AI icon beside their type badge", async () => {
+    listProjects.mockResolvedValue(reply([
+      makeProject({ name: "Agent Project", createdVia: "mcp" }),
+      makeProject({ name: "Manual Project" }),
+    ]));
+    renderPage();
+
+    const agentCard = (await screen.findByRole("heading", { name: "Agent Project" })).closest("li") as HTMLElement;
+    const manualCard = (await screen.findByRole("heading", { name: "Manual Project" })).closest("li") as HTMLElement;
+    expect(within(agentCard).getByRole("img", { name: "Created with MCP" })).toBeInTheDocument();
+    expect(within(manualCard).queryByLabelText("Created with MCP")).not.toBeInTheDocument();
+  });
+
   it("keeps the description to one line that is cut off, and the card small, with the sample icons on a row of their own", async () => {
     listProjects.mockResolvedValue(reply([makeProject({ name: "Long", description: "A very long description that would otherwise wrap over several lines of the card" })]));
     renderPage();

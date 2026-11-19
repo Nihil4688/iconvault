@@ -226,7 +226,7 @@ export async function callMcpTool(req: Request, name: string, raw: unknown) {
     }
     case "create_project": {
       const input = createProjectSchema.parse(args);
-      const project = await createProject(actor, input);
+      const project = await createProject(actor, input, "mcp");
       await recordRequestActivity(req, { _id: parseObjectId(project.id), name: project.name, ownerId: parseObjectId(project.owner.id) }, { actionDone: "create", entityType: "project", entityId: parseObjectId(project.id), entityName: project.name, details: { source: "mcp" } });
       return result(project);
     }
@@ -250,13 +250,13 @@ export async function callMcpTool(req: Request, name: string, raw: unknown) {
     case "duplicate_project": {
       const { projectId } = z.object({ projectId: objectId }).strict().parse(args);
       const source = await loadProject(actor, projectId, "view");
-      const project = await duplicateProject(source, actor);
-      await recordRequestActivity(req, { _id: parseObjectId(project.id), name: project.name, ownerId: parseObjectId(project.owner.id) }, { actionDone: "duplicate", entityType: "project", entityId: parseObjectId(project.id), entityName: project.name, details: { sourceProjectId: projectId, sourceProjectName: source.name } });
+      const project = await duplicateProject(source, actor, "mcp");
+      await recordRequestActivity(req, { _id: parseObjectId(project.id), name: project.name, ownerId: parseObjectId(project.owner.id) }, { actionDone: "duplicate", entityType: "project", entityId: parseObjectId(project.id), entityName: project.name, details: { sourceProjectId: projectId, sourceProjectName: source.name, source: "mcp" } });
       return result(project);
     }
     case "import_project": case "import_project_export": {
       const { archiveBase64 } = z.object({ archiveBase64: z.string().min(1).max(35_000_000) }).strict().parse(args);
-      const imported = await importProject(actor, decodeBase64(archiveBase64, "Project archive", 25 * 1024 * 1024));
+      const imported = await importProject(actor, decodeBase64(archiveBase64, "Project archive", 25 * 1024 * 1024), "mcp");
       await recordRequestActivity(req, { _id: parseObjectId(imported.project.id), name: imported.project.name, ownerId: parseObjectId(imported.project.owner.id) }, { actionDone: "import", entityType: "project", entityId: parseObjectId(imported.project.id), entityName: imported.project.name, details: { iconCount: imported.imported, foldersCreated: imported.foldersCreated, source: "mcp" }, result: imported.problems.length ? "partial" : "success" });
       return result(imported);
     }

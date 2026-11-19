@@ -5,6 +5,7 @@ import { ConflictError } from "../lib/errors.js";
 import { isFontCodepoint } from "../lib/codepoint.js";
 import { describeAccess, type AccessFlags } from "../lib/permissions.js";
 import type { CreateProjectInput, ListProjectsQuery, UpdateProjectInput } from "../lib/validation.js";
+import ActivityLog from "../models/ActivityLog.js";
 import Folder from "../models/Folder.js";
 import Icon from "../models/Icon.js";
 import Project, { type ProjectDoc } from "../models/Project.js";
@@ -17,7 +18,7 @@ import { deleteSpriteBuilds } from "./spriteHistory.js";
 type Id = Types.ObjectId;
 type ProjectLike = Pick<
   HydratedDocument<ProjectDoc>,
-  "_id" | "ownerId" | "name" | "description" | "prefix" | "color" | "purpose" | "visibility" | "isArchived" | "uncategorizedName" | "createdAt" | "updatedAt"
+  "_id" | "ownerId" | "name" | "description" | "prefix" | "color" | "purpose" | "visibility" | "createdVia" | "isArchived" | "uncategorizedName" | "createdAt" | "updatedAt"
 >;
 
 export type SampleIcon = { id: string; name: string; svg: string };
@@ -30,6 +31,7 @@ export type ProjectSummary = {
   color: string;
   purpose: "sprite" | "font";
   visibility: "public" | "private";
+  createdVia: "manual" | "mcp";
   isArchived: boolean;
   uncategorizedName: string;
   createdAt: Date;
@@ -72,6 +74,7 @@ function serialize(
     color: project.color ?? "#3b82f6",
     purpose: project.purpose ?? "sprite",
     visibility: project.visibility ?? "private",
+    createdVia: project.createdVia ?? "manual",
     isArchived: project.isArchived ?? false,
     uncategorizedName: project.uncategorizedName ?? "",
     createdAt: project.createdAt,
@@ -128,14 +131,27 @@ export async function listProjects(actor: SignedInActor, query: ListProjectsQuer
   if (and.length > 0) filter.$and = and;
 
   const projects = await Project.find(filter).limit(1000).lean();
-  const [owners, stats] = await Promise.all([
+  const legacyProjectIds = projects.filter((project) => !project.createdVia).map((project) => project._id);
+  const legacyMcpProjectIds = legacyProjectIds.length
+    ? ActivityLog.distinct("projectId", {
+        projectId: { $in: legacyProjectIds },
+        actionDone: { $in: ["create", "import", "duplicate"] },
+        entityType: "project",
+        "details.source": "mcp",
+      })
+    : Promise.resolve([]);
+  const [owners, stats, legacyMcpIds] = await Promise.all([
     ownerSummaries(projects.map((p) => p.ownerId), actor),
     countsAndSamples(projects.map((p) => p._id)),
+    legacyMcpProjectIds,
   ]);
+  const legacyMcpIdSet = new Set(legacyMcpIds.map(String));
 
   const items = projects.map((project) => {
     const stat = stats.get(String(project._id));
-    return serialize(project, actor, owners.get(String(project.ownerId)), stat?.iconCount ?? 0, stat?.samples ?? []);
+    const summary = serialize(project, actor, owners.get(String(project.ownerId)), stat?.iconCount ?? 0, stat?.samples ?? []);
+    if (legacyMcpIdSet.has(summary.id)) summary.createdVia = "mcp";
+    return summary;
   });
 
   items.sort((a, b) => {
@@ -170,14 +186,14 @@ export async function getProjectDetail(project: HydratedDocument<ProjectDoc>, ac
   };
 }
 
-export async function createProject(actor: SignedInActor, input: CreateProjectInput) {
+export async function createProject(actor: SignedInActor, input: CreateProjectInput, createdVia: "manual" | "mcp" = "manual") {
   await assertProjectRoom(actor.id);
   const name = input.name.trim();
   const duplicate = await Project.findOne({ ownerId: new mongoose.Types.ObjectId(actor.id), name: new RegExp(`^${escapeRegExp(name)}$`, "i") }).select({ name: 1 }).lean();
   if (duplicate) {
     throw new ConflictError(`Project name "${duplicate.name}" already exists.`);
   }
-  const project = await Project.create({ ...input, ownerId: new mongoose.Types.ObjectId(actor.id) });
+  const project = await Project.create({ ...input, createdVia, ownerId: new mongoose.Types.ObjectId(actor.id) });
   return getProjectDetail(project, actor);
 }
 
@@ -207,7 +223,7 @@ export async function deleteProject(project: HydratedDocument<ProjectDoc>) {
 }
 
 // Copies a project the actor can view into a new private project they own: folders (parents first) and active icons. Versions, the trash and build history are not copied.
-export async function duplicateProject(source: HydratedDocument<ProjectDoc>, actor: SignedInActor) {
+export async function duplicateProject(source: HydratedDocument<ProjectDoc>, actor: SignedInActor, createdVia: "manual" | "mcp" = "manual") {
   await assertProjectRoom(actor.id);
   const copy = await Project.create({
     ownerId: new mongoose.Types.ObjectId(actor.id),
@@ -217,6 +233,7 @@ export async function duplicateProject(source: HydratedDocument<ProjectDoc>, act
     color: source.color ?? "#3b82f6",
     purpose: source.purpose ?? "sprite",
     visibility: "private",
+    createdVia,
     ...(source.uploadCodepointHighWatermark != null ? { uploadCodepointHighWatermark: source.uploadCodepointHighWatermark } : {}),
   });
 

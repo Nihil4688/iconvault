@@ -2,6 +2,7 @@
 import { Archive, ArchiveRestore, Copy, Pencil, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import type { ProjectSummary } from "../../api/types";
+import aiIconUrl from "../../assets/ai-icon.svg";
 import { useAuth } from "../../context/AuthContext";
 import { pluralize } from "../../lib/format";
 import ActionMenu, { type MenuAction } from "../ui/ActionMenu";
@@ -41,6 +42,11 @@ export default function ProjectCard({ project, currentUserId, onEdit, onDuplicat
       <div className="flex items-start justify-between gap-2.5">
         <div className="flex min-w-0 flex-wrap items-center gap-1.5">
           <PurposeBadge purpose={project.purpose} />
+          {project.createdVia === "mcp" && (
+            <span role="img" aria-label="Created with MCP" title="Created with MCP">
+              <img src={aiIconUrl} alt="" aria-hidden="true" className="h-4 w-4" />
+            </span>
+          )}
           {project.isArchived && <Badge icon={<Archive aria-hidden="true" className="h-3 w-3" />}>Draft</Badge>}
         </div>
         <ActionMenu label={`Actions for ${project.name}`} actions={actions} className="relative z-10 shrink-0" />
