@@ -1,5 +1,5 @@
 // The signed-in home screen: every project the user can see, with filters (kept in the address, so Back works and links can be shared), create, edit, duplicate, archive and delete, plus a search that also finds icons across projects and can copy them into one of the user's projects.
-import { ArrowUpDown, ChevronDown, ChevronUp, Globe, Layers, Lock, Plus, Search, Shapes, Type } from "lucide-react";
+import { ArrowUpDown, ChevronDown, ChevronUp, Globe, Layers, Loader2, Lock, Plus, Search, Shapes, Type } from "lucide-react";
 import { useContext, useEffect, useState, type ChangeEvent } from "react";
 import { createPortal } from "react-dom";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
@@ -71,7 +71,8 @@ export default function DashboardPage() {
   }, []);
 
   const query: ListProjectsParams = { scope: "all", status, sort, limit: 100, ...(projectSearch ? { search: projectSearch } : {}) };
-  const projects = useResource(`projects:${JSON.stringify(query)}`, () => listProjects(query));
+  // Each reply remembers the search it answers, so a reply for an earlier search is never shown as the result of the current one.
+  const projects = useResource(`projects:${JSON.stringify(query)}`, () => listProjects(query).then((result) => ({ ...result, forSearch: projectSearch })));
   const iconResults = useResource(search.length >= 2 ? `icons:${search}` : null, () => searchIcons(search, { limit: 24 }));
 
   function setFilter(name: string, value: string, fallback: string) {
@@ -148,6 +149,11 @@ export default function DashboardPage() {
     </div>
   );
   const showIcons = search.length >= 2;
+  // A search change is in progress: the typed text has not been sent yet, or the results for it have not arrived. Until then the previous results would flash up (or the empty "no projects" state when the search is cleared), so a loading indicator takes their place. One-letter changes do not search, and filter or sort changes keep their usual behaviour.
+  const typedSearch = searchText.trim().length >= 2 ? searchText.trim() : "";
+  const searching = typedSearch !== projectSearch || (showIcons && iconResults.loading) || (projects.loading && projects.data !== undefined && projects.data.forSearch !== projectSearch);
+  // Both searches have finished without errors and found nothing: one message replaces the two empty sections.
+  const nothingFound = !searching && showIcons && !iconResults.loading && !iconResults.error && iconResults.data?.total === 0 && !projects.loading && !projects.error && list.length === 0;
 
   return (
     <main id="main" tabIndex={-1} className="flex h-dvh flex-col overflow-hidden pt-14.25 outline-none">
@@ -220,12 +226,26 @@ export default function DashboardPage() {
         </DropdownSelect>
       </div>
 
-      <div role="region" aria-label="Project Results" className="min-h-0 flex-1 overflow-y-auto p-6">
+      <div role="region" aria-label="Project Results" className={cn("min-h-0 flex-1 overflow-y-auto p-6", (nothingFound || searching) && "flex flex-col")}>
+        {searching ? (
+          <div role="status" aria-live="polite" className="flex flex-1 flex-col items-center justify-center gap-3 text-muted-foreground">
+            <Loader2 aria-hidden="true" className="h-8 w-8 animate-spin text-primary" />
+            <span className="text-sm font-medium">Loading…</span>
+          </div>
+        ) : (
+          <>
         {showIcons && (
           <h2 className="mb-4 text-2xl font-semibold">
             Search results for “{search}”
           </h2>
         )}
+        {nothingFound ? (
+          <div role="status" className="flex flex-1 flex-col items-center justify-center text-center">
+            <p className="text-base font-semibold">No icons or projects match</p>
+            <p className="mt-1 text-sm text-muted-foreground">Try a different search or filter.</p>
+          </div>
+        ) : (
+          <>
         {showIcons && (
           <section aria-labelledby="icon-results-title">
             <h2 id="icon-results-title" className="flex mb-3 items-center gap-2 text-lg font-semibold">
@@ -239,7 +259,7 @@ export default function DashboardPage() {
               <ul className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {iconResults.data?.icons.map((icon) => (
                   <li key={icon.id} className="flex items-center gap-3 rounded-xl border border-border bg-card p-3">
-                    <SvgPreview svg={icon.svg ?? ""} size={36} className="rounded-md bg-muted p-1.5" />
+                    <SvgPreview svg={icon.svg ?? ""} size={36} className="rounded-md bg-muted p-1.5" center />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-semibold">
                         <HighlightText text={icon.name} query={search} />
@@ -262,7 +282,7 @@ export default function DashboardPage() {
             ) : iconResults.data && !iconResults.error && (
              <div className="rounded-2xl border border-dashed border-border p-10 text-center">
               <p className="text-base font-semibold">No icons match</p>
-              <p className="mt-1 text-sm text-muted-foreground">"Try a different search or filter." </p>
+              <p className="mt-1 text-sm text-muted-foreground">Try a different search or filter.</p>
             </div>
             )
           }
@@ -359,6 +379,10 @@ export default function DashboardPage() {
             </>
           )}
         </section>
+          </>
+        )}
+          </>
+        )}
       </div>
 
       <ProjectFormDialog

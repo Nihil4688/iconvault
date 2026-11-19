@@ -426,6 +426,86 @@ describe("search", () => {
     expect(screen.getByRole("heading", { name: "Still here" })).toBeInTheDocument();
   });
 
+  it("shows a loading indicator, not earlier results, until the search results arrive", async () => {
+    let answer!: (value: ReturnType<typeof reply>) => void;
+    listProjects.mockImplementation((params) => (params?.search ? new Promise((resolve) => (answer = resolve)) : Promise.resolve(reply([makeProject({ id: "x", name: "Unrelated" })]))));
+    renderPage();
+    await screen.findByRole("heading", { name: "Unrelated" });
+    await userEvent.type(screen.getByRole("searchbox"), "vo");
+    // Straight away, while the search waits to be sent, and while its results load: only the indicator.
+    expect(screen.getByRole("status")).toHaveTextContent("Loading…");
+    expect(screen.queryByRole("heading", { name: "Unrelated" })).not.toBeInTheDocument();
+    await waitFor(() => expect(listProjects).toHaveBeenLastCalledWith(expect.objectContaining({ search: "vo" })));
+    expect(screen.getByText("Loading…")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Unrelated" })).not.toBeInTheDocument();
+    expect(document.getElementById("icon-results-title")).toBeNull();
+
+    answer(reply([makeProject({ id: "v", name: "VoltPay" })]));
+    await waitFor(() => expect(document.getElementById("projects-title")).toHaveTextContent("Projects1"));
+    expect(screen.queryByText("Loading…")).not.toBeInTheDocument();
+  });
+
+  it("shows the loading indicator, not the empty 'no projects' state, while a cleared search reloads", async () => {
+    let answer!: (value: ReturnType<typeof reply>) => void;
+    listProjects.mockImplementation((params) => (params?.search ? Promise.resolve(reply([makeProject({ id: "v", name: "VoltPay" })])) : new Promise((resolve) => (answer = resolve))));
+    renderPage();
+    answer(reply([makeProject({ id: "x", name: "Unrelated" })]));
+    await screen.findByRole("heading", { name: "Unrelated" });
+    await userEvent.type(screen.getByRole("searchbox"), "vo");
+    await waitFor(() => expect(document.getElementById("projects-title")).toHaveTextContent("Projects1"));
+
+    await userEvent.clear(screen.getByRole("searchbox"));
+    expect(screen.getByText("Loading…")).toBeInTheDocument();
+    await waitFor(() => expect(listProjects).toHaveBeenLastCalledWith(expect.not.objectContaining({ search: expect.anything() })));
+    expect(screen.getByText("Loading…")).toBeInTheDocument();
+    expect(screen.queryByText("You have no projects yet.")).not.toBeInTheDocument();
+    expect(screen.queryByText("No projects match.")).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "VoltPay" })).not.toBeInTheDocument();
+
+    answer(reply([makeProject({ id: "x", name: "Unrelated" })]));
+    expect(await screen.findByRole("heading", { name: "Unrelated" })).toBeInTheDocument();
+    expect(screen.queryByText("Loading…")).not.toBeInTheDocument();
+  });
+
+  it("does not show the loading indicator for one letter or for filter changes", async () => {
+    listProjects.mockResolvedValue(reply([makeProject({ id: "x", name: "Unrelated" })]));
+    renderPage();
+    await screen.findByRole("heading", { name: "Unrelated" });
+    await userEvent.type(screen.getByRole("searchbox"), "v");
+    expect(screen.queryByText("Loading…")).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Unrelated" })).toBeInTheDocument();
+    await userEvent.clear(screen.getByRole("searchbox"));
+    await userEvent.click(within(screen.getByRole("group", { name: "Show" })).getByRole("button", { name: /^Private/ }));
+    expect(screen.queryByText("Loading…")).not.toBeInTheDocument();
+  });
+
+  it("shows one centred message when neither icons nor projects are found", async () => {
+    listProjects.mockImplementation(async (params) => (params?.search ? reply([]) : reply([makeProject({ id: "x", name: "Unrelated" })])));
+    renderPage();
+    await screen.findByRole("heading", { name: "Unrelated" });
+    await userEvent.type(screen.getByRole("searchbox"), "aa");
+    expect(await screen.findByText("No icons or projects found")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Search results for “aa”" })).toBeInTheDocument();
+    expect(screen.queryByText("No icons match")).not.toBeInTheDocument();
+    expect(screen.queryByText("No projects match.")).not.toBeInTheDocument();
+    expect(document.getElementById("icon-results-title")).toBeNull();
+    expect(document.getElementById("projects-title")).toBeNull();
+
+    await userEvent.clear(screen.getByRole("searchbox"));
+    expect(await screen.findByRole("heading", { name: "Unrelated" })).toBeInTheDocument();
+    expect(screen.queryByText("No icons or projects found")).not.toBeInTheDocument();
+  });
+
+  it("keeps the separate sections when only one of them is empty", async () => {
+    searchIcons.mockResolvedValue({ icons: [], total: 0, page: 1, limit: 24 });
+    listProjects.mockResolvedValue(reply([makeProject({ id: "aa1", name: "Aardvark" })]));
+    renderPage();
+    await userEvent.type(await screen.findByRole("searchbox"), "aa");
+    expect(await screen.findByText("No icons match")).toBeInTheDocument();
+    await waitFor(() => expect(document.getElementById("projects-title")).toHaveTextContent("Projects1"));
+    expect(screen.queryByText("No icons or projects found")).not.toBeInTheDocument();
+  });
+
   it("shows only projects whose name contains the search, with their count", async () => {
     listProjects.mockImplementation(async (params) =>
       params?.search ? reply([makeProject({ id: "v1", name: "VoltPay Icons" }), makeProject({ id: "v2", name: "Other", description: "volt in the description only" })]) : reply([makeProject({ id: "x", name: "Unrelated" })]),
