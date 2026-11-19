@@ -223,14 +223,14 @@ export default function DashboardPage() {
         )}
         {showIcons && (
           <section aria-labelledby="icon-results-title">
-            <h2 id="icon-results-title" className="flex items-center gap-2 text-lg font-semibold">
+            <h2 id="icon-results-title" className="flex mb-3 items-center gap-2 text-lg font-semibold">
               Icons
               {iconResults.data && <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium">{iconResults.data.total}</span>}
             </h2>
             <div role="status" aria-live="polite" className="text-sm text-muted-foreground">
               {iconResults.error ? <span className="mt-1 block text-destructive">{iconResults.error.message}</span> : iconResults.loading && !iconResults.data ? <span className="mt-1 block">Searching…</span> : <span className="sr-only">{pluralize(iconResults.data?.total ?? 0, "icon")} found</span>}
             </div>
-            {(iconResults.data?.icons.length ?? 0) > 0 && (
+            {(iconResults.data?.icons.length ?? 0) > 0 ? (
               <ul className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {iconResults.data?.icons.map((icon) => (
                   <li key={icon.id} className="flex items-center gap-3 rounded-xl border border-border bg-card p-3">
@@ -254,7 +254,13 @@ export default function DashboardPage() {
                   </li>
                 ))}
               </ul>
-            )}
+            ) :(
+             <div className="rounded-2xl border border-dashed border-border p-10 text-center">
+              <p className="text-base font-semibold">No icons match</p>
+              <p className="mt-1 text-sm text-muted-foreground">"Try a different search or filter." </p>
+            </div>
+            )
+          }
           </section>
         )}
 
