@@ -239,9 +239,7 @@ export default function DashboardPage() {
               <ul className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {iconResults.data?.icons.map((icon) => (
                   <li key={icon.id} className="flex items-center gap-3 rounded-xl border border-border bg-card p-3">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-muted">
-                      <SvgPreview svg={icon.svg ?? ""} size={22} fit />
-                    </span>
+                    <SvgPreview svg={icon.svg ?? ""} size={36} className="rounded-md bg-muted p-1.5" />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-semibold">
                         <HighlightText text={icon.name} query={search} />
