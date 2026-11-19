@@ -426,6 +426,33 @@ describe("search", () => {
     expect(screen.getByRole("heading", { name: "Still here" })).toBeInTheDocument();
   });
 
+  it("shows one centred message when neither icons nor projects are found", async () => {
+    listProjects.mockImplementation(async (params) => (params?.search ? reply([]) : reply([makeProject({ id: "x", name: "Unrelated" })])));
+    renderPage();
+    await screen.findByRole("heading", { name: "Unrelated" });
+    await userEvent.type(screen.getByRole("searchbox"), "aa");
+    expect(await screen.findByText("No icons or projects found")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Search results for “aa”" })).toBeInTheDocument();
+    expect(screen.queryByText("No icons match")).not.toBeInTheDocument();
+    expect(screen.queryByText("No projects match.")).not.toBeInTheDocument();
+    expect(document.getElementById("icon-results-title")).toBeNull();
+    expect(document.getElementById("projects-title")).toBeNull();
+
+    await userEvent.clear(screen.getByRole("searchbox"));
+    expect(await screen.findByRole("heading", { name: "Unrelated" })).toBeInTheDocument();
+    expect(screen.queryByText("No icons or projects found")).not.toBeInTheDocument();
+  });
+
+  it("keeps the separate sections when only one of them is empty", async () => {
+    searchIcons.mockResolvedValue({ icons: [], total: 0, page: 1, limit: 24 });
+    listProjects.mockResolvedValue(reply([makeProject({ id: "aa1", name: "Aardvark" })]));
+    renderPage();
+    await userEvent.type(await screen.findByRole("searchbox"), "aa");
+    expect(await screen.findByText("No icons match")).toBeInTheDocument();
+    await waitFor(() => expect(document.getElementById("projects-title")).toHaveTextContent("Projects1"));
+    expect(screen.queryByText("No icons or projects found")).not.toBeInTheDocument();
+  });
+
   it("shows only projects whose name contains the search, with their count", async () => {
     listProjects.mockImplementation(async (params) =>
       params?.search ? reply([makeProject({ id: "v1", name: "VoltPay Icons" }), makeProject({ id: "v2", name: "Other", description: "volt in the description only" })]) : reply([makeProject({ id: "x", name: "Unrelated" })]),

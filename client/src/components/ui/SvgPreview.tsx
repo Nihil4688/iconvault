@@ -15,11 +15,11 @@ type SvgPreviewProps = {
   color?: string;
   // Whether this icon supports color changes. When false, color changes are ignored and original SVG colors are preserved.
   canBeColorized?: boolean;
-  // Crop the empty space around the drawing (font glyphs carry ascender/descender padding), so every icon fills the box at the same size, centred.
-  fit?: boolean;
+  // Move the drawing to the middle of the box without changing its size (font glyphs often sit off-centre inside their glyph box).
+  center?: boolean;
 };
 
-export default function SvgPreview({ svg, size = 32, className, label, color, canBeColorized = true, fit = false }: SvgPreviewProps) {
+export default function SvgPreview({ svg, size = 32, className, label, color, canBeColorized = true, center = false }: SvgPreviewProps) {
   const ref = useRef<HTMLSpanElement | null>(null);
   // Every preview gets its own ids, so two icons on one page never take each other's gradients or clip paths.
   const prefix = `sv${useId().replace(/[^a-zA-Z0-9]/g, "")}`;
@@ -32,13 +32,14 @@ export default function SvgPreview({ svg, size = 32, className, label, color, ca
   useLayoutEffect(() => {
     const element = ref.current?.querySelector("svg");
     // getBBox needs a rendering engine (not available in jsdom).
-    if (!fit || !element || typeof element.getBBox !== "function") return;
+    if (!center || !element || typeof element.getBBox !== "function") return;
+    const view = element.viewBox.baseVal;
     const box = element.getBBox();
-    if (box.width <= 0 || box.height <= 0) return;
-    // A square around the drawing, with a little room so strokes at the edge are not cut off.
-    const side = Math.max(box.width, box.height) * 1.1;
+    if (!view || view.width <= 0 || view.height <= 0 || box.width <= 0 || box.height <= 0) return;
+    // A square view centred on the drawing. Its side is the original width, which is what set the icon's scale before, so the icon keeps its size; it only grows when the drawing would not fit.
+    const side = Math.max(view.width, box.width, box.height);
     element.setAttribute("viewBox", `${box.x + box.width / 2 - side / 2} ${box.y + box.height / 2 - side / 2} ${side} ${side}`);
-  }, [fit, markup]);
+  }, [center, markup]);
 
   return (
     <span

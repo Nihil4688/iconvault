@@ -148,6 +148,8 @@ export default function DashboardPage() {
     </div>
   );
   const showIcons = search.length >= 2;
+  // Both searches have finished without errors and found nothing: one message replaces the two empty sections.
+  const nothingFound = showIcons && !iconResults.loading && !iconResults.error && iconResults.data?.total === 0 && !projects.loading && !projects.error && list.length === 0;
 
   return (
     <main id="main" tabIndex={-1} className="flex h-dvh flex-col overflow-hidden pt-14.25 outline-none">
@@ -220,12 +222,19 @@ export default function DashboardPage() {
         </DropdownSelect>
       </div>
 
-      <div role="region" aria-label="Project Results" className="min-h-0 flex-1 overflow-y-auto p-6">
+      <div role="region" aria-label="Project Results" className={cn("min-h-0 flex-1 overflow-y-auto p-6", nothingFound && "flex flex-col")}>
         {showIcons && (
           <h2 className="mb-4 text-2xl font-semibold">
             Search results for “{search}”
           </h2>
         )}
+        {nothingFound ? (
+          <div role="status" className="flex flex-1 flex-col items-center justify-center text-center">
+            <p className="text-base font-semibold">No icons or projects found</p>
+            <p className="mt-1 text-sm text-muted-foreground">Try a different search or filter.</p>
+          </div>
+        ) : (
+          <>
         {showIcons && (
           <section aria-labelledby="icon-results-title">
             <h2 id="icon-results-title" className="flex mb-3 items-center gap-2 text-lg font-semibold">
@@ -239,9 +248,7 @@ export default function DashboardPage() {
               <ul className="mt-3 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {iconResults.data?.icons.map((icon) => (
                   <li key={icon.id} className="flex items-center gap-3 rounded-xl border border-border bg-card p-3">
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-muted">
-                      <SvgPreview svg={icon.svg ?? ""} size={22} fit />
-                    </span>
+                    <SvgPreview svg={icon.svg ?? ""} size={36} className="rounded-md bg-muted p-1.5" center />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-semibold">
                         <HighlightText text={icon.name} query={search} />
@@ -361,6 +368,8 @@ export default function DashboardPage() {
             </>
           )}
         </section>
+          </>
+        )}
       </div>
 
       <ProjectFormDialog
