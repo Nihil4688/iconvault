@@ -99,8 +99,8 @@ setLoginOpen(false);
 
       {initializing ? (
         <div role="status" aria-live="polite" className="flex flex-col min-h-screen items-center justify-center gap-2 text-muted-foreground">
-          <Loader2 aria-hidden="true" className="h-5 w-5 animate-spin text-primary" />
-          <span>Loading…</span>
+          <Loader2 aria-hidden="true" className="h-8 w-8 animate-spin text-primary" />
+          <span className="text-sm font-medium">Loading…</span>
         </div>
       ) : currentUser ? (
         <HeaderSlotContext.Provider value={crumbSlot}>
