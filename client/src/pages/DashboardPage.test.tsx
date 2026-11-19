@@ -406,13 +406,14 @@ describe("search", () => {
     expect(screen.getByText("Sprite")).toBeInTheDocument();
   });
 
-  it("does not search icons for a single character", async () => {
+  it("does not search icons or projects for a single character", async () => {
     renderPage();
     await screen.findByText("You have no projects yet.");
     await userEvent.type(screen.getByRole("searchbox"), "a");
-    await waitFor(() => expect(listProjects).toHaveBeenLastCalledWith(expect.objectContaining({ search: "a" })));
+    await new Promise((resolve) => setTimeout(resolve, 400));
+    expect(listProjects).not.toHaveBeenCalledWith(expect.objectContaining({ search: expect.anything() }));
     expect(searchIcons).not.toHaveBeenCalled();
-    expect(screen.queryByRole("heading", { name: /Icons matching/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: /Search results for/ })).not.toBeInTheDocument();
   });
 
   it("shows a failed icon search without hiding the projects", async () => {
@@ -420,9 +421,24 @@ describe("search", () => {
     searchIcons.mockRejectedValue(new ApiError("Search is down."));
     renderPage();
     await screen.findByRole("heading", { name: "Still here" });
-    await userEvent.type(screen.getByRole("searchbox"), "ar");
+    await userEvent.type(screen.getByRole("searchbox"), "here");
     expect(await screen.findByText("Search is down.")).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "Still here" })).toBeInTheDocument();
+  });
+
+  it("shows only projects whose name contains the search, with their count", async () => {
+    listProjects.mockImplementation(async (params) =>
+      params?.search ? reply([makeProject({ id: "v1", name: "VoltPay Icons" }), makeProject({ id: "v2", name: "Other", description: "volt in the description only" })]) : reply([makeProject({ id: "x", name: "Unrelated" })]),
+    );
+    renderPage();
+    await screen.findByRole("heading", { name: "Unrelated" });
+    await userEvent.type(screen.getByRole("searchbox"), "volt");
+    await waitFor(() => expect(listProjects).toHaveBeenLastCalledWith(expect.objectContaining({ search: "volt" })));
+    await waitFor(() => expect(document.getElementById("projects-title")).toHaveTextContent("Projects1"));
+    expect(screen.getAllByRole("link").map((link) => link.textContent)).toContain("VoltPay Icons");
+    expect(screen.queryByText("Other")).not.toBeInTheDocument();
+    expect(screen.queryByText("Unrelated")).not.toBeInTheDocument();
+    expect(document.querySelector("#projects-title ~ * mark")?.textContent).toBe("Volt");
   });
 });
 
