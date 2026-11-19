@@ -262,7 +262,7 @@ export default function DashboardPage() {
             ) : iconResults.data && !iconResults.error && (
              <div className="rounded-2xl border border-dashed border-border p-10 text-center">
               <p className="text-base font-semibold">No icons match</p>
-              <p className="mt-1 text-sm text-muted-foreground">"Try a different search or filter." </p>
+              <p className="mt-1 text-sm text-muted-foreground">Try a different search or filter.</p>
             </div>
             )
           }
