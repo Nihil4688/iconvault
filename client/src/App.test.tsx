@@ -113,7 +113,7 @@ describe("signed out", () => {
     expect(screen.getByRole("heading", { name: /organize in projects and folders/i })).toBeInTheDocument();
   });
 
-  it("opens the sign-in dialog from the landing page button and from the header, and closes it again", async () => {
+  it("opens the sign-in dialog from the landing page button and from the header", async () => {
     renderApp();
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
 
@@ -130,6 +130,15 @@ describe("signed out", () => {
     await userEvent.click(within(screen.getByRole("banner")).getByRole("button", { name: /sign in/i }));
     expect(screen.getByRole("dialog")).toBeInTheDocument();
     await userEvent.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.getByTestId("current-path")).toHaveTextContent("/");
+  });
+
+  it("does not open the sign-in dialog when the logo is clicked", async () => {
+    renderApp();
+
+    await userEvent.click(screen.getByRole("link", { name: /iconvault/i }));
+
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(screen.getByTestId("current-path")).toHaveTextContent("/");
   });
