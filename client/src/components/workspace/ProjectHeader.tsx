@@ -4,6 +4,7 @@ import { useContext } from "react";
 import { createPortal } from "react-dom";
 import { Link, NavLink } from "react-router-dom";
 import type { ProjectDetail } from "../../api/types";
+import aiIconUrl from "../../assets/ai-icon.svg";
 import { HeaderSlotContext } from "../../context/headerSlotContext";
 import { cn } from "../../lib/cn";
 import Badge from "../ui/Badge";
@@ -51,6 +52,11 @@ export default function ProjectHeader({ project, actionsRef }: { project: Projec
           <div className="flex shrink-0 flex-nowrap items-center gap-1.5 whitespace-nowrap">
             <VisibilityBadge visibility={project.visibility} />
             <PurposeBadge purpose={project.purpose} long />
+            {project.createdVia === "mcp" && (
+              <span role="img" aria-label="Created with MCP" title="Created with MCP">
+                <img src={aiIconUrl} alt="" aria-hidden="true" className="h-4 w-4" />
+              </span>
+            )}
           </div>
         </div>
 

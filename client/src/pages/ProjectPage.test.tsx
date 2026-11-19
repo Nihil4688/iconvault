@@ -149,6 +149,14 @@ describe("moving from one project to another", () => {
 });
 
 describe("header", () => {
+  it("shows the AI icon for an MCP-created project", async () => {
+    getProject.mockResolvedValue(makeDetail({ id: "p1", name: "MCP Project", createdVia: "mcp" }));
+    renderPage();
+
+    await screen.findByRole("heading", { level: 1, name: "MCP Project" });
+    expect(screen.getByRole("img", { name: "Created with MCP" })).toBeInTheDocument();
+  });
+
   it("shows the project, its badges and owner, and links to each section with counts", async () => {
     renderPage();
     expect(await screen.findByRole("heading", { level: 1, name: "Feather" })).toBeInTheDocument();
