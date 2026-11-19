@@ -53,6 +53,8 @@ export default function DashboardPage() {
 
   const [searchText, setSearchText] = useState("");
   const search = useDebounced(searchText.trim(), 300);
+  // Like the icon search, projects are only searched from two characters.
+  const projectSearch = search.length >= 2 ? search : "";
 
   const [form, setForm] = useState<FormState>(null);
   const [deleting, setDeleting] = useState<ProjectSummary | null>(null);
@@ -68,7 +70,7 @@ export default function DashboardPage() {
     return () => window.removeEventListener("resize", updateVisibleProjectCount);
   }, []);
 
-  const query: ListProjectsParams = { scope: "all", status, sort, limit: 100, ...(search ? { search } : {}) };
+  const query: ListProjectsParams = { scope: "all", status, sort, limit: 100, ...(projectSearch ? { search: projectSearch } : {}) };
   const projects = useResource(`projects:${JSON.stringify(query)}`, () => listProjects(query));
   const iconResults = useResource(search.length >= 2 ? `icons:${search}` : null, () => searchIcons(search, { limit: 24 }));
 
@@ -119,13 +121,16 @@ export default function DashboardPage() {
     }
   }
 
-  const loaded = projects.data?.projects ?? [];
+  // The server also matches descriptions, prefixes and owners; the dashboard shows only projects whose name contains the search text.
+  const loaded = (projects.data?.projects ?? []).filter((project) => !projectSearch || project.name.toLowerCase().includes(projectSearch.toLowerCase()));
+  // The server's total, without the matches hidden above.
+  const total = (projects.data?.total ?? 0) - ((projects.data?.projects.length ?? 0) - loaded.length);
   const byType = loaded.filter((project) => purpose === "all" || project.purpose === purpose);
   const byVisibility = loaded.filter((project) => scope === "all" || project.visibility === scope);
   const renderCards = (items: ProjectSummary[]) => (
     <ul className={cn("grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5", projects.loading && "opacity-60")}>
       {items.map((project) => (
-        <ProjectCard key={project.id} project={project} currentUserId={currentUser?.id ?? ""} highlight={search} onEdit={(p) => setForm({ mode: "edit", project: p })} onDuplicate={handleDuplicate} onToggleArchive={handleToggleArchive} onDelete={setDeleting} />
+        <ProjectCard key={project.id} project={project} currentUserId={currentUser?.id ?? ""} highlight={projectSearch} onEdit={(p) => setForm({ mode: "edit", project: p })} onDuplicate={handleDuplicate} onToggleArchive={handleToggleArchive} onDelete={setDeleting} />
       ))}
     </ul>
   );
@@ -133,7 +138,7 @@ export default function DashboardPage() {
   const privateList = list.filter((project) => project.visibility === "private");
   const publicList = list.filter((project) => project.visibility === "public");
   const actionsSlot = useContext(HeaderActionsContext);
-  const filtersActive = scope !== "all" || status !== "active" || purpose !== "all" || search !== "";
+  const filtersActive = scope !== "all" || status !== "active" || purpose !== "all" || projectSearch !== "";
   const headerButtons = (
     <div className="flex flex-wrap items-center gap-2">
       <input type="file" accept=".zip,application/zip" aria-label="Project Export File" className="hidden" onChange={handleImportChosen} />
@@ -254,7 +259,7 @@ export default function DashboardPage() {
                   </li>
                 ))}
               </ul>
-            ) :(
+            ) : iconResults.data && !iconResults.error && (
              <div className="rounded-2xl border border-dashed border-border p-10 text-center">
               <p className="text-base font-semibold">No icons match</p>
               <p className="mt-1 text-sm text-muted-foreground">"Try a different search or filter." </p>
@@ -266,8 +271,9 @@ export default function DashboardPage() {
 
         <section aria-labelledby="projects-title" className={showIcons ? "mt-8" : ""}>
           {showIcons && (
-            <h2 id="projects-title" className="mb-3 text-lg font-semibold">
+            <h2 id="projects-title" className="mb-3 flex items-center gap-2 text-lg font-semibold">
               Projects
+              {projects.data && <span className="rounded-full bg-muted px-2 py-0.5 text-xs font-medium">{list.length}</span>}
             </h2>
           )}
           {!showIcons && (
@@ -349,7 +355,7 @@ export default function DashboardPage() {
               ) : (
                 renderCards(list)
               )}
-              {(projects.data?.total ?? 0) > list.length && <p className="mt-4 text-center text-sm text-muted-foreground">Showing the first {list.length} of {projects.data?.total} projects. Use the search to narrow them down.</p>}
+              {total > list.length && <p className="mt-4 text-center text-sm text-muted-foreground">Showing the first {list.length} of {total} projects. Use the search to narrow them down.</p>}
             </>
           )}
         </section>
