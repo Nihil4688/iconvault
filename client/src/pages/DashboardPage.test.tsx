@@ -76,6 +76,22 @@ describe("importing a project", () => {
 });
 
 describe("listing", () => {
+  it("hides the results scroller while project shimmer placeholders are loading", async () => {
+    let finishLoading!: (result: ReturnType<typeof reply>) => void;
+    listProjects.mockReturnValue(new Promise<ReturnType<typeof reply>>((resolve) => {
+      finishLoading = resolve;
+    }));
+    renderPage();
+
+    const results = screen.getByRole("region", { name: "Project Results" });
+    expect(screen.getByLabelText("Loading Projects")).toBeInTheDocument();
+    expect(results).not.toHaveClass("overflow-y-auto");
+
+    finishLoading(reply([]));
+    expect(await screen.findByText("You have no projects yet.")).toBeInTheDocument();
+    expect(results).toHaveClass("overflow-y-auto");
+  });
+
   it("shows a loading state, then the project cards", async () => {
     listProjects.mockResolvedValue(reply([makeProject({ name: "Feather", description: "Line icons", iconCount: 3, purpose: "font", visibility: "public" })]));
     renderPage();
@@ -128,6 +144,26 @@ describe("listing", () => {
 
         expect(samples.parentElement).toBe(card);
     });
+
+  it("shows monochrome sample icons in white in dark mode while preserving colored icons", async () => {
+    listProjects.mockResolvedValue(reply([makeProject({
+      name: "Sample colors",
+      sampleIcons: [
+        { id: "mono", name: "Mono", svg: '<svg viewBox="0 0 1 1"><path fill="#000" d="M0 0"/></svg>' },
+        { id: "color", name: "Color", svg: '<svg viewBox="0 0 1 1"><path fill="#f00" d="M0 0"/><path fill="#00f" d="M0 0"/></svg>' },
+      ],
+    })]));
+    renderPage();
+
+    const card = (await screen.findByRole("heading", { name: "Sample colors" })).closest("li") as HTMLElement;
+    const samples = within(card).getByRole("img", { name: "2 Sample Icons" });
+    const previews = samples.querySelectorAll(":scope > span");
+
+    expect(previews[0]).toHaveClass("dark:text-white");
+    expect(previews[0]?.querySelector("path")).toHaveAttribute("fill", "currentColor");
+    expect(previews[1]?.querySelectorAll("path")[0]).toHaveAttribute("fill", "#f00");
+    expect(previews[1]?.querySelectorAll("path")[1]).toHaveAttribute("fill", "#00f");
+  });
 
   it("names the owner of someone else's project and shows sample icons", async () => {
     listProjects.mockResolvedValue(reply([makeProject({ name: "Shared", owner: { id: "u2", displayName: "Grace Hopper" }, access: READ_ONLY, sampleIcons: [{ id: "s1", name: "a", svg: "<svg viewBox='0 0 1 1'><path d='M0 0'/></svg>" }] })]));
