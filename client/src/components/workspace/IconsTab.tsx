@@ -225,11 +225,27 @@ export default function IconsTab() {
             </Button>
           </div>
         ) : icons.loading && !icons.data ? (
-          <ul aria-busy="true" aria-label="Loading Icons" className="grid min-h-0 flex-1 grid-cols-2 gap-3 overflow-y-auto sm:grid-cols-3 xl:grid-cols-5">
-            {Array.from({ length: 10 }, (_, i) => (
-              <li key={i} className="h-44 animate-pulse rounded-xl bg-muted" />
-            ))}
-          </ul>
+          <div role="status" aria-busy="true" aria-label="Loading Icons" className="flex min-h-0 flex-1 flex-col">
+            <div aria-hidden="true" className="flex shrink-0 items-center justify-between py-2 pr-7">
+              <div className="flex items-center gap-2">
+                <span className="h-5 w-5 rounded border border-border bg-background" />
+                <span className="skeleton-shimmer h-4 w-36 rounded" />
+              </div>
+              <span className="skeleton-shimmer h-9 w-14 rounded-lg" />
+            </div>
+            <ul className="grid min-h-0 flex-1 content-start grid-cols-2 gap-3 overflow-hidden sm:grid-cols-3 xl:grid-cols-5">
+              {Array.from({ length: 15 }, (_, i) => (
+                <li key={i} aria-hidden="true" className="relative flex flex-col rounded-xl border border-border bg-card p-3">
+                  <span className="absolute left-2 top-2 h-5 w-5 rounded-md border border-border bg-background" />
+                  <div className="skeleton-shimmer min-h-24 rounded-lg" />
+                  <div className="mt-2 flex flex-col items-center gap-2">
+                    <div className="skeleton-shimmer h-4 w-2/3 rounded" />
+                    <div className="skeleton-shimmer h-3 w-1/4 rounded" />
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
         ) : shown.length === 0 ? (
           <div className="min-h-0 flex-1 overflow-y-auto rounded-2xl border border-dashed border-border p-10 text-center">
             <Layers aria-hidden="true" className="mx-auto h-8 w-8 text-muted-foreground" />

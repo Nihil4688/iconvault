@@ -74,7 +74,7 @@ export default function ProjectCard({ project, currentUserId, highlight, onEdit,
         {project.sampleIcons.length > 0 ? (
           <>
             {project.sampleIcons.slice(0, 4).map((icon) => (
-              <SvgPreview key={icon.id} svg={icon.svg} size={18} />
+              <SvgPreview key={icon.id} svg={icon.svg} size={18} color="currentColor" center className="dark:text-white"/>
             ))}
             {project.iconCount > 4 && (
               <span className="ml-auto min-w-0 truncate text-xs text-muted-foreground">

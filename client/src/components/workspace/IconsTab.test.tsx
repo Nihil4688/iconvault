@@ -88,8 +88,17 @@ beforeEach(() => {
 
 describe("showing icons", () => {
   it("shows a loading state, then the icons with how many are shown", async () => {
+    let finishLoading!: (result: ReturnType<typeof reply>) => void;
+    listIcons.mockReturnValue(new Promise<ReturnType<typeof reply>>((resolve) => {
+      finishLoading = resolve;
+    }));
     setup();
-    expect(screen.getByLabelText("Loading icons")).toHaveAttribute("aria-busy", "true");
+    const loading = screen.getByLabelText("Loading Icons");
+    expect(loading).toHaveAttribute("aria-busy", "true");
+    expect(loading).not.toHaveClass("overflow-y-auto");
+    expect(loading.querySelector("ul")).not.toHaveClass("overflow-y-auto");
+    expect(loading.querySelector(".skeleton-shimmer")).toBeInTheDocument();
+    finishLoading(reply(three()));
     expect(await screen.findByRole("button", { name: "Open Alpha" })).toBeInTheDocument();
     expect(screen.queryByText(/^Showing \d+ of/)).not.toBeInTheDocument();
     expect(within(card("Gamma")).queryByText("Stroke")).not.toBeInTheDocument();

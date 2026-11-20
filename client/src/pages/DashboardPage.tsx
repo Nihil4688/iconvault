@@ -24,7 +24,7 @@ import { useResource } from "../hooks/useResource";
 import { cn } from "../lib/cn";
 import { pluralize } from "../lib/format";
 
-const SORT_LABELS = { updated: "Recently Updated", created: "Newest", name: "Name", icons: "Most Icons" } as const;
+const SORT_LABELS = { updated: "Last Updated", created: "Date Created", name: "Name (A-Z)", icons: "Icon Count" } as const;
 
 function projectColumnsForWidth(width: number): number {
   if (width >= 1280) return 5;
@@ -152,6 +152,7 @@ export default function DashboardPage() {
   // A search change is in progress: the typed text has not been sent yet, or the results for it have not arrived. Until then the previous results would flash up (or the empty "no projects" state when the search is cleared), so a loading indicator takes their place. One-letter changes do not search, and filter or sort changes keep their usual behaviour.
   const typedSearch = searchText.trim().length >= 2 ? searchText.trim() : "";
   const searching = typedSearch !== projectSearch || (showIcons && iconResults.loading) || (projects.loading && projects.data !== undefined && projects.data.forSearch !== projectSearch);
+  const loadingProjectShimmer = projects.loading && !projects.data;
   // Both searches have finished without errors and found nothing: one message replaces the two empty sections.
   const nothingFound = !searching && showIcons && !iconResults.loading && !iconResults.error && iconResults.data?.total === 0 && !projects.loading && !projects.error && list.length === 0;
 
@@ -203,14 +204,14 @@ export default function DashboardPage() {
           value={status}
           onChange={(value) => setFilter("status", value, "active")}
           options={[
-            { value: "active", label: "Active" },
+            { value: "active", label: "Published" },
             { value: "archived", label: "Draft" },
             { value: "all", label: "Both" },
           ]}
           rootClassName="ml-auto"
           triggerClassName="inline-flex h-9 items-center gap-2 rounded-lg border border-input bg-background pl-3 pr-3 text-sm font-medium transition-colors hover:bg-accent"
         >
-          {status === "archived" ? "Draft" : status === "all" ? "Both" : "Active"}
+          {status === "archived" ? "Draft" : status === "all" ? "Both" : "Published"}
         </DropdownSelect>
         {/* The sort choice is a filter icon; the list of choices opens from it. */}
         <DropdownSelect
@@ -226,7 +227,7 @@ export default function DashboardPage() {
         </DropdownSelect>
       </div>
 
-      <div role="region" aria-label="Project Results" className={cn("min-h-0 flex-1 overflow-y-auto p-6", (nothingFound || searching) && "flex flex-col")}>
+      <div role="region" aria-label="Project Results" className={cn("min-h-0 flex-1 p-6", loadingProjectShimmer ? "overflow-hidden" : "overflow-y-auto", (nothingFound || searching) && "flex flex-col")}>
         {searching ? (
           <div role="status" aria-live="polite" className="flex flex-1 flex-col items-center justify-center gap-3 text-muted-foreground">
             <Loader2 aria-hidden="true" className="h-8 w-8 animate-spin text-primary" />
@@ -309,12 +310,37 @@ export default function DashboardPage() {
                 Try Again
               </Button>
             </div>
-          ) : projects.loading && !projects.data ? (
-            <ul aria-busy="true" aria-label="Loading Projects" className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
-              {Array.from({ length: 10 }, (_, i) => (
-                <li key={i} className="h-28 animate-pulse rounded-xl border border-border bg-muted" />
+          ) : loadingProjectShimmer ? (
+            <div aria-busy="true" aria-label="Loading Projects" className="space-y-8">
+              {(scope === "all" ? ["private", "public"] : [null]).map((section) => (
+                <section key={section ?? "single"} aria-hidden="true">
+                  {section !== null && (
+                    <div className="mb-3 flex items-center gap-2">
+                      <div className="skeleton-shimmer h-4 w-4 rounded" />
+                      <div className="skeleton-shimmer h-4 w-20 rounded" />
+                      <div className="skeleton-shimmer h-4 w-7 rounded-full" />
+                    </div>
+                  )}
+                  <ul className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">
+                    {Array.from({ length: initialProjectsPerSection }, (_, i) => (
+                      <li key={`${section ?? "all"}-${i}`} aria-hidden="true" className="flex flex-col gap-2.5 rounded-xl border border-border bg-card p-3.5 shadow-sm">
+                        <div className="flex items-start justify-between gap-2.5">
+                          <div className="skeleton-shimmer h-4 w-14 rounded-md" />
+                          <div className="skeleton-shimmer h-5 w-5 rounded" />
+                        </div>
+                        <div className="flex items-center gap-2.5">
+                          <div className="skeleton-shimmer h-7 w-7 shrink-0 rounded-lg" />
+                          <div className="skeleton-shimmer h-4 flex-1 rounded" />
+                        </div>
+                        <div className="skeleton-shimmer -mt-1 h-3 w-3/4 rounded" />
+                        <div className="skeleton-shimmer min-h-9 rounded-lg" />
+                        <div className="skeleton-shimmer h-3 w-1/2 rounded" />
+                      </li>
+                    ))}
+                  </ul>
+                </section>
               ))}
-            </ul>
+            </div>
           ) : list.length === 0 ? (
             <div className="rounded-2xl border border-dashed border-border p-10 text-center">
               <p className="text-base font-semibold">{filtersActive ? "No projects match." : "You have no projects yet."}</p>
