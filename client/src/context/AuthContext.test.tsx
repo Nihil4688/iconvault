@@ -1,7 +1,8 @@
-import { render, screen, waitFor } from "@testing-library/react";
+import { act, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { useState } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "../api/http";
-import { fetchCurrentUser } from "../api/auth";
+import { fetchCurrentUser, loginWithGoogle as loginWithGoogleApi } from "../api/auth";
 import { AuthProvider, useAuth } from "./AuthContext";
 
 vi.mock("../api/auth", () => ({
@@ -15,6 +16,27 @@ function SessionStatus() {
   return <div>{initializing ? "loading" : currentUser?.email ?? "signed out"}</div>;
 }
 
+function GoogleLoginTrigger() {
+  const { loginWithGoogle } = useAuth();
+  const [result, setResult] = useState("");
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => {
+          void loginWithGoogle().then(
+            () => setResult("signed in"),
+            (error: Error) => setResult(error.message),
+          );
+        }}
+      >
+        Start Google sign-in
+      </button>
+      <div role="status">{result}</div>
+    </>
+  );
+}
+
 function renderAuth() {
   return render(
     <AuthProvider>
@@ -23,7 +45,7 @@ function renderAuth() {
   );
 }
 
-describe("AuthProvider session rehydration", () => {
+describe("AuthProvider", () => {
   beforeEach(() => {
     localStorage.clear();
     localStorage.setItem(
@@ -44,6 +66,9 @@ describe("AuthProvider session rehydration", () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.useRealTimers();
+    window.google = undefined;
+    window.GOOGLE_CLIENT_ID = undefined;
   });
 
   it("keeps the saved session when verification fails without an HTTP status", async () => {
@@ -79,5 +104,79 @@ describe("AuthProvider session rehydration", () => {
     expect(screen.getByText("signed out")).toBeInTheDocument();
     expect(localStorage.getItem("sessionToken")).toBeNull();
     expect(window.__svgCompilerSessionToken).toBeNull();
+  });
+
+  it("allows another Google sign-in after the popup is closed", async () => {
+    vi.useFakeTimers();
+    localStorage.clear();
+    window.GOOGLE_CLIENT_ID = "google-client-id";
+    let activeCallback:
+      | ((response: { credential?: string; select_by?: string }) => void)
+      | undefined;
+    let buttonClickCount = 0;
+    window.google = {
+      accounts: {
+        id: {
+          initialize: vi.fn((config) => {
+            activeCallback = config.callback;
+          }),
+          prompt: vi.fn(),
+          renderButton: vi.fn((parent) => {
+            const callbackForButton = activeCallback;
+            const button = document.createElement("div");
+            button.setAttribute("role", "button");
+            button.addEventListener("click", () => {
+              buttonClickCount += 1;
+              if (buttonClickCount === 2) {
+                callbackForButton?.({ credential: "google-id-token" });
+              }
+            });
+            parent.appendChild(button);
+          }),
+          disableAutoSelect: vi.fn(),
+          revoke: vi.fn(),
+        },
+      },
+    };
+    vi.mocked(loginWithGoogleApi).mockResolvedValue({
+      user: {
+        id: "google-user",
+        email: "google@example.com",
+        displayName: "Google User",
+        picture: null,
+        emailVerified: true,
+        provider: "google",
+        role: "user",
+      },
+      token: "google-session-token",
+    });
+    const view = render(
+      <AuthProvider>
+        <GoogleLoginTrigger />
+      </AuthProvider>,
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Start Google sign-in" }));
+      await Promise.resolve();
+    });
+    await act(async () => {
+      window.dispatchEvent(new Event("blur"));
+      window.dispatchEvent(new Event("focus"));
+      await vi.advanceTimersByTimeAsync(1_000);
+    });
+
+    expect(screen.getByRole("status")).toHaveTextContent(
+      "Google sign-in was cancelled.",
+    );
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole("button", { name: "Start Google sign-in" }));
+      await Promise.resolve();
+    });
+    expect(screen.getByRole("status")).toHaveTextContent("signed in");
+    expect(window.google.accounts.id.renderButton).toHaveBeenCalledTimes(2);
+
+    view.unmount();
   });
 });
