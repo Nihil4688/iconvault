@@ -320,15 +320,40 @@ async function requestGoogleCredential(): Promise<string> {
 
   return await new Promise<string>((resolve, reject) => {
     let settled = false;
+    let lostWindowFocus = false;
+    let focusTimeoutId: number | undefined;
+    const cleanupFocusListeners = () => {
+      window.removeEventListener("blur", onWindowBlur);
+      window.removeEventListener("focus", onWindowFocus);
+    };
     const finish = (fn: () => void) => {
       if (settled) return;
       settled = true;
       window.clearTimeout(timeoutId);
+      if (focusTimeoutId !== undefined) {
+        window.clearTimeout(focusTimeoutId);
+      }
+      cleanupFocusListeners();
       fn();
+    };
+    const onWindowBlur = () => {
+      lostWindowFocus = true;
+    };
+    const onWindowFocus = () => {
+      if (!lostWindowFocus) return;
+      if (focusTimeoutId !== undefined) {
+        window.clearTimeout(focusTimeoutId);
+      }
+      focusTimeoutId = window.setTimeout(() => {
+        finish(() => reject(new Error("Google sign-in was cancelled.")));
+      }, 1_000);
     };
     const timeoutId = window.setTimeout(() => {
       finish(() => reject(new Error("Google sign-in was cancelled.")));
     }, 5 * 60_000);
+
+    window.addEventListener("blur", onWindowBlur);
+    window.addEventListener("focus", onWindowFocus);
 
     // Per-attempt `state` token: GIS encodes this in the returned id_token, guaranteeing the popup is for this specific call and not a replay of a previous attempt.
     const stateToken =
@@ -361,29 +386,27 @@ async function requestGoogleCredential(): Promise<string> {
       return;
     }
 
-    // Render the GIS button into the host (idempotent — re-rendering would create a second button, so we only do it once).
-    if (!host.dataset.gisRendered) {
-      try {
-        google.accounts.id.renderButton(host, {
-          type: "standard",
-          theme: "outline",
-          size: "large",
-          text: "signin_with",
-          shape: "rectangular",
-          logo_alignment: "left",
-          width: 320,
-        });
-        host.dataset.gisRendered = "true";
-      } catch (err) {
-        finish(() =>
-          reject(
-            err instanceof Error
-              ? err
-              : new Error("Google sign-in button failed to render.")
-          )
-        );
-        return;
-      }
+    // GIS buttons capture the callback configured above, so create a fresh one per attempt.
+    host.replaceChildren();
+    try {
+      google.accounts.id.renderButton(host, {
+        type: "standard",
+        theme: "outline",
+        size: "large",
+        text: "signin_with",
+        shape: "rectangular",
+        logo_alignment: "left",
+        width: 320,
+      });
+    } catch (err) {
+      finish(() =>
+        reject(
+          err instanceof Error
+            ? err
+            : new Error("Google sign-in button failed to render.")
+        )
+      );
+      return;
     }
 
     // Click the hidden GIS button to open the chooser. The button renders either as an inner `<div role="button">` (older builds) or an `<iframe>` (newer builds); either responds to `.click()`.

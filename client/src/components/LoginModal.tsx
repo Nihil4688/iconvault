@@ -118,9 +118,11 @@ export default function LoginModal({ isOpen, onClose }: LoginModalProps) {
       setMessage(`Signed in as ${user.email} (${providerLabel})`);
       setTimeout(close, 400);
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "Sign-in cancelled."
-      );
+      const errorMessage =
+        err instanceof Error ? err.message : "Sign-in cancelled.";
+      if (!/sign-in was cancelled/i.test(errorMessage)) {
+        setError(errorMessage);
+      }
     } finally {
       setSubmittingProvider(null);
     }
