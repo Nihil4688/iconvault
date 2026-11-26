@@ -60,6 +60,8 @@ export default function DashboardPage() {
   const [form, setForm] = useState<FormState>(null);
   const [deleting, setDeleting] = useState<ProjectSummary | null>(null);
   const [sharing, setSharing] = useState<ProjectSummary | null>(null);
+  const [changingVisibility, setChangingVisibility] = useState<ProjectSummary | null>(null);
+  const makingPublic = changingVisibility?.visibility === "private";
   const [copying, setCopying] = useState<IconSearchResult | null>(null);
   const [expandedSections, setExpandedSections] = useState({ private: false, public: false });
   const [initialProjectsPerSection, setInitialProjectsPerSection] = useState(() => projectColumnsForWidth(window.innerWidth) * 2);
@@ -133,7 +135,7 @@ export default function DashboardPage() {
   const renderCards = (items: ProjectSummary[]) => (
     <ul className={cn("grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5", projects.loading && "opacity-60")}>
       {items.map((project) => (
-        <ProjectCard key={project.id} project={project} currentUserId={currentUser?.id ?? ""} highlight={projectSearch} onEdit={(p) => setForm({ mode: "edit", project: p })} onDuplicate={handleDuplicate} onShare={setSharing} onToggleArchive={handleToggleArchive} onDelete={setDeleting} />
+        <ProjectCard key={project.id} project={project} currentUserId={currentUser?.id ?? ""} highlight={projectSearch} onEdit={(p) => setForm({ mode: "edit", project: p })} onDuplicate={handleDuplicate} onShare={setSharing} onToggleVisibility={setChangingVisibility} onToggleArchive={handleToggleArchive} onDelete={setDeleting} />
       ))}
     </ul>
   );
@@ -451,6 +453,37 @@ export default function DashboardPage() {
           await deleteProject(deleting.id);
           projects.reload();
           showToast(`Deleted “${deleting.name}”.`, "success");
+        }}
+      />
+      <ConfirmDialog
+        open={changingVisibility !== null}
+        title={makingPublic ? "Make Project Public" : "Make Project Private"}
+        size="md"
+        message={
+          <div className="space-y-3">
+            <p>
+              Are you sure you want to make <span className="font-semibold">“{changingVisibility?.name}”</span> {makingPublic ? "public" : "private"}?
+            </p>
+            <div className="flex items-start gap-2.5 rounded-lg border border-border bg-muted p-3">
+              {makingPublic ? <Globe aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-primary" /> : <Lock aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-primary" />}
+              <p className="text-muted-foreground">
+                {makingPublic
+                  ? "Anyone signed in will be able to view this project and copy its icons. Only you (or an admin) can still change it."
+                  : "Only you and workspace administrators will be able to see it. Others lose access, and links shared with them stop working."}
+              </p>
+            </div>
+            {makingPublic && changingVisibility?.isArchived && (
+              <p className="text-muted-foreground">This project is a draft, so others will only see it once you mark it as active.</p>
+            )}
+          </div>
+        }
+        confirmLabel={makingPublic ? "Make Public" : "Make Private"}
+        onClose={() => setChangingVisibility(null)}
+        onConfirm={async () => {
+          if (!changingVisibility) return;
+          await updateProject(changingVisibility.id, { visibility: makingPublic ? "public" : "private" });
+          projects.reload();
+          showToast(makingPublic ? `Made “${changingVisibility.name}” public.` : `Made “${changingVisibility.name}” private.`, "success");
         }}
       />
       <ShareProjectDialog open={sharing !== null} project={sharing} onClose={() => setSharing(null)} />
