@@ -1,8 +1,8 @@
 // Tests for the dialogs that add icons: upload (files, drag and drop, batching, results, failures), paste, and copying from another project.
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { strToU8, zipSync } from "fflate";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { createZip } from "../../utils/zipBundle";
 import { ApiError } from "../../api/http";
 import * as fontsApi from "../../api/fonts";
 import * as iconsApi from "../../api/icons";
@@ -25,7 +25,7 @@ const importFont = vi.mocked(fontsApi.importFont);
 const summary = (over: Partial<UploadSummary> = {}): UploadSummary => ({ created: [], replaced: [], skipped: [], errors: [], foldersCreated: 0, ...over });
 const svgFile = (name: string, text = "<svg/>") => new File([text], name, { type: "image/svg+xml", lastModified: Math.random() });
 const zipFile = (name: string, entries: Record<string, string> = { "icon.svg": "<svg/>" }) =>
-  new File([createZip(Object.entries(entries).map(([path, data]) => ({ name: path, data })))], name, { type: "application/zip" });
+  new File([zipSync(Object.fromEntries(Object.entries(entries).map(([path, text]) => [path, strToU8(text)])))], name, { type: "application/zip" });
 
 const folders = [makeFolder({ id: "ui", name: "UI" }), makeFolder({ id: "ar", name: "Arrows", parentId: "ui" })];
 
