@@ -1,5 +1,5 @@
 // One project on the dashboard, kept small so many fit on a screen: a small accent avatar with the name and the actions menu, a one line description (cut off with an ellipsis), the coloured badges (above the title), a row of small sample icons (18 px) of its own in a roomy grey box, and who created it. The whole card opens the project (a stretched link on the name), and the menu sits above it.
-import { Archive, ArchiveRestore, Copy, Pencil, Trash2 } from "lucide-react";
+import { Archive, ArchiveRestore, Copy, Pencil, Share2, Trash2 } from "lucide-react";
 import { Link } from "react-router-dom";
 import type { ProjectSummary } from "../../api/types";
 import aiIconUrl from "../../assets/ai-icon.svg";
@@ -15,6 +15,7 @@ import { PurposeBadge } from "./ProjectBadges";
 export type ProjectCardActions = {
   onEdit: (project: ProjectSummary) => void;
   onDuplicate: (project: ProjectSummary) => void;
+  onShare: (project: ProjectSummary) => void;
   onToggleArchive: (project: ProjectSummary) => void;
   onDelete: (project: ProjectSummary) => void;
 };
@@ -22,12 +23,13 @@ export type ProjectCardActions = {
 // `highlight` marks the search text in the project name.
 type ProjectCardProps = ProjectCardActions & { project: ProjectSummary; currentUserId: string; highlight?: string };
 
-export default function ProjectCard({ project, currentUserId, highlight, onEdit, onDuplicate, onToggleArchive, onDelete }: ProjectCardProps) {
+export default function ProjectCard({ project, currentUserId, highlight, onEdit, onDuplicate, onShare, onToggleArchive, onDelete }: ProjectCardProps) {
   const { currentUser } = useAuth();
   const mine = project.owner.id === currentUserId;
   const showCreator = project.visibility === "public" || currentUser?.role === "admin";
   const actions: MenuAction[] = [
     { label: "Duplicate", icon: <Copy aria-hidden="true" className="h-4 w-4" />, onSelect: () => onDuplicate(project) },
+    { label: "Share Project", icon: <Share2 aria-hidden="true" className="h-4 w-4" />, onSelect: () => onShare(project) },
   ];
   if (project.access.canManage) {
     actions.unshift({ label: "Edit Details", icon: <Pencil aria-hidden="true" className="h-4 w-4" />, onSelect: () => onEdit(project) });
