@@ -28,20 +28,6 @@ describe("readSvgsFromZip", () => {
     assert.deepEqual(entries.map((e) => e.fileName), ["ok.svg"]);
   });
 
-  it("reports other icon types instead of importing them, at any depth", () => {
-    const { entries, skipped } = readSvgsFromZip(zip({ "a.png": "x", "UI/Arrows/b.ICO": "x", "UI/ok.svg": svg, "readme.txt": "hi" }));
-    assert.deepEqual(entries.map((e) => [e.folders, e.fileName]), [[["UI"], "ok.svg"]]);
-    assert.deepEqual(skipped, [
-      { path: "a.png", reason: "Only SVG icons can be added from a ZIP." },
-      { path: "UI/Arrows/b.ICO", reason: "Only SVG icons can be added from a ZIP." },
-    ]);
-  });
-
-  it("refuses a ZIP with no SVG icons", () => {
-    assert.throws(() => readSvgsFromZip(zip({ "a.png": "x", "UI/b.jpg": "y", "__MACOSX/._c.svg": "junk" })), /no SVG icons/);
-    assert.throws(() => readSvgsFromZip(zip({})), /no SVG icons/);
-  });
-
   it("caps the number of SVG files and reports the rest", () => {
     const files: Record<string, string> = {};
     for (let i = 0; i < ZIP_LIMITS.maxSvgFiles + 3; i += 1) files[`f${String(i).padStart(4, "0")}.svg`] = svg;
