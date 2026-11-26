@@ -9,7 +9,7 @@ import { formatBytes, pluralize } from "../../lib/format";
 import { metropToFiles } from "../../lib/metrop";
 import { readFileText } from "../../lib/readFile";
 import { spriteToFiles } from "../../lib/spriteBuild";
-import { checkFiles, isIconFont, isMetrop, isSvgOrZip, mergeSummaries, parseTags, toBatches } from "../../lib/upload";
+import { checkFiles, checkZips, isIconFont, isMetrop, isSvgOrZip, mergeSummaries, parseTags, toBatches } from "../../lib/upload";
 import { Button, IconButton } from "../ui/Button";
 import Dialog from "../ui/Dialog";
 import DialogFooter from "../ui/DialogFooter";
@@ -70,8 +70,16 @@ function UploadForm({ projectId, prefix, folders, defaultFolderId, onClose, onUp
   const [summary, setSummary] = useState<UploadSummary | null>(null);
   const [dragging, setDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
-  function addFiles(chosen: File[]) {
+  async function addFiles(chosen: File[]) {
     const checked = checkFiles([...files, ...chosen]);
+    const added = checked.accepted.filter((file) => !files.includes(file));
+    if (added.some((file) => /\.zip$/i.test(file.name))) {
+      // A ZIP is only accepted when it holds SVG icons, at its root or in any subfolder.
+      const zips = await checkZips(added);
+      const rejected = added.filter((file) => !zips.accepted.includes(file));
+      checked.accepted = checked.accepted.filter((file) => !rejected.includes(file));
+      checked.problems = [...checked.problems, ...zips.problems];
+    }
     setFiles(checked.accepted);
     setProblems(checked.problems);
     setError(null);

@@ -1,5 +1,7 @@
 // Rules for adding icons from files: accepted SVG, ZIP, and font formats; request batching; result merging; and parsing a tag list.
+import { unzipSync } from "fflate";
 import type { UploadSummary } from "../api/types";
+import { readFileBytes } from "./readFile";
 
 // The server accepts 200 files and 25 MB per file in one request; batches stay well inside that.
 export const MAX_FILE_BYTES = 25 * 1024 * 1024;
@@ -34,6 +36,38 @@ export function checkFiles(files: File[]): { accepted: File[]; problems: FilePro
     else accepted.push(file);
   }
   return { accepted, problems };
+}
+
+// An SVG inside a ZIP, at any depth, that the server will import (folders, macOS metadata and hidden files are ignored there too).
+function isZipSvgEntry(name: string): boolean {
+  const parts = name.replace(/\\/g, "/").split("/");
+  if (parts[0] === "__MACOSX" || parts.some((part) => part.startsWith("."))) return false;
+  return /\.svg$/i.test(name);
+}
+
+// Refuses ZIPs that cannot be read or hold no SVG icons; other files pass through. Only the ZIP's file list is read, nothing is unpacked.
+export async function checkZips(files: File[]): Promise<{ accepted: File[]; problems: FileProblem[] }> {
+  const results = await Promise.all(
+    files.map(async (file): Promise<FileProblem | null> => {
+      if (!/\.zip$/i.test(file.name)) return null;
+      let svgCount = 0;
+      try {
+        unzipSync(await readFileBytes(file), {
+          filter: (entry) => {
+            if (isZipSvgEntry(entry.name)) svgCount += 1;
+            return false;
+          },
+        });
+      } catch {
+        return { file: file.name, message: "That file is not a valid ZIP archive." };
+      }
+      return svgCount === 0 ? { file: file.name, message: "The ZIP has no SVG icons. Only SVG icons can be added from a ZIP." } : null;
+    }),
+  );
+  return {
+    accepted: files.filter((_, index) => !results[index]),
+    problems: results.filter((problem): problem is FileProblem => problem !== null),
+  };
 }
 
 export function toBatches<T>(items: T[], size = BATCH_SIZE): T[][] {

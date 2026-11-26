@@ -310,6 +310,18 @@ describe("icons (HTTP, throwaway database)", { skip: hasDatabase ? false : "MONG
       assert.match(r.body.errors[0].message, /not a valid ZIP/);
     });
 
+    it("adds only the SVGs from a ZIP and refuses a ZIP with no SVG icons", async () => {
+      const p = await newProject("Svg only zip");
+      const mixed = new File([zipSync({ "UI/a.svg": strToU8(SVG()), "UI/b.png": strToU8("x"), "c.jpg": strToU8("y") })], "mixed.zip", { type: "application/zip" });
+      const pngs = new File([zipSync({ "Sub/a.png": strToU8("x") })], "pngs.zip", { type: "application/zip" });
+      const r = await h.call(owner.token, "POST", `/api/projects/${p.id}/icons/upload`, form([mixed, pngs]));
+      assert.equal(r.body.created.length, 1);
+      assert.deepEqual(r.body.errors.map((e: any) => e.file).sort(), ["UI/b.png", "c.jpg", "pngs.zip"]);
+      assert.match(r.body.errors.find((e: any) => e.file === "pngs.zip").message, /no SVG icons/);
+      const folders = (await h.call(owner.token, "GET", `/api/projects/${p.id}/folders`)).body.folders;
+      assert.deepEqual(folders.map((f: any) => f.name), ["UI"], "no folder is made for a ZIP without SVGs");
+    });
+
     it("uploads to a folder of the same project only", async () => {
       const p = await newProject("Folder check");
       const q = await newProject("Elsewhere");

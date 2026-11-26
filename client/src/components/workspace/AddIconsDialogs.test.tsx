@@ -1,6 +1,7 @@
 // Tests for the dialogs that add icons: upload (files, drag and drop, batching, results, failures), paste, and copying from another project.
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { strToU8, zipSync } from "fflate";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "../../api/http";
 import * as fontsApi from "../../api/fonts";
@@ -23,6 +24,8 @@ const importFont = vi.mocked(fontsApi.importFont);
 
 const summary = (over: Partial<UploadSummary> = {}): UploadSummary => ({ created: [], replaced: [], skipped: [], errors: [], foldersCreated: 0, ...over });
 const svgFile = (name: string, text = "<svg/>") => new File([text], name, { type: "image/svg+xml", lastModified: Math.random() });
+const zipFile = (name: string, entries: Record<string, string> = { "icon.svg": "<svg/>" }) =>
+  new File([zipSync(Object.fromEntries(Object.entries(entries).map(([path, text]) => [path, strToU8(text)])))], name, { type: "application/zip" });
 
 const folders = [makeFolder({ id: "ui", name: "UI" }), makeFolder({ id: "ar", name: "Arrows", parentId: "ui" })];
 
@@ -130,6 +133,35 @@ describe("UploadDialog: files", () => {
     await userEvent.click(screen.getByRole("button", { name: "Remove a.svg" }));
     expect(within(screen.getByRole("list", { name: "Files to add" })).getAllByRole("listitem")).toHaveLength(1);
     expect(screen.getByRole("button", { name: "Add 1 file" })).toBeEnabled();
+  });
+
+  it("accepts a ZIP with SVG icons at its root or in any subfolder", async () => {
+    setup();
+    await userEvent.upload(input(), [zipFile("root.zip", { "a.svg": "<svg/>" }), zipFile("nested.zip", { "UI/Arrows/left.svg": "<svg/>", "readme.txt": "hi" })]);
+    const list = await screen.findByRole("list", { name: "Files to Add" });
+    expect(within(list).getByText("root.zip")).toBeInTheDocument();
+    expect(within(list).getByText("nested.zip")).toBeInTheDocument();
+    expect(screen.queryByRole("list", { name: "Files Not Accepted" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add 2 files" })).toBeEnabled();
+  });
+
+  it("refuses a ZIP with no SVG icons, or one that is not a ZIP, and keeps the other files", async () => {
+    setup();
+    await userEvent.upload(input(), [zipFile("pngs.zip", { "UI/a.png": "x", "b.jpg": "y", "__MACOSX/._c.svg": "junk", ".hidden/d.svg": "<svg/>" }), new File(["not a zip"], "broken.zip"), svgFile("ok.svg")]);
+    const refused = await screen.findByRole("list", { name: "Files Not Accepted" });
+    expect(refused).toHaveTextContent("pngs.zip: The ZIP has no SVG icons. Only SVG icons can be added from a ZIP.");
+    expect(refused).toHaveTextContent("broken.zip: That file is not a valid ZIP archive.");
+    const list = screen.getByRole("list", { name: "Files to Add" });
+    expect(within(list).getAllByRole("listitem")).toHaveLength(1);
+    expect(within(list).getByText("ok.svg")).toBeInTheDocument();
+  });
+
+  it("cannot add anything when the only ZIP has no SVG icons", async () => {
+    setup();
+    fireEvent.drop(screen.getByText("Choose files or drag & drop them here").parentElement as HTMLElement, { dataTransfer: { files: [zipFile("empty.zip", { "icon.png": "x" })] } });
+    expect(await screen.findByRole("list", { name: "Files Not Accepted" })).toHaveTextContent("empty.zip: The ZIP has no SVG icons.");
+    expect(screen.queryByRole("list", { name: "Files to Add" })).not.toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add files" })).toBeDisabled();
   });
 
   it("accepts files dropped on the drop area", () => {
@@ -257,8 +289,8 @@ describe("UploadDialog: files", () => {
   it("sends a large selection in server-sized batches and combines the results", async () => {
     uploadIcons.mockImplementation(async (_id, files) => summary({ created: files.map((f) => makeIcon({ name: f.name })), foldersCreated: 1 }));
     const props = setup();
-    await userEvent.upload(input(), Array.from({ length: 250 }, (_, i) => new File(["zip"], `pack${i}.zip`)));
-    await userEvent.click(screen.getByRole("button", { name: "Add 250 files" }));
+    await userEvent.upload(input(), Array.from({ length: 250 }, (_, i) => zipFile(`pack${i}.zip`)));
+    await userEvent.click(await screen.findByRole("button", { name: "Add 250 files" }));
     expect(await screen.findByText("Added 250 icons.")).toBeInTheDocument();
     expect(uploadIcons.mock.calls.map((call) => (call[1] as File[]).length)).toEqual([200, 50]);
     expect(screen.getByRole("status")).toHaveTextContent("2 folders created");
@@ -268,8 +300,8 @@ describe("UploadDialog: files", () => {
   it("keeps what was uploaded and says what was not when a later batch fails", async () => {
     uploadIcons.mockResolvedValueOnce(summary({ created: Array.from({ length: 200 }, () => makeIcon()) })).mockRejectedValue(new ApiError("The server answered 500.", 500));
     const props = setup();
-    await userEvent.upload(input(), Array.from({ length: 250 }, (_, i) => new File(["zip"], `pack${i}.zip`)));
-    await userEvent.click(screen.getByRole("button", { name: "Add 250 files" }));
+    await userEvent.upload(input(), Array.from({ length: 250 }, (_, i) => zipFile(`pack${i}.zip`)));
+    await userEvent.click(await screen.findByRole("button", { name: "Add 250 files" }));
     expect(await screen.findByText("Added 200 icons.")).toBeInTheDocument();
     expect(screen.getByText("The rest of the files")).toBeInTheDocument();
     expect(screen.getByText("The server answered 500.")).toBeInTheDocument();

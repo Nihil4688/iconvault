@@ -1,7 +1,8 @@
 // Tests for upload rules, batching, merging results, and reading tags.
 import { describe, expect, it } from "vitest";
 import type { UploadSummary } from "../api/types";
-import { BATCH_SIZE, MAX_FILE_BYTES, checkFiles, isIconFont, isMetrop, isSvgOrZip, mergeSummaries, parseTags, toBatches } from "./upload";
+import { strToU8, zipSync } from "fflate";
+import { BATCH_SIZE, MAX_FILE_BYTES, checkFiles, checkZips, isIconFont, isMetrop, isSvgOrZip, mergeSummaries, parseTags, toBatches } from "./upload";
 
 const file = (name: string, size = 10, lastModified = 1) => {
   const f = new File(["x".repeat(Math.min(size, 50))], name, { lastModified });
@@ -52,6 +53,35 @@ describe("checkFiles", () => {
     expect(isIconFont({ name: "icons.ttf" })).toBe(true);
     expect(isIconFont({ name: "icons.woff2" })).toBe(true);
     expect(isIconFont({ name: "icons.ttf.txt" })).toBe(false);
+  });
+});
+
+describe("checkZips", () => {
+  const zip = (name: string, entries: Record<string, string>) =>
+    new File([zipSync(Object.fromEntries(Object.entries(entries).map(([path, text]) => [path, strToU8(text)])))], name);
+
+  it("accepts ZIPs with SVGs at the root or in any subfolder, whatever the letter case", async () => {
+    const files = [zip("root.zip", { "a.svg": "<svg/>" }), zip("deep.ZIP", { "UI/Arrows/Small/B.SVG": "<svg/>", "x.png": "x" })];
+    expect(await checkZips(files)).toEqual({ accepted: files, problems: [] });
+  });
+
+  it("refuses ZIPs with no SVG icons, counting hidden files and macOS metadata as nothing", async () => {
+    const { accepted, problems } = await checkZips([
+      zip("images.zip", { "a.png": "x", "UI/b.jpg": "y", "readme.txt": "hi" }),
+      zip("junk.zip", { "__MACOSX/._a.svg": "junk", ".hidden/b.svg": "<svg/>", "UI/.c.svg": "<svg/>" }),
+    ]);
+    expect(accepted).toEqual([]);
+    expect(problems).toEqual([
+      { file: "images.zip", message: "The ZIP has no SVG icons. Only SVG icons can be added from a ZIP." },
+      { file: "junk.zip", message: "The ZIP has no SVG icons. Only SVG icons can be added from a ZIP." },
+    ]);
+  });
+
+  it("refuses a file that is not really a ZIP and leaves other files alone", async () => {
+    const svg = file("a.svg");
+    const { accepted, problems } = await checkZips([new File(["not a zip"], "fake.zip"), svg]);
+    expect(accepted).toEqual([svg]);
+    expect(problems).toEqual([{ file: "fake.zip", message: "That file is not a valid ZIP archive." }]);
   });
 });
 

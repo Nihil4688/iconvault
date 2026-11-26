@@ -9,6 +9,8 @@ export const ZIP_LIMITS = {
   maxEntryBytes: MAX_SVG_BYTES,
 };
 
+const OTHER_ICON_FILE = /\.(png|jpe?g|gif|webp|bmp|ico|icns|tiff?|avif|heic|eps|ai|psd|pdf|svgz|ttf|otf|woff2?|eot)$/i;
+
 export type ZipSvgEntry = {
   // Folder names leading to the file, e.g. ["UI", "Arrows"] for "UI/Arrows/left.svg".
   folders: string[];
@@ -24,6 +26,7 @@ export type ZipRead = {
 export function readSvgsFromZip(buffer: Buffer): ZipRead {
   const skipped: ZipRead["skipped"] = [];
   let accepted = 0;
+  let svgFound = 0;
   let totalBytes = 0;
 
   let files: Record<string, Uint8Array>;
@@ -35,7 +38,12 @@ export function readSvgsFromZip(buffer: Buffer): ZipRead {
         const parts = path.split("/");
         // macOS metadata and hidden files such as ._icon.svg
         if (parts[0] === "__MACOSX" || parts.some((part) => part.startsWith("."))) return false;
-        if (!/\.svg$/i.test(path)) return false;
+        if (!/\.svg$/i.test(path)) {
+          // Other icon and image files are reported; anything else (readme, licence...) is ignored.
+          if (OTHER_ICON_FILE.test(path)) skipped.push({ path, reason: "Only SVG icons can be added from a ZIP." });
+          return false;
+        }
+        svgFound += 1;
 
         if (accepted >= ZIP_LIMITS.maxSvgFiles) {
           skipped.push({ path, reason: `The ZIP has more than ${ZIP_LIMITS.maxSvgFiles} SVG files.` });
@@ -56,6 +64,9 @@ export function readSvgsFromZip(buffer: Buffer): ZipRead {
     });
   } catch {
     throw new BadRequestError("That file is not a valid ZIP archive.");
+  }
+  if (svgFound === 0) {
+    throw new BadRequestError("The ZIP has no SVG icons. Only SVG icons can be added from a ZIP.");
   }
 
   const entries: ZipSvgEntry[] = [];
