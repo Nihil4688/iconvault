@@ -22,6 +22,7 @@ export function makeProject(over: Partial<ProjectSummary> = {}): ProjectSummary 
     createdVia: "manual",
     isArchived: false,
     uncategorizedName: "",
+    group: "",
     createdAt: "2026-10-01T10:00:00.000Z",
     updatedAt: "2026-10-18T10:00:00.000Z",
     owner: { id: "u1", displayName: "Ada Lovelace" },

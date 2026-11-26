@@ -8,6 +8,8 @@ const projectName = z.string().trim().min(1, "is required").max(100);
 const description = z.string().trim().max(500);
 const prefix = z.string().trim().toLowerCase().regex(/^[a-z0-9_-]{1,20}$/, "use 1-20 letters, digits, - or _");
 const color = z.string().regex(/^#[0-9a-fA-F]{6}$/, "must look like #3b82f6");
+// The dashboard group a project is put in by hand; empty means none.
+const group = z.string().trim().max(60);
 const tag = z.string().trim().toLowerCase().min(1).max(40);
 const tags = z.array(tag).max(50);
 export const codepointSchema = z
@@ -30,6 +32,7 @@ export const createProjectSchema = z
     color: color.default("#3b82f6"),
     purpose: z.enum(PURPOSES).default("sprite"),
     visibility: z.enum(VISIBILITIES).default("private"),
+    group: group.default(""),
   })
   .strict();
 
@@ -44,6 +47,7 @@ export const updateProjectSchema = z
     isArchived: z.boolean(),
     // The sidebar's name for icons in no folder; empty goes back to "Uncategorized".
     uncategorizedName: z.string().trim().max(40),
+    group,
   })
   .partial()
   .strict()
