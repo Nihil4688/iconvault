@@ -1,5 +1,5 @@
-// The signed-in home screen: every project the user can see, with filters (kept in the address, so Back works and links can be shared), create, edit, duplicate, archive and delete, plus a search that also finds icons across projects and can copy them into one of the user's projects. Related projects ("bolddesk-agent", "bolddesk-customer") are shown as one group card that opens to its projects.
-import { ArrowUpDown, ChevronDown, ChevronRight, ChevronUp, Globe, Group, Layers, Loader2, Lock, Plus, Search, Shapes, Type } from "lucide-react";
+// The signed-in home screen: every project the user can see, with filters (kept in the address, so Back works and links can be shared), create, edit, duplicate, archive and delete, plus a search that also finds icons across projects and can copy them into one of the user's projects.
+import { ArrowUpDown, ChevronDown, ChevronUp, Globe, Layers, Loader2, Lock, Plus, Search, Shapes, Type } from "lucide-react";
 import { useContext, useEffect, useState, type ChangeEvent } from "react";
 import { createPortal } from "react-dom";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
@@ -9,7 +9,6 @@ import type { IconSearchResult, ListProjectsParams, ProjectSummary } from "../ap
 import CopyToProjectDialog from "../components/projects/CopyToProjectDialog";
 import { PurposeBadge } from "../components/projects/ProjectBadges";
 import ProjectCard from "../components/projects/ProjectCard";
-import ProjectGroupCard from "../components/projects/ProjectGroupCard";
 import ProjectFormDialog from "../components/projects/ProjectFormDialog";
 import ShareProjectDialog from "../components/projects/ShareProjectDialog";
 import { Button } from "../components/ui/Button";
@@ -25,7 +24,6 @@ import { useDebounced } from "../hooks/useDebounced";
 import { useResource } from "../hooks/useResource";
 import { cn } from "../lib/cn";
 import { pluralize } from "../lib/format";
-import { groupDisplayName, groupProjects, projectsInGroup, type ProjectTile } from "../lib/projectGroups";
 
 const SORT_LABELS = { updated: "Last Updated", created: "Date Created", name: "Name (A-Z)", icons: "Icon Count" } as const;
 
@@ -53,9 +51,6 @@ export default function DashboardPage() {
   const status = oneOf(params.get("status"), ["active", "archived", "all"], "active");
   const purpose = oneOf(params.get("type"), ["all", "sprite", "font"], "all");
   const sort = oneOf(params.get("sort"), ["updated", "created", "name", "icons"], "updated");
-  // Related projects are grouped unless turned off; `group` is the group that is open, if any.
-  const grouping = oneOf(params.get("grouping"), ["on", "off"], "on");
-  const openGroup = grouping === "on" ? (params.get("group")?.toLowerCase() ?? "") : "";
 
   const [searchText, setSearchText] = useState("");
   const search = useDebounced(searchText.trim(), 300);
@@ -130,42 +125,23 @@ export default function DashboardPage() {
   }
 
   // The server also matches descriptions, prefixes and owners; the dashboard shows only projects whose name contains the search text.
-  const allLoaded = projects.data?.projects ?? [];
-  const matching = allLoaded.filter((project) => !projectSearch || project.name.toLowerCase().includes(projectSearch.toLowerCase()));
-  // Inside an open group only its projects count, so the lists and the pill counts describe the group.
-  const loaded = openGroup ? projectsInGroup(matching, openGroup) : matching;
-  const openGroupName = openGroup ? groupDisplayName(projectsInGroup(allLoaded, openGroup), openGroup) : "";
+  const loaded = (projects.data?.projects ?? []).filter((project) => !projectSearch || project.name.toLowerCase().includes(projectSearch.toLowerCase()));
   // The server's total, without the matches hidden above.
   const total = (projects.data?.total ?? 0) - ((projects.data?.projects.length ?? 0) - loaded.length);
   const byType = loaded.filter((project) => purpose === "all" || project.purpose === purpose);
   const byVisibility = loaded.filter((project) => scope === "all" || project.visibility === scope);
-  // A search shows its matches one by one, so every found project stays in sight; so does an open group.
-  const groupTiles = grouping === "on" && !openGroup && !projectSearch;
-  const tilesFor = (items: ProjectSummary[]): ProjectTile[] => (groupTiles ? groupProjects(items) : items.map((project) => ({ kind: "project", project })));
-  const tileSize = (tile: ProjectTile) => (tile.kind === "group" ? tile.group.projects.length : 1);
-  const groupLink = (key: string | null) => {
-    const next = new URLSearchParams(params);
-    if (key) next.set("group", key);
-    else next.delete("group");
-    const search = next.toString();
-    return { search: search ? `?${search}` : "" };
-  };
-  const renderCards = (tiles: ProjectTile[]) => (
+  const renderCards = (items: ProjectSummary[]) => (
     <ul className={cn("grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5", projects.loading && "opacity-60")}>
-      {tiles.map((tile) =>
-        tile.kind === "group" ? (
-          <ProjectGroupCard key={`group:${tile.group.key}`} group={tile.group} to={groupLink(tile.group.key)} />
-        ) : (
-          <ProjectCard key={tile.project.id} project={tile.project} currentUserId={currentUser?.id ?? ""} highlight={projectSearch} onEdit={(p) => setForm({ mode: "edit", project: p })} onDuplicate={handleDuplicate} onShare={setSharing} onToggleArchive={handleToggleArchive} onDelete={setDeleting} />
-        ),
-      )}
+      {items.map((project) => (
+        <ProjectCard key={project.id} project={project} currentUserId={currentUser?.id ?? ""} highlight={projectSearch} onEdit={(p) => setForm({ mode: "edit", project: p })} onDuplicate={handleDuplicate} onShare={setSharing} onToggleArchive={handleToggleArchive} onDelete={setDeleting} />
+      ))}
     </ul>
   );
   const list = byType.filter((project) => scope === "all" || project.visibility === scope);
   const privateList = list.filter((project) => project.visibility === "private");
   const publicList = list.filter((project) => project.visibility === "public");
   const actionsSlot = useContext(HeaderActionsContext);
-  const filtersActive = scope !== "all" || status !== "active" || purpose !== "all" || projectSearch !== "" || openGroup !== "";
+  const filtersActive = scope !== "all" || status !== "active" || purpose !== "all" || projectSearch !== "";
   const headerButtons = (
     <div className="flex flex-wrap items-center gap-2">
       <input type="file" accept=".zip,application/zip" aria-label="Project Export File" className="hidden" onChange={handleImportChosen} />
@@ -251,30 +227,6 @@ export default function DashboardPage() {
         >
           <ArrowUpDown aria-hidden="true" className="h-4 w-4" />
         </DropdownSelect>
-        <button
-          type="button"
-          aria-pressed={grouping === "on"}
-          title={grouping === "on" ? "Grouping related projects" : "Group related projects"}
-          onClick={() =>
-            setParams(
-              (previous) => {
-                const next = new URLSearchParams(previous);
-                next.delete("group");
-                if (grouping === "on") next.set("grouping", "off");
-                else next.delete("grouping");
-                return next;
-              },
-              { replace: true },
-            )
-          }
-          className={cn(
-            "inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-input bg-background text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-ring",
-            grouping === "on" && "border-primary/40 bg-primary/10 text-primary hover:bg-primary/15 hover:text-primary",
-          )}
-        >
-          <Group aria-hidden="true" className="h-4 w-4" />
-          <span className="sr-only">Group Related Projects</span>
-        </button>
       </div>
 
       <div role="region" aria-label="Project Results" className={cn("min-h-0 flex-1 p-6", loadingProjectShimmer ? "overflow-hidden" : "overflow-y-auto", (nothingFound || searching) && "flex flex-col")}>
@@ -352,18 +304,6 @@ export default function DashboardPage() {
               Project List
             </h2>
           )}
-          {openGroup && (
-            <nav aria-label="Project Group" className="mb-4 flex min-w-0 items-center gap-1.5 text-sm">
-              <Link to={groupLink(null)} className="shrink-0 rounded-sm font-medium text-muted-foreground underline-offset-2 hover:text-foreground hover:underline focus-visible:outline-2 focus-visible:outline-ring">
-                All Projects
-              </Link>
-              <ChevronRight aria-hidden="true" className="h-4 w-4 shrink-0 text-muted-foreground" />
-              <span aria-current="page" title={openGroupName} className="min-w-0 truncate font-semibold">
-                {openGroupName}
-              </span>
-              {projects.data && <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-xs font-medium">{list.length}</span>}
-            </nav>
-          )}
 
           {projects.error && !projects.data ? (
             <div role="alert" className="rounded-xl border border-destructive/40 bg-card p-6 text-center">
@@ -423,10 +363,7 @@ export default function DashboardPage() {
                     { key: "public", title: "Public", icon: <Globe aria-hidden="true" className="h-4 w-4 font-bold" />, items: publicList },
                   ] as const)
                     .filter((group) => group.items.length > 0)
-                    .map((group) => {
-                      const tiles = tilesFor(group.items);
-                      const hiddenCount = tiles.slice(initialProjectsPerSection).reduce((sum, tile) => sum + tileSize(tile), 0);
-                      return (
+                    .map((group) => (
                       <section key={group.key} aria-labelledby={`group-${group.key}`}>
                         <h3 id={`group-${group.key}`} className="mb-3 flex items-center gap-2 text-sm font-bold text-foreground uppercase tracking-wide">
                           {group.icon}
@@ -435,10 +372,10 @@ export default function DashboardPage() {
                         </h3>
                         {renderCards(
                           expandedSections[group.key]
-                            ? tiles
-                            : tiles.slice(0, initialProjectsPerSection),
+                            ? group.items
+                            : group.items.slice(0, initialProjectsPerSection),
                         )}
-                        {tiles.length > initialProjectsPerSection && (
+                        {group.items.length > initialProjectsPerSection && (
                           <div className="flex justify-center">
                             <Button
                               variant="outline-primary"
@@ -452,8 +389,8 @@ export default function DashboardPage() {
                                 </>
                               ) : (
                                 <>
-                                  Show {hiddenCount} More{" "}
-                                  {hiddenCount === 1 ? "project" : "projects"}
+                                  Show {group.items.length - initialProjectsPerSection} More{" "}
+                                  {group.items.length - initialProjectsPerSection === 1 ? "project" : "projects"}
                                   <ChevronDown aria-hidden="true" className="h-4 w-4" />
                                 </>
                               )}
@@ -461,11 +398,10 @@ export default function DashboardPage() {
                           </div>
                         )}
                       </section>
-                      );
-                    })}
+                    ))}
                 </div>
               ) : (
-                renderCards(tilesFor(list))
+                renderCards(list)
               )}
               {total > list.length && <p className="mt-4 text-center text-sm text-muted-foreground">Showing the first {list.length} of {total} projects. Use the search to narrow them down.</p>}
             </>
