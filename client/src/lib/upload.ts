@@ -1,7 +1,7 @@
 // Rules for adding icons from files: accepted SVG, ZIP, and font formats; request batching; result merging; and parsing a tag list.
-import { unzipSync } from "fflate";
 import type { UploadSummary } from "../api/types";
 import { readFileBytes } from "./readFile";
+import { listZipEntryNames } from "./zipEntries";
 
 // The server accepts 200 files and 25 MB per file in one request; batches stay well inside that.
 export const MAX_FILE_BYTES = 25 * 1024 * 1024;
@@ -50,18 +50,13 @@ export async function checkZips(files: File[]): Promise<{ accepted: File[]; prob
   const results = await Promise.all(
     files.map(async (file): Promise<FileProblem | null> => {
       if (!/\.zip$/i.test(file.name)) return null;
-      let svgCount = 0;
+      let names: string[];
       try {
-        unzipSync(await readFileBytes(file), {
-          filter: (entry) => {
-            if (isZipSvgEntry(entry.name)) svgCount += 1;
-            return false;
-          },
-        });
+        names = listZipEntryNames(await readFileBytes(file));
       } catch {
         return { file: file.name, message: "That file is not a valid ZIP archive." };
       }
-      return svgCount === 0 ? { file: file.name, message: "The ZIP has no SVG icons. Only SVG icons can be added from a ZIP." } : null;
+      return names.some(isZipSvgEntry) ? null : { file: file.name, message: "The ZIP has no SVG icons. Only SVG icons can be added from a ZIP." };
     }),
   );
   return {

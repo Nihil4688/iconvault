@@ -1,7 +1,7 @@
 // Tests for upload rules, batching, merging results, and reading tags.
 import { describe, expect, it } from "vitest";
 import type { UploadSummary } from "../api/types";
-import { strToU8, zipSync } from "fflate";
+import { createZip } from "../utils/zipBundle";
 import { BATCH_SIZE, MAX_FILE_BYTES, checkFiles, checkZips, isIconFont, isMetrop, isSvgOrZip, mergeSummaries, parseTags, toBatches } from "./upload";
 
 const file = (name: string, size = 10, lastModified = 1) => {
@@ -58,7 +58,7 @@ describe("checkFiles", () => {
 
 describe("checkZips", () => {
   const zip = (name: string, entries: Record<string, string>) =>
-    new File([zipSync(Object.fromEntries(Object.entries(entries).map(([path, text]) => [path, strToU8(text)])))], name);
+    new File([createZip(Object.entries(entries).map(([path, data]) => ({ name: path, data })))], name);
 
   it("accepts ZIPs with SVGs at the root or in any subfolder, whatever the letter case", async () => {
     const files = [zip("root.zip", { "a.svg": "<svg/>" }), zip("deep.ZIP", { "UI/Arrows/Small/B.SVG": "<svg/>", "x.png": "x" })];
