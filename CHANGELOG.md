@@ -938,3 +938,13 @@ The visible name is now **IconVault**: the header, browser tab title, landing pa
 - Saving creates a new history version even when its contents match an earlier selected build. Downloading without saving leaves build history unchanged.
 - Whole-project and folder downloads retain their existing automatic history behavior; viewer downloads and public selected-build behavior are unchanged.
 - The font and sprite history panels now explain that only saved versions appear there.
+
+## Group related projects on the dashboard
+
+- Projects whose names start with the same word before a `-`, `_`, `.`, `/` or `:` form a group. For example, `bolddesk-agent`, `bolddesk-customer` and `bolddesk-email-template` show as one card named `bolddesk`. Case does not matter. A project named just `BoldDesk` joins the group and gives it its spelling. A group needs at least two projects. Names that only contain spaces, such as "My Icons", are never grouped, so existing dashboards change only where names follow this pattern.
+- The group card is the same size as a project card. It is drawn as a small stack and shows the members' short names, up to four sample icons, the number of projects and the total number of icons. It takes the place of its first member, so the chosen sort order is kept.
+- Opening a group shows its projects as normal cards, with every action they had before, under an "All Projects > bolddesk" breadcrumb. The group is kept in the address (`?group=bolddesk`), so Back and shared links work, and other filters are kept. Inside a group, the Show and Type counts describe the group.
+- Private and Public stay separate sections. A family is grouped within each section. The Private and Public counts and the "Show N more projects" button still count projects, including the projects inside groups that are hidden.
+- A toggle next to the sort icon turns grouping off (`?grouping=off`) and back on. While you search, every found project shows on its own, so no match is hidden inside a group.
+- No server or data changes. New files: `client/src/lib/projectGroups.ts` and `client/src/components/projects/ProjectGroupCard.tsx`.
+- Tests: `client/src/lib/projectGroups.test.ts` (6) and `client/src/pages/DashboardGroups.test.tsx` (7, including an axe check). Typecheck, lint and build pass. The 32 failing tests in `DashboardPage.test.tsx` and 15 in the a11y, App and UI files failed in the same way before this change. They expect older labels such as "Project export file" and "Show less projects".
