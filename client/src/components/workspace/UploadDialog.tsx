@@ -341,7 +341,7 @@ function UploadForm({ projectId, prefix, folders, defaultFolderId, onClose, onUp
           >
             <FileUp aria-hidden="true" className="h-8 w-8 text-muted-foreground" />
             <p className="text-sm font-medium pt-4 pb-1">Choose files or drag & drop them here</p>
-            <p className="text-xs text-muted-foreground pb-4">Supports SVGs, sprites, icon fonts, METROP and ZIP archives, up to 25MB per file</p>
+            <p className="text-xs text-muted-foreground pb-4">Supports SVG icons, SVG sprites, font icons, METROP files, and SVG ZIP archives, up to 25 MB per file</p>
             <input
               ref={inputRef}
               type="file"
