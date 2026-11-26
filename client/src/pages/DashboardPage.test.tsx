@@ -625,13 +625,21 @@ describe("project actions", () => {
     listProjects.mockResolvedValue(reply([mine()]));
     renderPage();
     const menu = await menuFor("Mine");
-    expect(within(menu).getAllByRole("menuitem").map((i) => i.textContent)).toEqual(["Edit details", "Duplicate", "Share Project", "Mark as draft", "Delete"]);
+    expect(within(menu).getAllByRole("menuitem").map((i) => i.textContent)).toEqual(["Edit details", "Duplicate", "Mark as draft", "Delete"]);
+  });
+
+  it("offers Share Project only on public projects", async () => {
+    listProjects.mockResolvedValue(reply([mine(), makeProject({ id: "pub2", name: "Shared", visibility: "public" })]));
+    renderPage();
+    expect(within(await menuFor("Mine")).queryByRole("menuitem", { name: "Share Project" })).not.toBeInTheDocument();
+    await userEvent.keyboard("{Escape}");
+    expect(within(await menuFor("Shared")).getByRole("menuitem", { name: "Share Project" })).toBeInTheDocument();
   });
 
   it("shares a project: shows its link and copies it", async () => {
     const writeText = vi.fn().mockResolvedValue(undefined);
     Object.defineProperty(navigator, "clipboard", { value: { writeText }, configurable: true });
-    listProjects.mockResolvedValue(reply([mine()]));
+    listProjects.mockResolvedValue(reply([{ ...mine(), visibility: "public" }]));
     renderPage();
     await userEvent.click(within(await menuFor("Mine")).getByRole("menuitem", { name: "Share Project" }));
 
@@ -639,7 +647,7 @@ describe("project actions", () => {
     const link = `${window.location.origin}/projects/mine1`;
     expect(within(dialog).getByLabelText("Project Link")).toHaveValue(link);
     expect(within(dialog).getByLabelText("Project Link")).toHaveAttribute("readonly");
-    expect(dialog).toHaveTextContent("This project is private, so only its owner can open this link.");
+    expect(dialog).toHaveTextContent("Anyone signed in to IconVault can open this link.");
 
     await userEvent.click(within(dialog).getByRole("button", { name: "Copy Link" }));
     expect(writeText).toHaveBeenCalledWith(link);
@@ -650,13 +658,20 @@ describe("project actions", () => {
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
   });
 
-  it("says anyone signed in can open the link of a public project", async () => {
+  it("says anyone signed in can open the link of someone else's public project", async () => {
     listProjects.mockResolvedValue(reply([makeProject({ id: "pub1", name: "Theirs", owner: { id: "u2", displayName: "Grace" }, visibility: "public", access: READ_ONLY })]));
     renderPage();
     await userEvent.click(within(await menuFor("Theirs")).getByRole("menuitem", { name: "Share Project" }));
     const dialog = screen.getByRole("dialog", { name: "Share “Theirs”" });
     expect(within(dialog).getByLabelText("Project Link")).toHaveValue(`${window.location.origin}/projects/pub1`);
     expect(dialog).toHaveTextContent("Anyone signed in to IconVault can open this link.");
+  });
+
+  it("warns that a public draft only opens for its owner", async () => {
+    listProjects.mockResolvedValue(reply([{ ...mine(), visibility: "public", isArchived: true }]));
+    renderPage("/?status=archived");
+    await userEvent.click(within(await menuFor("Mine")).getByRole("menuitem", { name: "Share Project" }));
+    expect(screen.getByRole("dialog", { name: "Share “Mine”" })).toHaveTextContent("This project is a draft, so only its owner can open this link.");
   });
 
   it("offers only Duplicate on someone else's public project", async () => {

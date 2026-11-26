@@ -29,8 +29,11 @@ export default function ProjectCard({ project, currentUserId, highlight, onEdit,
   const showCreator = project.visibility === "public" || currentUser?.role === "admin";
   const actions: MenuAction[] = [
     { label: "Duplicate", icon: <Copy aria-hidden="true" className="h-4 w-4" />, onSelect: () => onDuplicate(project) },
-    { label: "Share Project", icon: <Share2 aria-hidden="true" className="h-4 w-4" />, onSelect: () => onShare(project) },
   ];
+  // Only public projects can be opened by others, so only they can be shared.
+  if (project.visibility === "public") {
+    actions.push({ label: "Share Project", icon: <Share2 aria-hidden="true" className="h-4 w-4" />, onSelect: () => onShare(project) });
+  }
   if (project.access.canManage) {
     actions.unshift({ label: "Edit Details", icon: <Pencil aria-hidden="true" className="h-4 w-4" />, onSelect: () => onEdit(project) });
     actions.push(
