@@ -4,6 +4,7 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { ApiError } from "../../api/http";
 import * as fontsApi from "../../api/fonts";
+import * as foldersApi from "../../api/folders";
 import * as iconsApi from "../../api/icons";
 import * as projectsApi from "../../api/projects";
 import type { FontImportResult, UploadSummary } from "../../api/types";
@@ -14,6 +15,7 @@ import CopyFromProjectDialog from "./CopyFromProjectDialog";
 import UploadDialog from "./UploadDialog";
 
 vi.mock("../../api/icons");
+vi.mock("../../api/folders");
 vi.mock("../../api/fonts");
 vi.mock("../../api/projects");
 
@@ -31,6 +33,7 @@ beforeEach(() => {
   // The "From another project" tab mounts as soon as the dialog opens so it can load in the background, so every test needs these to resolve. Individual tests override them as needed.
   vi.mocked(projectsApi.listProjects).mockResolvedValue({ projects: [], total: 0, page: 1, limit: 100 });
   vi.mocked(iconsApi.listIcons).mockResolvedValue({ icons: [], total: 0, page: 1, limit: 200 });
+  vi.mocked(foldersApi.listFolders).mockResolvedValue({ folders: [], uncategorizedCount: 0 });
 });
 
 describe("UploadDialog: files", () => {
@@ -290,17 +293,21 @@ describe("UploadDialog: files", () => {
 });
 
 describe("UploadDialog: paste", () => {
+  const pasteNameField = () => screen.getByRole("textbox", { name: /^Name/ });
+  const pasteCodeField = () => screen.getByRole("textbox", { name: /^SVG Code/ });
+  const addPasteButton = () => screen.getByRole("button", { name: /^Add (?:\d+ )?icons?$/i });
+
   async function openPaste(over: Partial<React.ComponentProps<typeof UploadDialog>> = {}) {
     const props = { open: true, projectId: "p1", prefix: "fth", folders, defaultFolderId: "ar", onClose: vi.fn(), onUploaded: vi.fn(), onPasted: vi.fn(), ...over };
     render(<UploadDialog {...props} />);
-    await userEvent.click(screen.getByRole("tab", { name: "Paste SVG code" }));
+    await userEvent.click(screen.getByRole("tab", { name: "Paste SVG Code" }));
     return props;
   }
 
   it("needs some code first", async () => {
     await openPaste();
-    await userEvent.click(screen.getByRole("button", { name: "Add icon" }));
-    expect(screen.getByRole("alert")).toHaveTextContent("Paste some SVG code first.");
+    await userEvent.click(addPasteButton());
+    expect(screen.getByText("Paste the SVG code for the icon.")).toBeInTheDocument();
     expect(pasteIcon).not.toHaveBeenCalled();
   });
 
@@ -310,13 +317,13 @@ describe("UploadDialog: paste", () => {
     await userEvent.click(screen.getByRole("tab", { name: "Paste SVG Code" }));
 
     // Submitting empty shows a message under each required field and never calls the API.
-    await userEvent.click(screen.getByRole("button", { name: "Add Icon" }));
+    await userEvent.click(addPasteButton());
     expect(screen.getByText("Enter a name for the icon.")).toBeInTheDocument();
     expect(screen.getByText("Paste the SVG code for the icon.")).toBeInTheDocument();
     expect(pasteIcon).not.toHaveBeenCalled();
 
-    const name = screen.getByRole("textbox", { name: /^Name/ });
-    const code = screen.getByRole("textbox", { name: /^SVG Code/ });
+    const name = pasteNameField();
+    const code = pasteCodeField();
     expect(name).toHaveAttribute("aria-invalid", "true");
     expect(code).toHaveAttribute("aria-invalid", "true");
 
@@ -324,15 +331,13 @@ describe("UploadDialog: paste", () => {
     await userEvent.type(name, "Arrow");
     expect(screen.queryByText("Enter a name for the icon.")).toBeNull();
     fireEvent.change(code, { target: { value: "just some text" } });
-    await userEvent.click(screen.getByRole("button", { name: "Add Icon" }));
+    await userEvent.click(addPasteButton());
     expect(screen.getByText(/does not look like SVG code/i)).toBeInTheDocument();
     expect(pasteIcon).not.toHaveBeenCalled();
 
-    // Pasting more than one <svg> is caught with its own message, below the field.
+    // Multiple complete SVG roots are accepted for bulk upload.
     fireEvent.change(code, { target: { value: "<svg></svg><svg></svg>" } });
-    await userEvent.click(screen.getByRole("button", { name: "Add Icon" }));
-    expect(screen.getByText("Paste one icon at a time. This has more than one <svg> element.")).toBeInTheDocument();
-    expect(pasteIcon).not.toHaveBeenCalled();
+    expect(screen.queryByText(/more than one/i)).toBeNull();
 
     // Valid markup clears the error.
     fireEvent.change(code, { target: { value: "<svg viewBox='0 0 1 1'></svg>" } });
@@ -344,29 +349,55 @@ describe("UploadDialog: paste", () => {
   it("adds the icon with the chosen options, tells the owner, and closes", async () => {
     pasteIcon.mockResolvedValue({ outcome: "created", icon: { ...makeIcon({ name: "Arrow" }), svg: "<svg/>" } });
     const props = await openPaste();
-    await userEvent.type(screen.getByLabelText("Name"), "Arrow");
-    fireEvent.change(screen.getByLabelText("SVG code"), { target: { value: "<svg viewBox='0 0 1 1'/>" } });
+    await userEvent.type(pasteNameField(), "Arrow");
+    fireEvent.change(pasteCodeField(), { target: { value: "<svg viewBox='0 0 1 1'/>" } });
     await userEvent.type(screen.getByLabelText("Tags"), "shape");
-    await userEvent.click(screen.getByRole("button", { name: "Add icon" }));
-    expect(pasteIcon).toHaveBeenCalledWith("p1", { rawSvg: "<svg viewBox='0 0 1 1'/>", name: "Arrow", folderId: "ar", optimize: true, tags: ["shape"], strategy: "rename" });
+    await userEvent.click(addPasteButton());
+    expect(pasteIcon).toHaveBeenCalledWith("p1", { rawSvg: "<svg viewBox='0 0 1 1'/>", name: "Arrow", folderId: "ar", optimize: false, tags: ["shape"], strategy: "rename" });
     await waitFor(() => expect(props.onClose).toHaveBeenCalled());
     expect(props.onPasted).toHaveBeenCalledWith(expect.objectContaining({ outcome: "created" }));
+  });
+
+  it("uploads multiple pasted SVGs, using titles for names and the entered name as a fallback", async () => {
+    const uploaded = summary({ created: [makeIcon({ name: "Arrow" }), makeIcon({ name: "Pasted icon 2" })] });
+    uploadIcons.mockResolvedValue(uploaded);
+    const props = await openPaste();
+    await userEvent.type(screen.getByRole("textbox", { name: /^Name/ }), "Pasted icon");
+    fireEvent.change(screen.getByRole("textbox", { name: /^SVG Code/ }), {
+      target: { value: "<svg><title>Arrow</title><path d='M1 1'/></svg>\n<svg><path d='M2 2'/></svg>" },
+    });
+    await userEvent.type(screen.getByLabelText("Tags"), "shape");
+    await userEvent.click(addPasteButton());
+
+    await waitFor(() => expect(uploadIcons).toHaveBeenCalledTimes(1));
+    const [projectId, files, options] = uploadIcons.mock.calls[0]!;
+    expect(projectId).toBe("p1");
+    expect(files.map((file) => file.name)).toEqual(["Arrow.svg", "Pasted icon 2.svg"]);
+    const markup = await Promise.all(files.map(readFileText));
+    expect(markup[0]).toContain("<title>Arrow</title>");
+    expect(markup[0]).toContain('d="M1 1"');
+    expect(markup[1]).toContain('d="M2 2"');
+    expect(options).toEqual({ folderId: "ar", strategy: "rename", optimize: false, tags: ["shape"] });
+    expect(await screen.findByText("Added 2 icons.")).toBeInTheDocument();
+    expect(props.onUploaded).toHaveBeenCalledWith(uploaded);
+    expect(props.onPasted).not.toHaveBeenCalled();
   });
 
   it("falls back to a default name", async () => {
     pasteIcon.mockResolvedValue({ outcome: "created", icon: { ...makeIcon(), svg: "<svg/>" } });
     await openPaste();
-    fireEvent.change(screen.getByLabelText("SVG code"), { target: { value: "<svg/>" } });
-    await userEvent.click(screen.getByRole("button", { name: "Add icon" }));
+    fireEvent.change(pasteCodeField(), { target: { value: "<svg/>" } });
+    await userEvent.click(addPasteButton());
     expect(pasteIcon).toHaveBeenCalledWith("p1", expect.objectContaining({ name: "Pasted icon" }));
   });
 
   it("explains a skipped icon without closing", async () => {
     pasteIcon.mockResolvedValue({ outcome: "skipped", reason: "An icon with that name already exists." });
     const props = await openPaste();
-    fireEvent.change(screen.getByLabelText("SVG code"), { target: { value: "<svg/>" } });
-    await userEvent.selectOptions(screen.getByLabelText("If an icon with that name exists"), "skip");
-    await userEvent.click(screen.getByRole("button", { name: "Add icon" }));
+    fireEvent.change(pasteCodeField(), { target: { value: "<svg/>" } });
+    await userEvent.click(screen.getByRole("button", { name: /If an Icon with That Name Exists/ }));
+    await userEvent.click(screen.getByRole("menuitemradio", { name: "Skip" }));
+    await userEvent.click(addPasteButton());
     expect(await screen.findByRole("status")).toHaveTextContent("An icon with that name already exists.");
     expect(props.onClose).not.toHaveBeenCalled();
   });
@@ -374,9 +405,9 @@ describe("UploadDialog: paste", () => {
   it("shows the server's message when the SVG is refused", async () => {
     pasteIcon.mockRejectedValue(new ApiError("Invalid SVG: XML entities are not permitted.", 400));
     const props = await openPaste();
-    fireEvent.change(screen.getByLabelText("SVG code"), { target: { value: "<svg/>" } });
-    await userEvent.click(screen.getByRole("button", { name: "Add icon" }));
-    expect(await screen.findByRole("alert")).toHaveTextContent("Invalid SVG: XML entities are not permitted.");
+    fireEvent.change(pasteCodeField(), { target: { value: "<svg/>" } });
+    await userEvent.click(addPasteButton());
+    expect(await screen.findByText("Invalid SVG: XML entities are not permitted.")).toBeInTheDocument();
     expect(props.onClose).not.toHaveBeenCalled();
   });
 
@@ -386,10 +417,10 @@ describe("UploadDialog: paste", () => {
     render(<UploadDialog {...props} />);
     await userEvent.click(screen.getByRole("tab", { name: "Paste SVG Code" }));
 
-    await userEvent.type(screen.getByRole("textbox", { name: /^Name/ }), "Arrow");
-    const code = screen.getByRole("textbox", { name: /^SVG Code/ });
+    await userEvent.type(pasteNameField(), "Arrow");
+    const code = pasteCodeField();
     fireEvent.change(code, { target: { value: "<svg></svg>" } });
-    await userEvent.click(screen.getByRole("button", { name: "Add Icon" }));
+    await userEvent.click(addPasteButton());
 
     const message = await screen.findByText("Invalid SVG: the markup could not be parsed.");
     expect(message).toBeInTheDocument();
@@ -411,15 +442,36 @@ describe("CopyFromProjectDialog", () => {
     return props;
   }
 
-  it("offers the other projects, saying whose they are, and loads the first one's icons", async () => {
+  it("offers the other projects and loads the first one's icons", async () => {
     setup();
-    const sourcePicker = await screen.findByRole("button", { name: "Copy From: Feather (yours) (0 icons)" });
+    expect(await screen.findByRole("button", { name: "Folder: All icons" })).toBeInTheDocument();
+    const sourcePicker = await screen.findByRole("button", { name: "Copy From: Feather 0 icons" });
     await userEvent.click(sourcePicker);
     const sourceMenu = screen.getByRole("menu", { name: "Copy From" });
-    expect(within(sourceMenu).getAllByRole("menuitemradio").map((option) => option.textContent?.trim())).toEqual(["Feather (yours) (0 icons)", "Shared (by Grace) (0 icons)"]);
+    expect(within(sourceMenu).getAllByRole("menuitemradio").map((option) => option.textContent?.trim())).toEqual(["Feather0 icons", "Shared0 icons"]);
     expect(await screen.findByRole("checkbox", { name: "Arrow" })).not.toHaveClass("sr-only");
     expect(screen.queryByRole("button", { name: /Grid view|List view/i })).not.toBeInTheDocument();
+    expect(foldersApi.listFolders).toHaveBeenCalledWith("s1");
     expect(iconsApi.listIcons).toHaveBeenCalledWith("s1", { sort: "name", limit: 1000 });
+  });
+
+  it("filters source icons by the selected folder and defaults back to all icons for another project", async () => {
+    vi.mocked(foldersApi.listFolders).mockResolvedValue({
+      folders: [makeFolder({ id: "source-folder", projectId: "s1", name: "Source folder", iconCount: 1 })],
+      uncategorizedCount: 0,
+    });
+    vi.mocked(iconsApi.listIcons).mockResolvedValue({ icons: [makeIcon({ id: "source-icon", name: "Arrow" })], total: 1, page: 1, limit: 1000 });
+    setup();
+
+    await screen.findByRole("checkbox", { name: "Arrow" });
+    await userEvent.click(screen.getByRole("button", { name: "Folder: All icons" }));
+    await userEvent.click(within(screen.getByRole("menu", { name: "Folder" })).getByRole("menuitemradio", { name: "Source folder" }));
+    await waitFor(() => expect(iconsApi.listIcons).toHaveBeenLastCalledWith("s1", { sort: "name", limit: 1000, folderId: "source-folder" }));
+
+    await userEvent.click(screen.getByRole("button", { name: "Copy From: Feather 0 icons" }));
+    await userEvent.click(within(screen.getByRole("menu", { name: "Copy From" })).getByRole("menuitemradio", { name: "Shared 0 icons" }));
+    expect(await screen.findByRole("button", { name: "Folder: All icons" })).toBeInTheDocument();
+    await waitFor(() => expect(iconsApi.listIcons).toHaveBeenLastCalledWith("s2", { sort: "name", limit: 1000 }));
   });
 
   it("shows all 602 icons in the source project and lets Select All pick them", async () => {
@@ -471,6 +523,31 @@ describe("CopyFromProjectDialog", () => {
     await userEvent.click(screen.getByRole("button", { name: "Clear selection" }));
     expect(screen.getByText("0 icons selected")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Copy icons" })).toBeDisabled();
+  });
+
+  it("keeps selections across search filters and adds visible icons without clearing hidden selections", async () => {
+    const sourceIcons = [makeIcon({ id: "a", name: "Arrow" }), makeIcon({ id: "b", name: "Bell" })];
+    setup();
+    vi.mocked(iconsApi.listIcons).mockImplementation(async (_projectId, params) => {
+      const icons = params?.search
+        ? sourceIcons.filter((icon) => icon.name.toLowerCase().includes(params.search!.toLowerCase()))
+        : sourceIcons;
+      return { icons, total: icons.length, page: 1, limit: 1000 };
+    });
+
+    await userEvent.click(await screen.findByRole("checkbox", { name: "Arrow" }));
+    const search = screen.getByRole("searchbox", { name: "Search Icons" });
+    await userEvent.type(search, "Bell");
+    await waitFor(() => expect(iconsApi.listIcons).toHaveBeenLastCalledWith("s1", { sort: "name", limit: 1000, search: "Bell" }));
+
+    await waitFor(() => expect(screen.queryByRole("checkbox", { name: "Arrow" })).not.toBeInTheDocument());
+    expect(screen.getByText("1 selected")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("checkbox", { name: "Select all icons" }));
+    expect(screen.getByText("2 selected")).toBeInTheDocument();
+
+    await userEvent.clear(search);
+    expect(await screen.findByRole("checkbox", { name: "Arrow" })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Bell" })).toBeChecked();
   });
 
   it("forgets ticks when another project is chosen", async () => {

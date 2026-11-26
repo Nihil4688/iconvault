@@ -154,9 +154,10 @@ function isExpired(token: ApiTokenItem): boolean {
 }
 
 const EXPIRY_CHOICES = [
+  { value: "1", label: "1 Day" },
+  { value: "3", label: "3 Days" },
+  { value: "7", label: "7 Days" },
   { value: "30", label: "30 Days" },
-  { value: "90", label: "90 Days" },
-  { value: "365", label: "1 Year" },
   { value: "never", label: "Never" },
 ];
 
@@ -171,7 +172,7 @@ function CreateTokenDialog({ open, onClose, onCreated }: { open: boolean; onClos
 function CreateForm({ onClose, onCreated }: { onClose: () => void; onCreated: (token: CreatedApiToken) => void }) {
   const [name, setName] = useState("");
   const [scope, setScope] = useState<ApiTokenScope>("read");
-  const [expiry, setExpiry] = useState("90");
+  const [expiry, setExpiry] = useState("30");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 

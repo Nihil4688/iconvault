@@ -9,6 +9,7 @@ import {
   useState,
   type ReactNode,
 } from "react";
+import { createPortal } from "react-dom";
 
 export type ToastType = "success" | "error" | "warning";
 
@@ -96,13 +97,15 @@ function ToastViewport({
   onDismiss: (id: string) => void;
 }) {
   if (toasts.length === 0) return null;
-  return (
+  const viewport = (
     <div className="fixed top-5 right-5 z-80 flex flex-col gap-3 pointer-events-none">
       {toasts.map((toast) => (
         <ToastCard key={toast.id} toast={toast} onDismiss={onDismiss} />
       ))}
     </div>
   );
+  const openDialog = document.querySelector("dialog[open]");
+  return openDialog ? createPortal(viewport, openDialog) : viewport;
 }
 
 function ToastCard({

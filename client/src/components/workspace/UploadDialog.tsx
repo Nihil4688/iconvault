@@ -1,12 +1,13 @@
 // Add icons in one dialog: upload SVGs, sprites, ZIPs, METROP projects, and fonts; paste SVG code or copy from another project.
 import { CheckCircle2, FileUp, X } from "lucide-react";
-import { useRef, useState, type DragEvent, type FormEvent } from "react";
+import { useMemo, useRef, useState, type DragEvent, type FormEvent } from "react";
 import { importFont } from "../../api/fonts";
 import { pasteIcon, uploadIcons } from "../../api/icons";
 import type { DuplicateStrategy, FolderWithCount, FontImportPreview, FontImportResult, PasteResult, UploadSummary } from "../../api/types";
 import { cn } from "../../lib/cn";
 import { formatBytes, pluralize } from "../../lib/format";
 import { metropToFiles } from "../../lib/metrop";
+import { splitPastedSvgs } from "../../lib/pastedSvg";
 import { readFileText } from "../../lib/readFile";
 import { spriteToFiles } from "../../lib/spriteBuild";
 import { checkFiles, isIconFont, isMetrop, isSvgOrZip, mergeSummaries, parseTags, toBatches } from "../../lib/upload";
@@ -51,6 +52,22 @@ const duplicateOptions: { value: DuplicateStrategy; label: string }[] = [
   { value: "skip", label: "Skip" },
 ];
 
+function pastedFileName(title: string | null, fallback: string): string {
+  const name = (title || fallback)
+    .replace(/[<>:"/\\|?*]/g, " ")
+    .split("")
+    .map((character) => {
+      const code = character.charCodeAt(0);
+      return code < 32 || code === 127 ? " " : character;
+    })
+    .join("")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, 100)
+    .trim();
+  return `${name || fallback}.svg`;
+}
+
 function UploadForm({ projectId, prefix, folders, defaultFolderId, onClose, onUploaded, onCopied, onPasted, initialTab = "files" }: Omit<UploadDialogProps, "open">) {
   const [tab, setTab] = useState<Tab>(initialTab);
   const [files, setFiles] = useState<File[]>([]);
@@ -70,6 +87,7 @@ function UploadForm({ projectId, prefix, folders, defaultFolderId, onClose, onUp
   const [summary, setSummary] = useState<UploadSummary | null>(null);
   const [dragging, setDragging] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
+  const pastedSvgs = useMemo(() => splitPastedSvgs(pasteCode), [pasteCode]);
   function addFiles(chosen: File[]) {
     const checked = checkFiles([...files, ...chosen]);
     setFiles(checked.accepted);
@@ -181,17 +199,14 @@ function UploadForm({ projectId, prefix, folders, defaultFolderId, onClose, onUp
 
   function validatePaste(): { name?: string; code?: string } {
     const next: { name?: string; code?: string } = {};
-    if (!pasteName.trim()) {
+    if (!pasteName.trim() && !pastedSvgs) {
       next.name = "Enter a name for the icon.";
     }
     const code = pasteCode.trim();
-    const openTags = code.match(/<svg[\s>]/gi)?.length ?? 0;
     if (!code) {
       next.code = "Paste the SVG code for the icon.";
-    } else if (openTags === 0 || !/<\/svg\s*>/i.test(code)) {
+    } else if (!pastedSvgs) {
       next.code = "This does not look like SVG code. Paste the full markup, from <svg> to </svg>.";
-    } else if (openTags > 1) {
-      next.code = "Paste one icon at a time. This has more than one <svg> element.";
     }
     return next;
   }
@@ -208,7 +223,21 @@ function UploadForm({ projectId, prefix, folders, defaultFolderId, onClose, onUp
     setError(null);
     setNotice(null);
     try {
-      const result = await pasteIcon(projectId, { rawSvg: pasteCode, name: pasteName.trim(), folderId: folderId || null, optimize, tags: parseTags(tagText), strategy });
+      if (pastedSvgs && pastedSvgs.length > 1) {
+        const baseName = pasteName.trim() || "Pasted icon";
+        const files = pastedSvgs.map(({ markup, title }, index) => {
+          return new File([markup], pastedFileName(title, `${baseName} ${index + 1}`), { type: "image/svg+xml" });
+        });
+        const invalidFiles = checkFiles(files).problems;
+        if (invalidFiles.length > 0) {
+          setPasteErrors({ code: invalidFiles.map(({ file, message }) => `${file}: ${message}`).join(" ") });
+          return;
+        }
+        await processFiles(files);
+        return;
+      }
+
+      const result = await pasteIcon(projectId, { rawSvg: pasteCode, name: pasteName.trim() || "Pasted icon", folderId: folderId || null, optimize, tags: parseTags(tagText), strategy });
       if (result.outcome === "skipped") {
         setNotice(result.reason);
       } else {
@@ -405,10 +434,15 @@ function UploadForm({ projectId, prefix, folders, defaultFolderId, onClose, onUp
       {tab === "paste" && (
         <form onSubmit={pasteCodeSubmit} noValidate>
           <div className="space-y-3">
-            <TextField label="Name" value={pasteName} placeholder="Pasted icon" maxLength={100} autoComplete="off" error={pasteErrors.name} onChange={(event) => { setPasteName(event.target.value); if (pasteErrors.name) setPasteErrors((prev) => ({ ...prev, name: undefined })); }} required />
-            <TextAreaField label="SVG Code" value={pasteCode} rows={8} spellCheck={false} required error={pasteErrors.code} className="font-mono text-xs" placeholder='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">…</svg>' onChange={(event) => { setPasteCode(event.target.value); if (pasteErrors.code) setPasteErrors((prev) => ({ ...prev, code: undefined })); }} />
+            <TextField label="Name" hint="For multiple SVGs, each <title> is used as the name; otherwise this name is numbered." value={pasteName} placeholder="Pasted icon" maxLength={100} autoComplete="off" error={pasteErrors.name} onChange={(event) => { setPasteName(event.target.value); if (pasteErrors.name) setPasteErrors((prev) => ({ ...prev, name: undefined })); }} required={!pastedSvgs} />
+            <TextAreaField label="SVG Code" hint="Paste one or more complete SVG elements." value={pasteCode} rows={8} spellCheck={false} required error={pasteErrors.code} className="font-mono text-xs" placeholder='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">…</svg>' onChange={(event) => { setPasteCode(event.target.value); if (pasteErrors.code) setPasteErrors((prev) => ({ ...prev, code: undefined })); }} />
           </div>
           {options}
+          {progress && (
+            <p role="status" className="mt-3 text-sm text-muted-foreground">
+              Uploading batch {Math.min(progress.done + 1, progress.total)} of {progress.total}…
+            </p>
+          )}
           {notice && (
             <p role="status" className="mt-3 text-sm font-medium text-amber-700 dark:text-amber-400">
               {notice}
@@ -420,7 +454,7 @@ function UploadForm({ projectId, prefix, folders, defaultFolderId, onClose, onUp
               Cancel
             </Button>
             <Button type="submit" variant="primary" loading={busy}>
-              Add Icon
+              {pastedSvgs && pastedSvgs.length > 1 ? `Add ${pluralize(pastedSvgs.length, "icon")}` : "Add Icon"}
             </Button>
           </DialogFooter>
         </form>

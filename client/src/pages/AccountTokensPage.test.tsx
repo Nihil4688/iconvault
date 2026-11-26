@@ -72,22 +72,22 @@ describe("creating", () => {
   async function createOne(name = "Build box") {
     vi.mocked(tokensApi.createToken).mockResolvedValue({ ...token({ id: "t3", name }), token: SECRET });
     renderPage();
-    await userEvent.click(await screen.findByRole("button", { name: "New token" }));
-    const dialog = screen.getByRole("dialog", { name: "New API token" });
+    await userEvent.click(await screen.findByRole("button", { name: /new token/i }));
+    const dialog = screen.getByRole("dialog", { name: /new api token/i });
     await userEvent.type(within(dialog).getByLabelText("Name"), name);
-    await userEvent.click(within(dialog).getByRole("button", { name: "Create token" }));
+    await userEvent.click(within(dialog).getByRole("button", { name: /create token/i }));
   }
 
   it("shows the secret once, lets you copy it, and reloads the list", async () => {
     await createOne();
-    expect(tokensApi.createToken).toHaveBeenCalledWith("Build box", "read", 90);
-    const dialog = await screen.findByRole("dialog", { name: "Copy your new token" });
-    expect(within(dialog).getByLabelText("Your new token")).toHaveValue(SECRET);
+    expect(tokensApi.createToken).toHaveBeenCalledWith("Build box", "read", 30);
+    const dialog = await screen.findByRole("dialog", { name: /copy your new token/i });
+    expect(within(dialog).getByLabelText(/^Your new token$/i)).toHaveValue(SECRET);
     await userEvent.click(within(dialog).getByRole("button", { name: "Copy" }));
     expect(clipboard.copyText).toHaveBeenCalledWith(SECRET);
     expect(await screen.findByText("Copied the token.")).toBeInTheDocument();
     await waitFor(() => expect(listTokens).toHaveBeenCalledTimes(2));
-    await userEvent.click(within(dialog).getByRole("button", { name: "I have copied it" }));
+    await userEvent.click(within(dialog).getByRole("button", { name: /^I have copied it$/i }));
     expect(screen.queryByDisplayValue(SECRET)).not.toBeInTheDocument();
     expect(document.body.textContent).not.toContain(SECRET);
   });
@@ -110,14 +110,22 @@ describe("access and expiry", () => {
   it("creates a read and write token that never expires when asked", async () => {
     vi.mocked(tokensApi.createToken).mockResolvedValue({ ...token({ id: "t3", name: "Deploy" }), token: SECRET });
     renderPage();
-    await userEvent.click(await screen.findByRole("button", { name: "New token" }));
-    const dialog = screen.getByRole("dialog", { name: "New API token" });
-    expect(within(dialog).getByLabelText("Access")).toHaveValue("read");
-    expect(within(dialog).getByLabelText("Expires after")).toHaveValue("90");
+    await userEvent.click(await screen.findByRole("button", { name: /new token/i }));
+    const dialog = screen.getByRole("dialog", { name: /new api token/i });
+    expect(within(dialog).getByLabelText(/^Access$/i)).toHaveValue("read");
+    const expiry = within(dialog).getByLabelText(/^Expires after$/i);
+    expect(expiry).toHaveValue("30");
+    expect(within(expiry).getAllByRole("option").map((option) => [option.textContent, (option as HTMLOptionElement).value])).toEqual([
+      ["1 Day", "1"],
+      ["3 Days", "3"],
+      ["7 Days", "7"],
+      ["30 Days", "30"],
+      ["Never", "never"],
+    ]);
     await userEvent.type(within(dialog).getByLabelText("Name"), "Deploy");
-    await userEvent.selectOptions(within(dialog).getByLabelText("Access"), "write");
-    await userEvent.selectOptions(within(dialog).getByLabelText("Expires after"), "never");
-    await userEvent.click(within(dialog).getByRole("button", { name: "Create token" }));
+    await userEvent.selectOptions(within(dialog).getByLabelText(/^Access$/i), "write");
+    await userEvent.selectOptions(expiry, "never");
+    await userEvent.click(within(dialog).getByRole("button", { name: /create token/i }));
     await waitFor(() => expect(tokensApi.createToken).toHaveBeenCalledWith("Deploy", "write", null));
   });
 

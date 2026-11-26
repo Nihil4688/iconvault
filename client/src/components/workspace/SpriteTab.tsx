@@ -264,7 +264,26 @@ export default function SpriteTab() {
           </Button>
         </div>
       ) : !built ? (
-        <div aria-busy="true" aria-label="Building the Sprite" className="mt-4 h-64 animate-pulse rounded-xl bg-muted" />
+        <div role="status" aria-busy="true" aria-label="Building the sprite" className="mt-4 space-y-4">
+          <div className="flex items-center gap-2" aria-hidden="true">
+            <div className="skeleton-shimmer h-4 w-24 rounded" />
+            <div className="skeleton-shimmer h-4 w-16 rounded" />
+          </div>
+
+          <section aria-hidden="true">
+            <div className="flex items-center justify-between gap-4">
+              <div className="skeleton-shimmer h-4 w-24 rounded" />
+              <div className="skeleton-shimmer h-9 w-64 max-w-full rounded-lg" />
+            </div>
+            <ul className="mt-2 grid gap-2 rounded-xl border border-border p-3 sm:grid-cols-2 lg:grid-cols-3">
+              {Array.from({ length: 12 }, (_, index) => (
+                <li key={index} className="h-10 rounded-lg border border-border p-2">
+                  <div className="skeleton-shimmer h-5 w-2/3 rounded" />
+                </li>
+              ))}
+            </ul>
+          </section>
+        </div>
       ) : built.ids.length === 0 ? (
         <div className="mt-4 rounded-2xl border border-dashed border-border p-10 text-center">
           <p className="text-base font-semibold">There Is Nothing to Compile Yet.</p>
