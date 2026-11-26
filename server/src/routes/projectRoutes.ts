@@ -70,7 +70,7 @@ router.get("/:projectId", async (req, res) => {
   res.json(await getProjectDetail(project, actor));
 });
 
-// Rename, change colour/prefix/description, visibility, dashboard group or archive state. Owner or admin only.
+// Rename, change colour/prefix/description, visibility or archive state. Owner or admin only.
 router.patch("/:projectId", async (req, res) => {
   const actor = actorOf(req);
   const input = updateProjectSchema.parse(req.body ?? {});

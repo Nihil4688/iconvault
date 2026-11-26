@@ -1,4 +1,4 @@
-// The signed-in home screen: every project the user can see, with filters (kept in the address, so Back works and links can be shared), create, edit, duplicate, archive and delete, plus a search that also finds icons across projects and can copy them into one of the user's projects. Projects the owner put in the same group by hand (for example "BoldDesk") are shown as one group card that opens to its projects.
+// The signed-in home screen: every project the user can see, with filters (kept in the address, so Back works and links can be shared), create, edit, duplicate, archive and delete, plus a search that also finds icons across projects and can copy them into one of the user's projects. Related projects ("bolddesk-agent", "bolddesk-customer") are shown as one group card that opens to its projects.
 import { ArrowUpDown, ChevronDown, ChevronRight, ChevronUp, Globe, Group, Layers, Loader2, Lock, Plus, Search, Shapes, Type } from "lucide-react";
 import { useContext, useEffect, useState, type ChangeEvent } from "react";
 import { createPortal } from "react-dom";
@@ -9,7 +9,6 @@ import type { IconSearchResult, ListProjectsParams, ProjectSummary } from "../ap
 import CopyToProjectDialog from "../components/projects/CopyToProjectDialog";
 import { PurposeBadge } from "../components/projects/ProjectBadges";
 import ProjectCard from "../components/projects/ProjectCard";
-import MoveToGroupDialog from "../components/projects/MoveToGroupDialog";
 import ProjectGroupCard from "../components/projects/ProjectGroupCard";
 import ProjectFormDialog from "../components/projects/ProjectFormDialog";
 import ShareProjectDialog from "../components/projects/ShareProjectDialog";
@@ -26,7 +25,7 @@ import { useDebounced } from "../hooks/useDebounced";
 import { useResource } from "../hooks/useResource";
 import { cn } from "../lib/cn";
 import { pluralize } from "../lib/format";
-import { groupKey, groupNames, groupProjects, projectsInGroup, type ProjectTile } from "../lib/projectGroups";
+import { groupDisplayName, groupProjects, projectsInGroup, type ProjectTile } from "../lib/projectGroups";
 
 const SORT_LABELS = { updated: "Last Updated", created: "Date Created", name: "Name (A-Z)", icons: "Icon Count" } as const;
 
@@ -54,9 +53,9 @@ export default function DashboardPage() {
   const status = oneOf(params.get("status"), ["active", "archived", "all"], "active");
   const purpose = oneOf(params.get("type"), ["all", "sprite", "font"], "all");
   const sort = oneOf(params.get("sort"), ["updated", "created", "name", "icons"], "updated");
-  // Projects put in a group are shown together unless grouping is turned off; `group` is the group that is open, if any.
+  // Related projects are grouped unless turned off; `group` is the group that is open, if any.
   const grouping = oneOf(params.get("grouping"), ["on", "off"], "on");
-  const openGroup = grouping === "on" ? groupKey(params.get("group") ?? "") : "";
+  const openGroup = grouping === "on" ? (params.get("group")?.toLowerCase() ?? "") : "";
 
   const [searchText, setSearchText] = useState("");
   const search = useDebounced(searchText.trim(), 300);
@@ -66,7 +65,6 @@ export default function DashboardPage() {
   const [form, setForm] = useState<FormState>(null);
   const [deleting, setDeleting] = useState<ProjectSummary | null>(null);
   const [sharing, setSharing] = useState<ProjectSummary | null>(null);
-  const [movingToGroup, setMovingToGroup] = useState<ProjectSummary | null>(null);
   const [copying, setCopying] = useState<IconSearchResult | null>(null);
   const [expandedSections, setExpandedSections] = useState({ private: false, public: false });
   const [initialProjectsPerSection, setInitialProjectsPerSection] = useState(() => projectColumnsForWidth(window.innerWidth) * 2);
@@ -136,7 +134,7 @@ export default function DashboardPage() {
   const matching = allLoaded.filter((project) => !projectSearch || project.name.toLowerCase().includes(projectSearch.toLowerCase()));
   // Inside an open group only its projects count, so the lists and the pill counts describe the group.
   const loaded = openGroup ? projectsInGroup(matching, openGroup) : matching;
-  const openGroupName = (openGroup && projectsInGroup(allLoaded, openGroup)[0]?.group.trim()) || params.get("group")?.trim() || "";
+  const openGroupName = openGroup ? groupDisplayName(projectsInGroup(allLoaded, openGroup), openGroup) : "";
   // The server's total, without the matches hidden above.
   const total = (projects.data?.total ?? 0) - ((projects.data?.projects.length ?? 0) - loaded.length);
   const byType = loaded.filter((project) => purpose === "all" || project.purpose === purpose);
@@ -158,7 +156,7 @@ export default function DashboardPage() {
         tile.kind === "group" ? (
           <ProjectGroupCard key={`group:${tile.group.key}`} group={tile.group} to={groupLink(tile.group.key)} />
         ) : (
-          <ProjectCard key={tile.project.id} project={tile.project} currentUserId={currentUser?.id ?? ""} highlight={projectSearch} onEdit={(p) => setForm({ mode: "edit", project: p })} onDuplicate={handleDuplicate} onShare={setSharing} onToggleArchive={handleToggleArchive} onMoveToGroup={setMovingToGroup} onDelete={setDeleting} />
+          <ProjectCard key={tile.project.id} project={tile.project} currentUserId={currentUser?.id ?? ""} highlight={projectSearch} onEdit={(p) => setForm({ mode: "edit", project: p })} onDuplicate={handleDuplicate} onShare={setSharing} onToggleArchive={handleToggleArchive} onDelete={setDeleting} />
         ),
       )}
     </ul>
@@ -256,7 +254,7 @@ export default function DashboardPage() {
         <button
           type="button"
           aria-pressed={grouping === "on"}
-          title={grouping === "on" ? "Showing project groups" : "Show project groups"}
+          title={grouping === "on" ? "Grouping related projects" : "Group related projects"}
           onClick={() =>
             setParams(
               (previous) => {
@@ -275,7 +273,7 @@ export default function DashboardPage() {
           )}
         >
           <Group aria-hidden="true" className="h-4 w-4" />
-          <span className="sr-only">Show Project Groups</span>
+          <span className="sr-only">Group Related Projects</span>
         </button>
       </div>
 
@@ -517,15 +515,6 @@ export default function DashboardPage() {
           await deleteProject(deleting.id);
           projects.reload();
           showToast(`Deleted “${deleting.name}”.`, "success");
-        }}
-      />
-      <MoveToGroupDialog
-        project={movingToGroup}
-        groups={groupNames(allLoaded)}
-        onClose={() => setMovingToGroup(null)}
-        onSaved={(saved) => {
-          projects.reload();
-          showToast(saved.group ? `Moved “${saved.name}” to “${saved.group}”.` : `Removed “${saved.name}” from its group.`, "success");
         }}
       />
       <ShareProjectDialog open={sharing !== null} project={sharing} onClose={() => setSharing(null)} />

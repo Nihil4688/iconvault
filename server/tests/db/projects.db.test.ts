@@ -127,19 +127,6 @@ describe("projects and folders (HTTP, throwaway database)", { skip: hasDatabase 
       r = await h.call(owner.token, "PATCH", `/api/projects/${p.id}`, { isArchived: true });
       assert.equal(r.body.isArchived, true);
     });
-
-    it("lets the owner put a project in a dashboard group and take it out again, but not others", async () => {
-      const p = await makeProject(owner.token, { name: "Grouped", visibility: "public" });
-      assert.equal(p.group, "", "a new project is in no group");
-      let r = await h.call(owner.token, "PATCH", `/api/projects/${p.id}`, { group: "  BoldDesk " });
-      assert.equal(r.status, 200);
-      assert.equal(r.body.group, "BoldDesk");
-      const listed = (await h.call(other.token, "GET", "/api/projects?scope=all")).body.projects.find((item: any) => item.id === p.id);
-      assert.equal(listed.group, "BoldDesk", "the group is part of the listing");
-      assert.equal((await h.call(other.token, "PATCH", `/api/projects/${p.id}`, { group: "Mine now" })).status, 403);
-      r = await h.call(owner.token, "PATCH", `/api/projects/${p.id}`, { group: "" });
-      assert.equal(r.body.group, "");
-    });
   });
 
   describe("listing", () => {
@@ -272,7 +259,6 @@ describe("projects and folders (HTTP, throwaway database)", { skip: hasDatabase 
       assert.equal(r.status, 201, JSON.stringify(r.body));
       assert.equal(r.body.name, "Source (Copy)");
       assert.equal(r.body.visibility, "private");
-      assert.equal(r.body.group, "", "someone else's group is not copied");
       assert.equal(r.body.purpose, "font");
       assert.equal(r.body.owner.id, other.id);
       assert.equal(r.body.iconCount, 2, "the trashed icon is not copied");
@@ -287,13 +273,6 @@ describe("projects and folders (HTTP, throwaway database)", { skip: hasDatabase 
       assert.equal(copied?.codepoint, "E001");
       assert.deepEqual([...(copied?.tags ?? [])], ["x"]);
       assert.equal(await Icon.countDocuments({ projectId: src.id, deletedAt: null }), 2, "the source is unchanged");
-    });
-
-    it("keeps the dashboard group when you copy your own project", async () => {
-      const src = await makeProject(owner.token, { name: "Agent", group: "BoldDesk" });
-      const r = await h.call(owner.token, "POST", `/api/projects/${src.id}/duplicate`);
-      assert.equal(r.status, 201, JSON.stringify(r.body));
-      assert.equal(r.body.group, "BoldDesk");
     });
 
     it("refuses to copy a private project of someone else", async () => {

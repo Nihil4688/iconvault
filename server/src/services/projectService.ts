@@ -18,7 +18,7 @@ import { deleteSpriteBuilds } from "./spriteHistory.js";
 type Id = Types.ObjectId;
 type ProjectLike = Pick<
   HydratedDocument<ProjectDoc>,
-  "_id" | "ownerId" | "name" | "description" | "prefix" | "color" | "purpose" | "visibility" | "createdVia" | "isArchived" | "uncategorizedName" | "group" | "createdAt" | "updatedAt"
+  "_id" | "ownerId" | "name" | "description" | "prefix" | "color" | "purpose" | "visibility" | "createdVia" | "isArchived" | "uncategorizedName" | "createdAt" | "updatedAt"
 >;
 
 export type SampleIcon = { id: string; name: string; svg: string };
@@ -34,7 +34,6 @@ export type ProjectSummary = {
   createdVia: "manual" | "mcp";
   isArchived: boolean;
   uncategorizedName: string;
-  group: string;
   createdAt: Date;
   updatedAt: Date;
   owner: { id: string; displayName: string; email?: string };
@@ -78,7 +77,6 @@ function serialize(
     createdVia: project.createdVia ?? "manual",
     isArchived: project.isArchived ?? false,
     uncategorizedName: project.uncategorizedName ?? "",
-    group: project.group ?? "",
     createdAt: project.createdAt,
     updatedAt: project.updatedAt,
     owner: owner ?? { id: String(project.ownerId), displayName: "Unknown user" },
@@ -245,8 +243,6 @@ export async function duplicateProject(source: HydratedDocument<ProjectDoc>, act
     color: source.color ?? "#3b82f6",
     purpose: source.purpose ?? "sprite",
     visibility: "private",
-    // A copy of your own project stays in its dashboard group; someone else's group is theirs, so a copy of their project starts without one.
-    group: String(source.ownerId) === actor.id ? (source.group ?? "") : "",
     createdVia,
     ...(source.uploadCodepointHighWatermark != null ? { uploadCodepointHighWatermark: source.uploadCodepointHighWatermark } : {}),
   });

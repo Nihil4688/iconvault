@@ -1,4 +1,4 @@
-// A group of projects on the dashboard, made by hand with Move to Group (for example "BoldDesk" holding "bolddesk-agent" and "bolddesk-customer"), the same size as a project card and drawn as a small stack of cards so it reads as a group. It shows the group's name, the members' short names, sample icons from them and the totals; the whole card opens the group (a stretched link on the name).
+// A family of projects on the dashboard ("bolddesk-agent", "bolddesk-customer", ... under "BoldDesk"), the same size as a project card and drawn as a small stack of cards so it reads as a group. It shows the group's name, the members' short names, sample icons from them and the totals; the whole card opens the group (a stretched link on the name).
 import { ChevronRight, Layers } from "lucide-react";
 import { Link, type To } from "react-router-dom";
 import type { ProjectGroup } from "../../lib/projectGroups";
@@ -7,7 +7,7 @@ import Badge from "../ui/Badge";
 import SvgPreview from "../ui/SvgPreview";
 import ProjectAvatar from "./ProjectAvatar";
 
-// A member's name without the group name in front ("agent" for "bolddesk-agent" in "BoldDesk"); any other name is kept as it is.
+// The rest of a member's name after the group name ("agent" for "bolddesk-agent"); the member named just like the group keeps its name.
 function shortName(projectName: string, groupName: string): string {
   const rest = projectName.trim().slice(groupName.length).replace(/^[\s\-_./:]+/, "");
   return projectName.trim().toLowerCase().startsWith(groupName.toLowerCase()) && rest ? rest : projectName.trim();

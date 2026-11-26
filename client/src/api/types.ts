@@ -30,8 +30,6 @@ export type ProjectSummary = {
   isArchived: boolean;
   // The sidebar's name for icons in no folder; empty means "Uncategorized".
   uncategorizedName: string;
-  // The dashboard group the owner put the project in (for example "BoldDesk"); empty means none.
-  group: string;
   createdAt: string;
   updatedAt: string;
   owner: ProjectOwner;
@@ -63,7 +61,6 @@ export type CreateProjectInput = {
   color?: string;
   purpose?: ProjectPurpose;
   visibility?: ProjectVisibility;
-  group?: string;
 };
 
 // Purpose cannot change after creation.

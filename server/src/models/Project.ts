@@ -59,13 +59,6 @@ export const projectSchema = new Schema(
       default: "manual",
       immutable: true,
     },
-    // The dashboard group the owner put the project in (for example "BoldDesk"); projects with the same group show together. Empty means no group.
-    group: {
-      type: String,
-      trim: true,
-      maxlength: 60,
-      default: "",
-    },
     // What the sidebar calls the icons that are in no folder. Empty means "Uncategorized".
     uncategorizedName: {
       type: String,

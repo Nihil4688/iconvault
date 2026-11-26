@@ -25,7 +25,6 @@ describe("createProjectSchema", () => {
       color: "#3b82f6",
       purpose: "sprite",
       visibility: "private",
-      group: "",
     });
   });
 
@@ -52,13 +51,6 @@ describe("updateProjectSchema", () => {
   it("accepts a partial change", () => {
     assert.deepEqual(updateProjectSchema.parse({ visibility: "public" }), { visibility: "public" });
     assert.deepEqual(updateProjectSchema.parse({ isArchived: true, name: " New " }), { isArchived: true, name: "New" });
-  });
-
-  it("accepts a dashboard group, trimmed, and an empty one to leave the group", () => {
-    assert.deepEqual(updateProjectSchema.parse({ group: "  BoldDesk " }), { group: "BoldDesk" });
-    assert.deepEqual(updateProjectSchema.parse({ group: "" }), { group: "" });
-    assert.throws(() => updateProjectSchema.parse({ group: "x".repeat(61) }));
-    assert.equal(createProjectSchema.parse({ name: "x", group: " BoldDesk " }).group, "BoldDesk");
   });
 
   it("refuses an empty change and changing the purpose", () => {

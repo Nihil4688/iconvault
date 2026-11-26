@@ -1,40 +1,44 @@
-// Tests for grouping dashboard projects by the group their owner chose.
+// Tests for grouping dashboard projects into families by the start of their name.
 import { describe, expect, it } from "vitest";
 import { makeProject } from "../test/fixtures";
-import { groupKey, groupNames, groupProjects, projectsInGroup } from "./projectGroups";
+import { groupDisplayName, groupProjects, projectsInGroup } from "./projectGroups";
 
-const project = (id: string, group = "") => makeProject({ id, name: id, group });
-const ids = (tiles: ReturnType<typeof groupProjects>) => tiles.map((tile) => (tile.kind === "group" ? `group:${tile.group.key}(${tile.group.projects.map((p) => p.id).join(",")})` : tile.project.id));
+const named = (...names: string[]) => names.map((name) => makeProject({ id: name, name }));
 
 describe("groupProjects", () => {
-  it("groups only the projects that were put in a group, whatever their names", () => {
-    const tiles = groupProjects([project("bolddesk-agent"), project("bolddesk-customer"), project("Agent", "BoldDesk"), project("Email Template", "BoldDesk")]);
-    expect(ids(tiles)).toEqual(["bolddesk-agent", "bolddesk-customer", "group:bolddesk(Agent,Email Template)"]);
+  it("groups projects that share a family before a hyphen, underscore, dot, slash or colon, ignoring case", () => {
+    const tiles = groupProjects(named("bolddesk-agent", "BoldDesk_Customer", "bolddesk.email-template", "syncfusion/web", "Syncfusion: mobile"));
+    expect(tiles).toHaveLength(2);
+    expect(tiles[0]).toMatchObject({ kind: "group", group: { key: "bolddesk", name: "bolddesk" } });
+    if (tiles[0].kind === "group") expect(tiles[0].group.projects.map((p) => p.id)).toEqual(["bolddesk-agent", "BoldDesk_Customer", "bolddesk.email-template"]);
+    expect(tiles[1]).toMatchObject({ kind: "group", group: { key: "syncfusion", name: "syncfusion" } });
   });
 
-  it("treats group names that differ only in case or spaces as one group, spelled as its first project spells it", () => {
-    const tiles = groupProjects([project("a", "BoldDesk"), project("b", "  bolddesk "), project("c", "Bold  Desk")]);
-    expect(ids(tiles)).toEqual(["group:bolddesk(a,b)", "group:bold desk(c)"]);
+  it("leaves a family of one, and names with only spaces, as single projects", () => {
+    const tiles = groupProjects(named("bolddesk-agent", "My Icons", "My Logos", "Feather"));
+    expect(tiles.map((tile) => tile.kind)).toEqual(["project", "project", "project", "project"]);
+  });
+
+  it("puts a project named just like the family into the group and uses its spelling", () => {
+    const tiles = groupProjects(named("bolddesk-agent", "BoldDesk", "bolddesk-customer"));
+    expect(tiles).toHaveLength(1);
     expect(tiles[0]).toMatchObject({ kind: "group", group: { name: "BoldDesk" } });
   });
 
-  it("shows a group with a single project as a group, because it was chosen by hand", () => {
-    expect(ids(groupProjects([project("a", "BoldDesk"), project("b")]))).toEqual(["group:bolddesk(a)", "b"]);
-  });
-
-  it("keeps the order: a group takes the place of its first project", () => {
-    expect(ids(groupProjects([project("Alpha"), project("a", "BoldDesk"), project("Bravo"), project("b", "BoldDesk")]))).toEqual(["Alpha", "group:bolddesk(a,b)", "Bravo"]);
+  it("keeps the order: a group takes the place of its first member", () => {
+    const tiles = groupProjects(named("Alpha", "bolddesk-agent", "Bravo", "bolddesk-customer"));
+    expect(tiles.map((tile) => (tile.kind === "group" ? `group:${tile.group.key}` : tile.project.id))).toEqual(["Alpha", "group:bolddesk", "Bravo"]);
   });
 });
 
-describe("projectsInGroup and groupNames", () => {
-  it("finds a group's projects by its key", () => {
-    const projects = [project("a", "BoldDesk"), project("b"), project("c", "bolddesk")];
-    expect(groupKey(" Bold   Desk ")).toBe("bold desk");
-    expect(projectsInGroup(projects, "bolddesk").map((p) => p.id)).toEqual(["a", "c"]);
+describe("projectsInGroup and groupDisplayName", () => {
+  it("finds the members of a family even when only one of them is left", () => {
+    expect(projectsInGroup(named("bolddesk-agent", "Feather"), "bolddesk").map((p) => p.id)).toEqual(["bolddesk-agent"]);
+    expect(projectsInGroup(named("Feather"), "bolddesk")).toEqual([]);
   });
 
-  it("lists every group name once, sorted", () => {
-    expect(groupNames([project("a", "Syncfusion"), project("b", "BoldDesk"), project("c", "bolddesk"), project("d")])).toEqual(["BoldDesk", "Syncfusion"]);
+  it("names the group from its members, falling back to the key", () => {
+    expect(groupDisplayName(named("BoldDesk-agent"), "bolddesk")).toBe("BoldDesk");
+    expect(groupDisplayName([], "bolddesk")).toBe("bolddesk");
   });
 });
