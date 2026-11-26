@@ -1,6 +1,7 @@
 // Copy icons into this project from another project the user can see (their own or public ones): pick the project, tick the icons, choose a folder here and what to do when a name is taken.
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { Layers, Search } from "lucide-react";
+import { listFolders } from "../../api/folders";
 import { copyIcons, listIcons } from "../../api/icons";
 import { listProjects } from "../../api/projects";
 import type { DuplicateStrategy, FolderWithCount, UploadSummary } from "../../api/types";
@@ -44,6 +45,7 @@ export function CopyFromProjectForm({ targetProjectId, targetFolders, defaultFol
 
   const [chosen, setChosen] = useState("");
   const [search, setSearch] = useState("");
+  const [sourceFolderId, setSourceFolderId] = useState("all");
   const [picked, setPicked] = useState<string[]>([]);
   const [folderId, setFolderId] = useState(defaultFolderId ?? "");
   const [strategy, setStrategy] = useState<DuplicateStrategy>("rename");
@@ -58,16 +60,27 @@ export function CopyFromProjectForm({ targetProjectId, targetFolders, defaultFol
   }));
   const selectedSource = sourceOptions.find((option) => option.value === sourceId) ?? sourceOptions[0] ?? { value: "", label: "Loading projects…" };
   const query = useDebounced(search.trim(), 300);
-  const icons = useResource(sourceId ? `copy-icons:${sourceId}:${query}` : null, () => listIcons(sourceId, { sort: "name", limit: 1000, ...(query ? { search: query } : {}) }));
+  const sourceFolders = useResource(sourceId ? `copy-folders:${sourceId}` : null, () => listFolders(sourceId));
+  const availableFolders = sourceFolders.loading ? [] : sourceFolders.data?.folders ?? [];
+  const icons = useResource(
+    sourceId ? `copy-icons:${sourceId}:${sourceFolderId}:${query}` : null,
+    () => listIcons(sourceId, {
+      sort: "name",
+      limit: 1000,
+      ...(sourceFolderId === "all" ? {} : { folderId: sourceFolderId || "root" }),
+      ...(query ? { search: query } : {}),
+    }),
+  );
   const shown = icons.data?.icons ?? [];
 
-  // Ticks that belong to a project that is no longer chosen are ignored.
-  const pickedHere = picked.filter((id) => shown.some((icon) => icon.id === id));
+  const pickedHere = picked;
+  const shownPickedCount = shown.filter((icon) => pickedHere.includes(icon.id)).length;
   const allShownPicked = shown.length > 0 && shown.every((icon) => pickedHere.includes(icon.id));
+  const someShownPicked = shownPickedCount > 0 && !allShownPicked;
 
   useEffect(() => {
-    if (selectAllRef.current) selectAllRef.current.indeterminate = pickedHere.length > 0 && !allShownPicked;
-  }, [allShownPicked, pickedHere.length]);
+    if (selectAllRef.current) selectAllRef.current.indeterminate = someShownPicked;
+  }, [someShownPicked]);
 
   function toggle(id: string) {
     setPicked((current) => (current.includes(id) ? current.filter((x) => x !== id) : [...current, id]));
@@ -129,6 +142,7 @@ export function CopyFromProjectForm({ targetProjectId, targetFolders, defaultFol
             }}
             onChange={(value) => {
               setChosen(value);
+              setSourceFolderId("all");
               setPicked([]);
             }}
             portalMenu
@@ -141,13 +155,61 @@ export function CopyFromProjectForm({ targetProjectId, targetFolders, defaultFol
           </DropdownSelect>
         </div>
         <div>
-          <label htmlFor="copy-search" className="mb-1.5 block text-sm font-medium text-foreground">
-            Search Icons
-          </label>
-          <div className="relative">
-            <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <input id="copy-search" type="search" value={search} onChange={(event) => setSearch(event.target.value)} autoComplete="off" placeholder="Search icons by name" className="h-9 w-full rounded-lg border border-input bg-background pl-9 pr-3 text-sm placeholder:text-muted-foreground focus:border-[#1555E0] focus:shadow-[0_0_0_3px_rgba(21,85,224,0.2)] focus:outline-none" />
-          </div>
+          <FolderDropdownSelect
+            id="copy-source-folder"
+            label="Folder"
+            value={sourceFolderId}
+            folders={availableFolders}
+            allLabel="All icons"
+            onChange={setSourceFolderId}
+          />
+          {sourceFolders.error && (
+            <p role="alert" className="mt-1 text-xs text-destructive">
+              Could not load folders: {sourceFolders.error.message}
+            </p>
+          )}
+        </div>
+      </div>
+
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <label className="inline-flex shrink-0 cursor-pointer items-center gap-2 text-sm text-muted-foreground">
+          <input
+            ref={selectAllRef}
+            type="checkbox"
+            aria-label="Select all icons"
+            checked={allShownPicked}
+            disabled={shown.length === 0}
+            onChange={(event) => {
+              const checked = event.currentTarget.checked;
+              const shownIds = new Set(shown.map((icon) => icon.id));
+              setPicked((current) => checked
+                ? [...new Set([...current, ...shownIds])]
+                : current.filter((id) => !shownIds.has(id)));
+            }}
+            className="h-4 w-4 accent-primary"
+          />
+          Select All {shown.length} shown
+        </label>
+        <div className="relative min-w-48 shrink-0 sm:ml-auto">
+          <Search aria-hidden="true" className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <input
+            id="copy-search"
+            type="search"
+            aria-label="Search Icons"
+            value={search}
+            onChange={(event) => setSearch(event.target.value)}
+            autoComplete="off"
+            placeholder="Search icons by name"
+            className="h-8 w-50 rounded-lg border border-input bg-background pl-9 pr-3 text-sm placeholder:text-muted-foreground focus:border-[#1555E0] focus:shadow-[0_0_0_3px_rgba(21,85,224,0.2)] focus:outline-none"
+          />
+        </div>
+        <div className="flex shrink-0 items-center gap-3">
+          <span className="text-sm font-medium">{pickedHere.length} selected</span>
+          {pickedHere.length > 0 && (
+            <Button size="sm" variant="ghost" className="px-2 text-primary hover:bg-primary/5" onClick={() => setPicked([])}>
+              Clear selection
+            </Button>
+          )}
         </div>
       </div>
 
@@ -166,35 +228,12 @@ export function CopyFromProjectForm({ targetProjectId, targetFolders, defaultFol
           <div className="min-h-0 flex-1 overflow-y-auto rounded-2xl border border-dashed border-border p-10 text-center">
             <Layers aria-hidden="true" className="mx-auto h-8 w-8 text-muted-foreground" />
             <p className="mt-2 text-base font-semibold">
-               No icons match {search}
+              No icons match {search}
             </p>
-            <p className="mx-auto mt-1 text-sm text-muted-foreground">Try a different search.</p>
+            <p className="mx-auto mt-1 text-sm text-muted-foreground">{search ? "Try a different search." : "Try another folder."}</p>
           </div>
         ) : (
           <>
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-3 h-8">
-              <div className="flex flex-wrap items-center gap-4">
-                <label className="inline-flex items-center gap-2 text-sm text-muted-foreground cursor-pointer">
-                  <input
-                    ref={selectAllRef}
-                    type="checkbox"
-                    aria-label="Select all icons"
-                    checked={allShownPicked}
-                    onChange={(event) => setPicked(event.currentTarget.checked ? shown.map((icon) => icon.id) : [])}
-                    className="h-4 w-4 accent-primary"
-                  />
-                  Select All {shown.length} shown
-                </label>
-              </div>
-              <div className="flex items-center gap-3">
-                <span className="text-sm font-medium">{pickedHere.length} selected</span>
-                {pickedHere.length > 0 && (
-                  <Button size="sm" variant="ghost" className="px-2 text-primary hover:bg-primary/5" onClick={() => setPicked([])}>
-                    Clear selection
-                  </Button>
-                )}
-              </div>
-            </div>
             <ul className="grid min-h-0 flex-1 grid-cols-2 gap-2 overflow-y-auto p-1 sm:grid-cols-4 lg:grid-cols-6">
               {shown.map((icon) => {
                 const on = pickedHere.includes(icon.id);

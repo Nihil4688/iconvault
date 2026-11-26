@@ -69,6 +69,15 @@ beforeEach(() => {
 });
 
 describe("building the sprite", () => {
+  it("shows a shimmer placeholder shaped like the symbol result while the sprite loads", () => {
+    listIcons.mockImplementation(() => new Promise(() => {}));
+    setup();
+
+    const loading = screen.getByLabelText("Building the sprite");
+    expect(loading).toHaveAttribute("aria-busy", "true");
+    expect(loading.querySelectorAll(".skeleton-shimmer").length).toBeGreaterThan(10);
+  });
+
   it("shows a busy state, then the symbol count and size", async () => {
     setup();
     expect(screen.getByLabelText("Building the sprite")).toHaveAttribute("aria-busy", "true");

@@ -1,4 +1,5 @@
 // Form fields: a label, the control, an optional hint and an error, wired together with ids so screen readers announce them. All use native elements.
+import { ChevronDown } from "lucide-react";
 import { useId, type InputHTMLAttributes, type ReactNode, type SelectHTMLAttributes, type TextareaHTMLAttributes } from "react";
 import { cn } from "../../lib/cn";
 import { RequiredIndicator } from "./RequiredIndicator";
@@ -64,9 +65,12 @@ export function SelectField({ label, hint, error, hideLabel = false, className, 
   const generated = useId();
   const id = given ?? generated;
   const select = (
-    <select id={id} aria-invalid={error ? true : undefined} aria-describedby={describedBy(id, hint, error)} className={cn(CONTROL, "h-9 py-0 pr-8", className)} {...rest}>
-      {children}
-    </select>
+    <div className="relative">
+      <select id={id} aria-invalid={error ? true : undefined} aria-describedby={describedBy(id, hint, error)} className={cn(CONTROL, "h-9 appearance-none py-0 pr-10", className)} {...rest}>
+        {children}
+      </select>
+      <ChevronDown aria-hidden="true" className="pointer-events-none absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+    </div>
   );
   if (hideLabel) {
     return (

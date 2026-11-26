@@ -469,6 +469,35 @@ export default function FontTab() {
         </div>
       </form>
 
+      {!built && inScope > 0 && (
+        <div role="status" aria-busy="true" aria-label="Building the font" className="mt-6 space-y-4">
+          <div className="flex items-center gap-2" aria-hidden="true">
+            <div className="skeleton-shimmer h-4 w-24 rounded" />
+            <div className="skeleton-shimmer h-4 w-20 rounded" />
+          </div>
+
+          <section aria-hidden="true" className="rounded-2xl border border-border p-4">
+            <div className="flex flex-wrap items-start justify-between gap-4">
+              <div className="space-y-2">
+                <div className="skeleton-shimmer h-5 w-48 max-w-full rounded" />
+                <div className="skeleton-shimmer h-4 w-72 max-w-full rounded" />
+              </div>
+              <div className="skeleton-shimmer h-9 w-64 max-w-full rounded-lg" />
+            </div>
+            <div className="mt-3 overflow-hidden rounded-xl border border-border">
+              {Array.from({ length: 8 }, (_, index) => (
+                <div key={index} className="grid h-12 grid-cols-[minmax(0,1fr)_minmax(7rem,0.25fr)_minmax(0,0.5fr)_auto] items-center gap-3 border-b border-border px-3 last:border-b-0">
+                  <div className="skeleton-shimmer h-4 w-2/3 rounded" />
+                  <div className="skeleton-shimmer h-4 w-16 rounded" />
+                  <div className="skeleton-shimmer h-8 w-20 rounded-lg" />
+                  <div className="skeleton-shimmer h-8 w-8 rounded-lg" />
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
+      )}
+
       {built && (
         <section aria-label="Built Font" className="mt-6 space-y-4">
           <p role="status" className="text-sm">

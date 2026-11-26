@@ -85,6 +85,15 @@ beforeEach(() => {
 });
 
 describe("building", () => {
+  it("shows a shimmer placeholder while the initial font build is loading", () => {
+    buildFont.mockImplementation(() => new Promise(() => {}));
+    setup();
+
+    const loading = screen.getByLabelText("Building the font");
+    expect(loading).toHaveAttribute("aria-busy", "true");
+    expect(loading.querySelectorAll(".skeleton-shimmer").length).toBeGreaterThan(10);
+  });
+
   it("starts from the project's name and prefix with the usual formats", () => {
     setup();
     expect(screen.getByLabelText("Font name")).toHaveValue("FeatherIcons");
