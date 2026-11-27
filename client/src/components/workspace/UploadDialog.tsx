@@ -435,7 +435,7 @@ function UploadForm({ projectId, prefix, folders, defaultFolderId, onClose, onUp
         <form onSubmit={pasteCodeSubmit} noValidate>
           <div className="space-y-3">
             <TextField label="Name" hint="For multiple SVGs, each <title> is used as the name; otherwise this name is numbered." value={pasteName} placeholder="Pasted icon" maxLength={100} autoComplete="off" error={pasteErrors.name} onChange={(event) => { setPasteName(event.target.value); if (pasteErrors.name) setPasteErrors((prev) => ({ ...prev, name: undefined })); }} required={!pastedSvgs} />
-            <TextAreaField label="SVG Code" hint="Paste one or more complete SVG elements." value={pasteCode} rows={8} spellCheck={false} required error={pasteErrors.code} className="font-mono text-xs" placeholder='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">…</svg>' onChange={(event) => { setPasteCode(event.target.value); if (pasteErrors.code) setPasteErrors((prev) => ({ ...prev, code: undefined })); }} />
+            <TextAreaField label="SVG Code" labelInfo="Paste one or more complete SVG elements." value={pasteCode} rows={8} spellCheck={false} required error={pasteErrors.code} className="font-mono text-xs" placeholder='<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">…</svg>' onChange={(event) => { setPasteCode(event.target.value); if (pasteErrors.code) setPasteErrors((prev) => ({ ...prev, code: undefined })); }} />
           </div>
           {options}
           {progress && (

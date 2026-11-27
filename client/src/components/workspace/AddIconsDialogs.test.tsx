@@ -304,6 +304,20 @@ describe("UploadDialog: paste", () => {
     return props;
   }
 
+  it("shows SVG guidance in an info tooltip beside the field label", async () => {
+    await openPaste();
+    const code = pasteCodeField();
+    const label = screen.getByText("SVG Code", { selector: "label" });
+    const infoButton = screen.getByRole("button", { name: "SVG Code information" });
+    const tooltip = screen.getByRole("tooltip");
+
+    expect(label.parentElement).toContainElement(infoButton);
+    expect(tooltip).toHaveTextContent("Paste one or more complete SVG elements.");
+    expect(infoButton).toHaveAttribute("aria-describedby", tooltip.id);
+    expect(code.getAttribute("aria-describedby")).toContain(tooltip.id);
+    expect(screen.queryByText("Paste one or more complete SVG elements.", { selector: "p" })).toBeNull();
+  });
+
   it("needs some code first", async () => {
     await openPaste();
     await userEvent.click(addPasteButton());

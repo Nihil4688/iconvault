@@ -159,7 +159,7 @@ Limits: 1 MB per SVG, 200 files and 25 MB per file per upload request, 500 SVGs 
 ## Data model
 
 - `users`: one per (provider, providerId).
-- `projects`: owner, name, description, prefix, colour, `purpose` (`sprite` or `font`, fixed at creation), `visibility` (`public` or `private`), `isArchived`, `uncategorizedName` (what the sidebar calls the icons in no folder; empty means Uncategorized).
+- `projects`: owner, name, description, prefix, colour, `purpose` (`sprite` or `font`, fixed at creation), `visibility` (`public` or `private`), `isArchived`, `uncategorizedName` (legacy custom label for icons in no folder; empty means Uncategorized). Renaming the Uncategorized group from the sidebar moves its current icons into a real folder and resets this label for future root uploads.
 - `folders`: nested through `parentId` (null = project root), ordered by `orderIndex`.
 - `icons`: one SVG per document (markup stored in the database), `slug` unique per project among active icons, `codepoint` unique per project among active icons that have one, soft delete through `deletedAt`.
 - `icon_versions`: earlier states of an icon, each with its own markup.

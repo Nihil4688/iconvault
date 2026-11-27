@@ -39,11 +39,52 @@ describe("structure", () => {
   it("lists All icons, Uncategorized and the folders with counts that include subfolders", () => {
     setup();
     expect(screen.getByRole("navigation", { name: "Folders" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Folders" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "New Folder" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /All icons/ })).toHaveTextContent("10");
     expect(screen.getByRole("button", { name: /Uncategorized/ })).toHaveTextContent("4");
     expect(screen.getByRole("button", { name: /^UI/ })).toHaveTextContent("5");
     expect(screen.getByRole("button", { name: /^Arrows/ })).toHaveTextContent("3");
     expect(screen.getByRole("button", { name: /^Brand/ })).toHaveTextContent("1");
+  });
+
+  it("shows a centered empty state with a create-folder button instead of All Icons and Uncategorized", async () => {
+    setup({ folders: [], totalCount: 0, uncategorizedCount: 0 });
+    expect(screen.queryByRole("button", { name: /All Icons/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Uncategorized/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Folders" })).not.toBeInTheDocument();
+    const status = screen.getByRole("status");
+    expect(status).toHaveTextContent("No folders yet");
+    expect(status).toHaveTextContent("Create a folder to organize your icons.");
+    expect(status.closest("li")).toHaveClass("flex-1", "items-center", "justify-center");
+    expect(screen.getAllByRole("button", { name: "New Folder" })).toHaveLength(1);
+    const createFolder = screen.getByRole("button", { name: "New Folder" });
+    expect(createFolder).toHaveClass("border-primary", "text-primary");
+    await userEvent.click(createFolder);
+    expect(screen.getByRole("dialog", { name: "New Folder" })).toBeInTheDocument();
+  });
+
+  it("does not show the empty state when icons exist without folders", () => {
+    setup({ folders: [], totalCount: 2, uncategorizedCount: 2 });
+    expect(screen.queryByText("No folders yet")).not.toBeInTheDocument();
+  });
+
+  it("shows All Icons for foldered icons but only shows Uncategorized when it has icons", () => {
+    setup({ folders: [makeFolder({ id: "new", name: "new", iconCount: 1 })], totalCount: 1, uncategorizedCount: 0 });
+    expect(screen.getByRole("button", { name: /All Icons/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^new/ })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /Uncategorized/ })).not.toBeInTheDocument();
+  });
+
+  it("shows a fresh Uncategorized group when root icons arrive beside renamed folders", () => {
+    setup({
+      folders: [makeFolder({ id: "loose-folder", name: "Loose icons", iconCount: 2 })],
+      totalCount: 3,
+      uncategorizedCount: 1,
+      uncategorizedName: "",
+    });
+    expect(screen.getByRole("button", { name: /^Loose icons/ })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: /^Uncategorized/ })).toBeInTheDocument();
   });
 
   it("marks the selected entry", () => {
@@ -211,19 +252,32 @@ describe("dropping icons", () => {
 });
 
 describe("the Uncategorized menu", () => {
-  it("omits rename while keeping reset-name and move-to-trash actions", async () => {
+  it("offers rename and reset-name alongside move-to-trash", async () => {
     setup({ canManage: true, uncategorizedName: "Loose", onRenameUncategorized: vi.fn().mockResolvedValue(undefined), onTrashUncategorized: vi.fn().mockResolvedValue(undefined) });
     expect(screen.getByRole("button", { name: /^Loose/ })).toHaveTextContent("4");
     await userEvent.click(screen.getByRole("button", { name: "Actions for Loose" }));
-    expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toEqual(["Reset name", "Move all to trash"]);
-    expect(screen.queryByRole("menuitem", { name: "Rename" })).not.toBeInTheDocument();
+    expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toEqual(["Rename", "Reset Name", "Move All to Trash"]);
+  });
+
+  it("renames Uncategorized through the folder name dialog", async () => {
+    const onRenameUncategorized = vi.fn().mockResolvedValue(undefined);
+    setup({ canManage: true, onRenameUncategorized, onTrashUncategorized: vi.fn() });
+    await userEvent.click(screen.getByRole("button", { name: "Actions for Uncategorized" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Rename" }));
+    const dialog = screen.getByRole("dialog", { name: "Rename Uncategorized" });
+    const input = within(dialog).getByLabelText(/Folder Name/);
+    expect(input).toHaveValue("Uncategorized");
+    await userEvent.clear(input);
+    await userEvent.type(input, "Loose icons");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Rename" }));
+    expect(onRenameUncategorized).toHaveBeenCalledWith("Loose icons");
   });
 
   it("resets the custom name", async () => {
     const onRenameUncategorized = vi.fn().mockResolvedValue(undefined);
     setup({ canManage: true, uncategorizedName: "Loose", onRenameUncategorized, onTrashUncategorized: vi.fn() });
     await userEvent.click(screen.getByRole("button", { name: "Actions for Loose" }));
-    await userEvent.click(screen.getByRole("menuitem", { name: "Reset name" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Reset Name" }));
     expect(onRenameUncategorized).toHaveBeenCalledWith("");
   });
 
@@ -231,8 +285,8 @@ describe("the Uncategorized menu", () => {
     const onTrashUncategorized = vi.fn().mockResolvedValue(undefined);
     setup({ onTrashUncategorized });
     await userEvent.click(screen.getByRole("button", { name: "Actions for Uncategorized" }));
-    expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toEqual(["Move all to trash"]);
-    await userEvent.click(screen.getByRole("menuitem", { name: "Move all to trash" }));
+    expect(screen.getAllByRole("menuitem").map((item) => item.textContent)).toEqual(["Move All to Trash"]);
+    await userEvent.click(screen.getByRole("menuitem", { name: "Move All to Trash" }));
     const dialog = screen.getByRole("dialog", { name: /Move all 4 icons in “Uncategorized” to the trash\?/ });
     expect(onTrashUncategorized).not.toHaveBeenCalled();
     await userEvent.click(within(dialog).getByRole("button", { name: "Move to trash" }));
@@ -242,7 +296,7 @@ describe("the Uncategorized menu", () => {
   it("disables move-to-trash when there is nothing loose", async () => {
     setup({ uncategorizedCount: 0, onTrashUncategorized: vi.fn() });
     await userEvent.click(screen.getByRole("button", { name: "Actions for Uncategorized" }));
-    expect(screen.getByRole("menuitem", { name: "Move all to trash" })).toBeDisabled();
+    expect(screen.getByRole("menuitem", { name: "Move All to Trash" })).toBeDisabled();
   });
 
   it("has no menu for people who cannot edit", () => {
