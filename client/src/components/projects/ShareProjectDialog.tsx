@@ -1,11 +1,10 @@
 // Shares a public project: shows its address in a read-only field and copies it. It also says who can open the link, since a draft only opens for its owner (and admins).
-import { Check, Copy, Globe, Lock } from "lucide-react";
+import { Check, Copy, Globe, Link, Lock } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import type { ProjectSummary } from "../../api/types";
 import { copyText } from "../../lib/clipboard";
 import { Button } from "../ui/Button";
 import Dialog from "../ui/Dialog";
-import { TextField } from "../ui/Fields";
 
 type ShareProjectDialogProps = {
   open: boolean;
@@ -45,7 +44,7 @@ export default function ShareProjectDialog({ open, project, onClose }: ShareProj
       footer={
         <>
           <Button variant="secondary" onClick={close}>
-            Close
+            Cancel
           </Button>
           <Button
             variant="primary"
@@ -57,7 +56,17 @@ export default function ShareProjectDialog({ open, project, onClose }: ShareProj
         </>
       }
     >
-      <TextField label="Project Link" value={link} readOnly onFocus={(event) => event.currentTarget.select()} className="truncate" />
+      <div>
+        <div className="text-sm font-medium mb-1.5 text-foreground">
+          Project Link
+        </div>
+        <div className="h-9 flex items-center rounded-lg border border-border px-3 text-sm bg-muted text-foreground">
+          <Link aria-hidden="true" className="mr-3 h-4 w-4 shrink-0" />
+          <span className="truncate" title={link}>
+            {link}
+          </span>
+        </div>
+      </div>
       <p className="mt-3 flex items-start gap-2 text-xs text-muted-foreground">
         {project?.isArchived ? (
           <>
