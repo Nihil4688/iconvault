@@ -4,9 +4,9 @@ import { useEffect, useState } from "react";
 import { Link, Navigate, Route, Routes, useLocation, useParams, useSearchParams } from "react-router-dom";
 import { ApiError } from "../api/http";
 import { createFolder, deleteFolder, listFolders, moveFolder, renameFolder } from "../api/folders";
-import { batchMoveIcons, batchRestoreIcons, trashUncategorizedIcons } from "../api/icons";
+import { batchMoveIcons, batchRestoreIcons, listIcons, trashUncategorizedIcons } from "../api/icons";
 import { getProject, updateProject } from "../api/projects";
-import type { FolderList } from "../api/types";
+import type { FolderItem, FolderList, IconItem } from "../api/types";
 import { Button } from "../components/ui/Button";
 import FolderTree from "../components/workspace/FolderTree";
 import IconsTab from "../components/workspace/IconsTab";
@@ -144,8 +144,42 @@ export default function ProjectPage() {
                     uncategorizedName={project.data.uncategorizedName}
                     canManage={project.data.access.canManage}
                     onRenameUncategorized={async (name) => {
-                      await updateProject(projectId, { uncategorizedName: name });
-                      project.reload();
+                      if (!name) {
+                        await updateProject(projectId, { uncategorizedName: "" });
+                        project.reload();
+                        return;
+                      }
+
+                      const looseIcons: IconItem[] = [];
+                      for (let page = 1; ; page += 1) {
+                        const result = await listIcons(projectId, { folderId: "root", limit: 1000, page, svg: false });
+                        looseIcons.push(...result.icons);
+                        if (looseIcons.length >= result.total || result.icons.length === 0) break;
+                      }
+
+                      let folder: FolderItem | null = null;
+                      let labelWasReset = false;
+                      let moved = 0;
+                      try {
+                        folder = await createFolder(projectId, { name, parentId: null });
+                        if (project.data?.uncategorizedName) {
+                          await updateProject(projectId, { uncategorizedName: "" });
+                          labelWasReset = true;
+                        }
+                        for (let index = 0; index < looseIcons.length; index += 1000) {
+                          const batch = looseIcons.slice(index, index + 1000);
+                          moved += (await batchMoveIcons(projectId, batch.map((icon) => icon.id), folder.id)).matched;
+                        }
+                      } finally {
+                        if (labelWasReset || folder) {
+                          folders.reload();
+                          project.reload();
+                          setIconsVersion((value) => value + 1);
+                        }
+                      }
+                      if (!folder) return;
+                      selectFolder(folder.id);
+                      showToast(`Renamed Uncategorized to “${name}”. ${pluralize(moved, "icon")} moved into the new folder.`, "success");
                     }}
                     onTrashUncategorized={async () => {
                       const result = await trashUncategorizedIcons(projectId);

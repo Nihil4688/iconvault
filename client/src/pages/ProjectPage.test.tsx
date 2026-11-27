@@ -532,6 +532,53 @@ describe("folder selection", () => {
 });
 
 describe("folder actions", () => {
+  it("moves existing Uncategorized icons into a real folder and clears its custom label", async () => {
+    const looseIcons = Array.from({ length: 1001 }, (_, index) => makeIcon({ id: `loose-${index + 1}` }));
+    const renamedFolder = makeFolder({ id: "loose-folder", name: "Loose icons", iconCount: looseIcons.length });
+    getProject
+      .mockResolvedValueOnce(makeDetail({ id: "p1", name: "Feather", iconCount: looseIcons.length, uncategorizedName: "Old loose name" }))
+      .mockResolvedValue(makeDetail({ id: "p1", name: "Feather", iconCount: looseIcons.length, uncategorizedName: "" }));
+    listFolders
+      .mockResolvedValueOnce({ folders: [ui], uncategorizedCount: looseIcons.length })
+      .mockResolvedValue({ folders: [ui, renamedFolder], uncategorizedCount: 0 });
+    vi.mocked(iconsApi.listIcons).mockImplementation(async (_projectId, params = {}) => {
+      if (params.folderId !== "root") return { icons: [], total: 0, page: 1, limit: 200 };
+      const page = params.page ?? 1;
+      const icons = looseIcons.slice((page - 1) * 1000, page * 1000);
+      return { icons, total: looseIcons.length, page, limit: 1000 };
+    });
+    vi.mocked(foldersApi.createFolder).mockResolvedValue({ id: "loose-folder", projectId: "p1", parentId: null, name: "Loose icons", orderIndex: 2 });
+    vi.mocked(iconsApi.batchMoveIcons).mockResolvedValue({ requested: 2, matched: 2 });
+    vi.mocked(projectsApi.updateProject).mockResolvedValue(makeDetail({ id: "p1", uncategorizedName: "" }));
+
+    renderPage();
+    await screen.findByRole("heading", { level: 1, name: "Feather" });
+    await userEvent.click(screen.getByRole("button", { name: "Actions for Old loose name" }));
+    await userEvent.click(screen.getByRole("menuitem", { name: "Rename" }));
+    const dialog = screen.getByRole("dialog", { name: "Rename Old loose name" });
+    const name = within(dialog).getByLabelText(/Folder Name/);
+    expect(name).toHaveValue("Old loose name");
+    await userEvent.clear(name);
+    await userEvent.type(name, "Loose icons");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Rename" }));
+
+    const rootListCalls = vi.mocked(iconsApi.listIcons).mock.calls
+      .filter(([, params]) => params?.folderId === "root")
+      .map(([, params]) => params);
+    expect(rootListCalls).toEqual([
+      { folderId: "root", limit: 1000, page: 1, svg: false },
+      { folderId: "root", limit: 1000, page: 2, svg: false },
+    ]);
+    expect(foldersApi.createFolder).toHaveBeenCalledWith("p1", { name: "Loose icons", parentId: null });
+    expect(iconsApi.batchMoveIcons).toHaveBeenNthCalledWith(1, "p1", looseIcons.slice(0, 1000).map((icon) => icon.id), "loose-folder");
+    expect(iconsApi.batchMoveIcons).toHaveBeenNthCalledWith(2, "p1", ["loose-1001"], "loose-folder");
+    expect(projectsApi.updateProject).toHaveBeenCalledWith("p1", { uncategorizedName: "" });
+    expect(await screen.findByText(/Renamed Uncategorized to “Loose icons”/)).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByTestId("where")).toHaveTextContent("?folder=loose-folder"));
+    expect(screen.getByRole("button", { name: /^Loose icons/ })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^Uncategorized/ })).not.toBeInTheDocument();
+  });
+
   it("creates a folder, reloads the list and says so", async () => {
     vi.mocked(foldersApi.createFolder).mockResolvedValue({ id: "n1", projectId: "p1", parentId: null, name: "Logos", orderIndex: 2 });
     renderPage();

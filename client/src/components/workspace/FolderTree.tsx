@@ -1,5 +1,5 @@
-// The folder list beside a project's icons: All icons, Uncategorized (which has its own menu: reset the name and move everything to the trash), and the nested folders with counts. Folders can be created, renamed, moved and deleted from a menu (for people who can edit), and accept icons dropped on them. Dragging is optional: moving also works from the bulk actions bar.
-import { ChevronDown, ChevronRight, Folder, FolderInput, FolderPlus, Inbox, Layers, Pencil, Plus, RotateCcw, Trash2 } from "lucide-react";
+// The folder list beside a project's icons: All icons, Uncategorized and nested folders with counts. Renaming Uncategorized turns its current icons into a real folder, leaving root uploads for a fresh Uncategorized group.
+import { ChevronDown, ChevronRight, Folder, FolderInput, FolderPlus, Layers, Pencil, Plus, RotateCcw, Trash2 } from "lucide-react";
 import { useState } from "react";
 import type { FolderWithCount } from "../../api/types";
 import type { FolderSelection } from "../../context/workspaceContext";
@@ -7,7 +7,7 @@ import { cn } from "../../lib/cn";
 import { getDraggedIcons, hasDraggedIcons } from "../../lib/dragIcons";
 import { buildFolderTree, totalIconCount, type FolderNode } from "../../lib/folderTree";
 import ActionMenu, { type MenuAction } from "../ui/ActionMenu";
-import { IconButton } from "../ui/Button";
+import { Button, IconButton } from "../ui/Button";
 import ConfirmDialog from "../ui/ConfirmDialog";
 import { FolderNameDialog, MoveFolderDialog } from "./FolderDialogs";
 
@@ -34,6 +34,7 @@ type FolderTreeProps = {
 type DialogState =
   | { kind: "create"; parent: FolderWithCount | null }
   | { kind: "rename"; folder: FolderWithCount }
+  | { kind: "renameLoose" }
   | { kind: "move"; folder: FolderWithCount }
   | { kind: "delete"; folder: FolderWithCount }
   | { kind: "trashLoose" }
@@ -118,6 +119,7 @@ export default function FolderTree({ folders, uncategorizedCount, uncategorizedN
   const looseLabel = uncategorizedName || "Uncategorized";
   const looseActions: MenuAction[] = [];
   if (canManage && onRenameUncategorized) {
+    looseActions.push({ label: "Rename", icon: <Pencil aria-hidden="true" className="h-4 w-4" />, onSelect: () => setDialog({ kind: "renameLoose" }) });
     if (uncategorizedName) looseActions.push({ label: "Reset Name", icon: <RotateCcw aria-hidden="true" className="h-4 w-4" />, onSelect: () => void onRenameUncategorized("") });
   }
   if (canEdit && onTrashUncategorized) {
@@ -125,40 +127,64 @@ export default function FolderTree({ folders, uncategorizedCount, uncategorizedN
   }
   const allSelected = selected === "all";
   const rootSelected = selected === "root";
+  const showAllIcons = totalCount > 0;
+  const showUncategorized = uncategorizedCount > 0;
+  const showEmptyState = folders.length === 0 && totalCount === 0 && uncategorizedCount === 0;
 
   return (
     <nav aria-label="Folders" className="flex min-h-0 flex-1 flex-col">
-      <div className="mb-1 flex shrink-0 items-center justify-between pl-7 pr-5 pt-5">
-        <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Folders</h2>
-        {canEdit && (
-          <IconButton label="New Folder" className="h-7 w-7" onClick={() => setDialog({ kind: "create", parent: null })}>
-            <Plus aria-hidden="true" className="h-4 w-4" />
-          </IconButton>
+        <div className="mb-1 flex shrink-0 items-center justify-between pl-7 pr-5 pt-5">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Folders</h2>
+          {canEdit && !showEmptyState && (
+            <IconButton label="New Folder" className="h-7 w-7" onClick={() => setDialog({ kind: "create", parent: null })}>
+              <Plus aria-hidden="true" className="h-4 w-4" />
+            </IconButton>
+          )}
+        </div>
+      <ul className="flex min-h-0 flex-1 flex-col overflow-y-auto px-4 pb-4 scrollbar-thin">
+        {showEmptyState ? (
+          <li className="flex flex-1 flex-col items-center justify-center px-4 pb-4">
+            <div role="status" className="flex flex-col items-center text-center">
+              <FolderPlus aria-hidden="true" className="mb-3 h-8 w-8 text-muted-foreground" />
+              <p className="text-sm font-medium text-foreground">No folders yet</p>
+              <p className="mt-1 text-xs text-muted-foreground">Create a folder to organize your icons.</p>
+            </div>
+            {canEdit && (
+              <Button variant="outline-primary" icon={<Plus aria-hidden="true" className="h-4 w-4" />} className="mt-5" onClick={() => setDialog({ kind: "create", parent: null })}>
+                New Folder
+              </Button>
+            )}
+          </li>
+        ) : (
+          <>
+            {showAllIcons && (
+              <li>
+                <div className={cn(rowBase, allSelected ? "bg-primary/10 text-primary" : "hover:bg-accent/60")} style={{ paddingLeft: 4 }}>
+                  <span className="h-6 w-6 shrink-0" aria-hidden="true" />
+                  <button type="button" onClick={() => onSelect("all")} aria-current={allSelected ? "true" : undefined} className={cn(buttonBase, allSelected && "font-semibold")}>
+                    <Layers aria-hidden="true" className={cn("h-4 w-4 shrink-0", allSelected ? "text-primary" : "text-muted-foreground")} />
+                    <span className="truncate">All Icons</span>
+                    <span className="ml-auto shrink-0 text-xs text-muted-foreground">{totalCount}</span>
+                  </button>
+                </div>
+              </li>
+            )}
+            {showUncategorized && (
+              <li>
+                <div className={cn(rowBase, rootSelected ? "bg-primary/10 text-primary" : "hover:bg-accent/60", dropTarget === "root" && "bg-primary/10 ring-2 ring-primary")} style={{ paddingLeft: 4 }} {...dropHandlers("root", null)}>
+                  <span className="h-6 w-6 shrink-0" aria-hidden="true" />
+                  <button type="button" onClick={() => onSelect("root")} aria-current={rootSelected ? "true" : undefined} className={cn(buttonBase, rootSelected && "font-semibold")}>
+                    <Folder aria-hidden="true" className={cn("h-4 w-4 shrink-0", rootSelected ? "text-primary" : "text-muted-foreground")} />
+                    <span className="truncate">{looseLabel}</span>
+                    <span className="ml-auto shrink-0 text-xs text-muted-foreground">{uncategorizedCount}</span>
+                  </button>
+                  {looseActions.length > 0 && <ActionMenu label={`Actions for ${looseLabel}`} actions={looseActions} />}
+                </div>
+              </li>
+            )}
+            {tree.map(renderNode)}
+          </>
         )}
-      </div>
-      <ul className="min-h-0 flex-1 overflow-y-auto px-4 pb-4 scrollbar-thin">
-        <li>
-          <div className={cn(rowBase, allSelected ? "bg-primary/10 text-primary" : "hover:bg-accent/60")} style={{ paddingLeft: 4 }}>
-            <span className="h-6 w-6 shrink-0" aria-hidden="true" />
-            <button type="button" onClick={() => onSelect("all")} aria-current={allSelected ? "true" : undefined} className={cn(buttonBase, allSelected && "font-semibold")}>
-              <Layers aria-hidden="true" className={cn("h-4 w-4 shrink-0", allSelected ? "text-primary" : "text-muted-foreground")} />
-              <span className="truncate">All Icons</span>
-              <span className="ml-auto shrink-0 text-xs text-muted-foreground">{totalCount}</span>
-            </button>
-          </div>
-        </li>
-        <li>
-          <div className={cn(rowBase, rootSelected ? "bg-primary/10 text-primary" : "hover:bg-accent/60", dropTarget === "root" && "bg-primary/10 ring-2 ring-primary")} style={{ paddingLeft: 4 }} {...dropHandlers("root", null)}>
-            <span className="h-6 w-6 shrink-0" aria-hidden="true" />
-            <button type="button" onClick={() => onSelect("root")} aria-current={rootSelected ? "true" : undefined} className={cn(buttonBase, rootSelected && "font-semibold")}>
-              <Inbox aria-hidden="true" className={cn("h-4 w-4 shrink-0", rootSelected ? "text-primary" : "text-muted-foreground")} />
-              <span className="truncate">{looseLabel}</span>
-              <span className="ml-auto shrink-0 text-xs text-muted-foreground">{uncategorizedCount}</span>
-            </button>
-            {looseActions.length > 0 && <ActionMenu label={`Actions for ${looseLabel}`} actions={looseActions} />}
-          </div>
-        </li>
-        {tree.map(renderNode)}
       </ul>
 
       <FolderNameDialog
@@ -175,6 +201,14 @@ export default function FolderTree({ folders, uncategorizedCount, uncategorizedN
         initialName={dialog?.kind === "rename" ? dialog.folder.name : ""}
         onClose={() => setDialog(null)}
         onSubmit={(name) => (dialog?.kind === "rename" ? onRename(dialog.folder, name) : Promise.resolve())}
+      />
+      <FolderNameDialog
+        open={dialog?.kind === "renameLoose"}
+        title={`Rename ${looseLabel}`}
+        submitLabel="Rename"
+        initialName={looseLabel}
+        onClose={() => setDialog(null)}
+        onSubmit={(name) => (dialog?.kind === "renameLoose" && onRenameUncategorized ? onRenameUncategorized(name) : Promise.resolve())}
       />
       <ConfirmDialog
         open={dialog?.kind === "trashLoose"}
