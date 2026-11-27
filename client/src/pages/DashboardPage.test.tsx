@@ -798,8 +798,20 @@ describe("making a project public or private", () => {
     expect(projectsApi.updateProject).not.toHaveBeenCalled();
     await userEvent.click(within(dialog).getByRole("button", { name: "Make Public" }));
     expect(projectsApi.updateProject).toHaveBeenCalledWith("v1", { visibility: "public" });
-    expect(await screen.findByText("Made “Hidden” public.")).toBeInTheDocument();
     await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    // The toast stays on the page, not inside the dialog that just closed.
+    expect(screen.getByText("“Hidden” is now public.").closest("dialog")).toBeNull();
+  });
+
+  it("shows a toast after making a project private", async () => {
+    listProjects.mockResolvedValue(reply([makeProject({ id: "v4", name: "Open", visibility: "public" })]));
+    vi.mocked(projectsApi.updateProject).mockResolvedValue(makeDetail({ id: "v4", visibility: "private" }));
+    renderPage();
+    await userEvent.click(within(await menuFor("Open")).getByRole("menuitem", { name: "Make Private" }));
+    await userEvent.click(within(screen.getByRole("dialog", { name: "Make Project Private" })).getByRole("button", { name: "Make Private" }));
+    expect(projectsApi.updateProject).toHaveBeenCalledWith("v4", { visibility: "private" });
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(screen.getByText("“Open” is now private.").closest("dialog")).toBeNull();
   });
 
   it("asks before making a project private, and changes nothing on Cancel", async () => {

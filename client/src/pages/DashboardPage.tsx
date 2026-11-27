@@ -1,7 +1,7 @@
 // The signed-in home screen: every project the user can see, with filters (kept in the address, so Back works and links can be shared), create, edit, duplicate, archive and delete, plus a search that also finds icons across projects and can copy them into one of the user's projects.
 import { ArrowUpDown, ChevronDown, ChevronUp, Globe, Layers, Loader2, Lock, Plus, Search, Shapes, Type } from "lucide-react";
 import { useContext, useEffect, useState, type ChangeEvent } from "react";
-import { createPortal } from "react-dom";
+import { createPortal, flushSync } from "react-dom";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { searchIcons } from "../api/icons";
 import { deleteProject, duplicateProject, importProject, listProjects, updateProject } from "../api/projects";
@@ -473,10 +473,13 @@ export default function DashboardPage() {
         onClose={() => setChangingVisibility(null)}
         onConfirm={async () => {
           if (!changingVisibility) return;
+          const { id, name } = changingVisibility;
           const visibility = changingVisibility.visibility === "public" ? "private" : "public";
-          await updateProject(changingVisibility.id, { visibility });
+          await updateProject(id, { visibility });
           projects.reload();
-          showToast(`Made “${changingVisibility.name}” ${visibility}.`, "success");
+          // Close the dialog first: a toast raised while a dialog is open is placed inside it and disappears when the dialog closes.
+          flushSync(() => setChangingVisibility(null));
+          showToast(`“${name}” is now ${visibility}.`, "success");
         }}
       />
       <ShareProjectDialog open={sharing !== null} project={sharing} onClose={() => setSharing(null)} />
