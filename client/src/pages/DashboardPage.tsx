@@ -60,6 +60,7 @@ export default function DashboardPage() {
   const [form, setForm] = useState<FormState>(null);
   const [deleting, setDeleting] = useState<ProjectSummary | null>(null);
   const [sharing, setSharing] = useState<ProjectSummary | null>(null);
+  const [changingVisibility, setChangingVisibility] = useState<ProjectSummary | null>(null);
   const [copying, setCopying] = useState<IconSearchResult | null>(null);
   const [expandedSections, setExpandedSections] = useState({ private: false, public: false });
   const [initialProjectsPerSection, setInitialProjectsPerSection] = useState(() => projectColumnsForWidth(window.innerWidth) * 2);
@@ -133,7 +134,7 @@ export default function DashboardPage() {
   const renderCards = (items: ProjectSummary[]) => (
     <ul className={cn("grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5", projects.loading && "opacity-60")}>
       {items.map((project) => (
-        <ProjectCard key={project.id} project={project} currentUserId={currentUser?.id ?? ""} highlight={projectSearch} onEdit={(p) => setForm({ mode: "edit", project: p })} onDuplicate={handleDuplicate} onShare={setSharing} onToggleArchive={handleToggleArchive} onDelete={setDeleting} />
+        <ProjectCard key={project.id} project={project} currentUserId={currentUser?.id ?? ""} highlight={projectSearch} onEdit={(p) => setForm({ mode: "edit", project: p })} onDuplicate={handleDuplicate} onShare={setSharing} onToggleArchive={handleToggleArchive} onToggleVisibility={setChangingVisibility} onDelete={setDeleting} />
       ))}
     </ul>
   );
@@ -451,6 +452,31 @@ export default function DashboardPage() {
           await deleteProject(deleting.id);
           projects.reload();
           showToast(`Deleted “${deleting.name}”.`, "success");
+        }}
+      />
+      <ConfirmDialog
+        open={changingVisibility !== null}
+        title={changingVisibility?.visibility === "public" ? "Make Project Private" : "Make Project Public"}
+        size="md"
+        message={
+          changingVisibility?.visibility === "public" ? (
+            <p>
+              Are you sure you want to make <span className="font-semibold">“{changingVisibility?.name}”</span> private? Only its owner and admins will be able to see and open it.
+            </p>
+          ) : (
+            <p>
+              Are you sure you want to make <span className="font-semibold">“{changingVisibility?.name}”</span> public? Anyone signed in to IconVault will be able to see it, open it and copy its icons.
+            </p>
+          )
+        }
+        confirmLabel={changingVisibility?.visibility === "public" ? "Make Private" : "Make Public"}
+        onClose={() => setChangingVisibility(null)}
+        onConfirm={async () => {
+          if (!changingVisibility) return;
+          const visibility = changingVisibility.visibility === "public" ? "private" : "public";
+          await updateProject(changingVisibility.id, { visibility });
+          projects.reload();
+          showToast(`Made “${changingVisibility.name}” ${visibility}.`, "success");
         }}
       />
       <ShareProjectDialog open={sharing !== null} project={sharing} onClose={() => setSharing(null)} />
