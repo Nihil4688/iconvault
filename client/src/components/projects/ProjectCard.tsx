@@ -31,17 +31,22 @@ export default function ProjectCard({ project, currentUserId, highlight, onEdit,
   const actions: MenuAction[] = [
     { label: "Duplicate", icon: <Copy aria-hidden="true" className="h-4 w-4" />, onSelect: () => onDuplicate(project) },
   ];
-  // Only public projects can be opened by others, so only they can be shared.
-  if (project.visibility === "public") {
+  // Only active public projects can be opened by others, so only they can be shared.
+  if (project.visibility === "public" && !project.isArchived) {
     actions.push({ label: "Share Project", icon: <Share2 aria-hidden="true" className="h-4 w-4" />, onSelect: () => onShare(project) });
   }
   // The owner manages their own projects; admins manage everyone's, so they get this on every card.
   if (project.access.canManage) {
     actions.unshift({ label: "Edit Details", icon: <Pencil aria-hidden="true" className="h-4 w-4" />, onSelect: () => onEdit(project) });
+    // A draft's visibility is changed once it is active again.
+    if (!project.isArchived) {
+      actions.push(
+        project.visibility === "public"
+          ? { label: "Make Private", icon: <Lock aria-hidden="true" className="h-4 w-4" />, onSelect: () => onToggleVisibility(project) }
+          : { label: "Make Public", icon: <Globe aria-hidden="true" className="h-4 w-4" />, onSelect: () => onToggleVisibility(project) },
+      );
+    }
     actions.push(
-      project.visibility === "public"
-        ? { label: "Make Private", icon: <Lock aria-hidden="true" className="h-4 w-4" />, onSelect: () => onToggleVisibility(project) }
-        : { label: "Make Public", icon: <Globe aria-hidden="true" className="h-4 w-4" />, onSelect: () => onToggleVisibility(project) },
       project.isArchived
         ? { label: "Mark as Active", icon: <ArchiveRestore aria-hidden="true" className="h-4 w-4" />, onSelect: () => onToggleArchive(project) }
         : { label: "Mark as Draft", icon: <Archive aria-hidden="true" className="h-4 w-4" />, onSelect: () => onToggleArchive(project) },

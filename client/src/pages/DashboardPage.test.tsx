@@ -667,11 +667,10 @@ describe("project actions", () => {
     expect(dialog).toHaveTextContent("Anyone signed in to IconVault can open this link.");
   });
 
-  it("warns that a public draft only opens for its owner", async () => {
+  it("does not offer Share Project on a public draft, since only its owner can open it", async () => {
     listProjects.mockResolvedValue(reply([{ ...mine(), visibility: "public", isArchived: true }]));
     renderPage("/?status=archived");
-    await userEvent.click(within(await menuFor("Mine")).getByRole("menuitem", { name: "Share Project" }));
-    expect(screen.getByRole("dialog", { name: "Share “Mine”" })).toHaveTextContent("This project is a draft, so only its owner can open this link.");
+    expect(within(await menuFor("Mine")).queryByRole("menuitem", { name: "Share Project" })).not.toBeInTheDocument();
   });
 
   it("offers only Duplicate on someone else's public project", async () => {
@@ -773,6 +772,14 @@ describe("making a project public or private", () => {
     expect(within(await menuFor("Hidden")).getAllByRole("menuitem").map((i) => i.textContent)).toEqual(["Edit Details", "Duplicate", "Make Public", "Mark as Draft", "Delete"]);
     await userEvent.keyboard("{Escape}");
     expect(within(await menuFor("Open")).getAllByRole("menuitem").map((i) => i.textContent)).toEqual(["Edit Details", "Duplicate", "Share Project", "Make Private", "Mark as Draft", "Delete"]);
+  });
+
+  it("offers neither it nor Share Project on a draft, public or private", async () => {
+    listProjects.mockResolvedValue(reply([makeProject({ name: "Public Draft", visibility: "public", isArchived: true }), makeProject({ name: "Private Draft", visibility: "private", isArchived: true })]));
+    renderPage("/?status=archived");
+    expect(within(await menuFor("Public Draft")).getAllByRole("menuitem").map((i) => i.textContent)).toEqual(["Edit Details", "Duplicate", "Mark as Active", "Delete"]);
+    await userEvent.keyboard("{Escape}");
+    expect(within(await menuFor("Private Draft")).getAllByRole("menuitem").map((i) => i.textContent)).toEqual(["Edit Details", "Duplicate", "Mark as Active", "Delete"]);
   });
 
   it("does not offer it on someone else's project you cannot manage", async () => {
