@@ -667,11 +667,10 @@ describe("project actions", () => {
     expect(dialog).toHaveTextContent("Anyone signed in to IconVault can open this link.");
   });
 
-  it("warns that a public draft only opens for its owner", async () => {
+  it("does not offer Share Project on a public draft, since only its owner can open it", async () => {
     listProjects.mockResolvedValue(reply([{ ...mine(), visibility: "public", isArchived: true }]));
     renderPage("/?status=archived");
-    await userEvent.click(within(await menuFor("Mine")).getByRole("menuitem", { name: "Share Project" }));
-    expect(screen.getByRole("dialog", { name: "Share “Mine”" })).toHaveTextContent("This project is a draft, so only its owner can open this link.");
+    expect(within(await menuFor("Mine")).queryByRole("menuitem", { name: "Share Project" })).not.toBeInTheDocument();
   });
 
   it("offers only Duplicate on someone else's public project", async () => {
@@ -757,6 +756,90 @@ describe("project actions", () => {
     await userEvent.click(within(await menuFor("Mine")).getByRole("menuitem", { name: "Delete" }));
     await userEvent.click(screen.getByRole("button", { name: "Delete project" }));
     expect(await screen.findByRole("alert")).toHaveTextContent("You can only manage projects you own.");
+    expect(screen.getByRole("dialog")).toBeInTheDocument();
+  });
+});
+
+describe("making a project public or private", () => {
+  const menuFor = async (name: string) => {
+    await userEvent.click(await screen.findByRole("button", { name: `Actions for ${name}` }));
+    return screen.getByRole("menu", { name: `Actions for ${name}` });
+  };
+
+  it("shows Make Public on a private project and Make Private on a public one, before Mark as Draft", async () => {
+    listProjects.mockResolvedValue(reply([makeProject({ name: "Hidden", visibility: "private" }), makeProject({ name: "Open", visibility: "public" })]));
+    renderPage();
+    expect(within(await menuFor("Hidden")).getAllByRole("menuitem").map((i) => i.textContent)).toEqual(["Edit Details", "Duplicate", "Make Public", "Mark as Draft", "Delete"]);
+    await userEvent.keyboard("{Escape}");
+    expect(within(await menuFor("Open")).getAllByRole("menuitem").map((i) => i.textContent)).toEqual(["Edit Details", "Duplicate", "Share Project", "Make Private", "Mark as Draft", "Delete"]);
+  });
+
+  it("offers neither it nor Share Project on a draft, public or private", async () => {
+    listProjects.mockResolvedValue(reply([makeProject({ name: "Public Draft", visibility: "public", isArchived: true }), makeProject({ name: "Private Draft", visibility: "private", isArchived: true })]));
+    renderPage("/?status=archived");
+    expect(within(await menuFor("Public Draft")).getAllByRole("menuitem").map((i) => i.textContent)).toEqual(["Edit Details", "Duplicate", "Mark as Active", "Delete"]);
+    await userEvent.keyboard("{Escape}");
+    expect(within(await menuFor("Private Draft")).getAllByRole("menuitem").map((i) => i.textContent)).toEqual(["Edit Details", "Duplicate", "Mark as Active", "Delete"]);
+  });
+
+  it("does not offer it on someone else's project you cannot manage", async () => {
+    listProjects.mockResolvedValue(reply([makeProject({ name: "Theirs", owner: { id: "u2", displayName: "Grace" }, visibility: "public", access: READ_ONLY })]));
+    renderPage();
+    const menu = await menuFor("Theirs");
+    expect(within(menu).queryByRole("menuitem", { name: "Make Private" })).not.toBeInTheDocument();
+  });
+
+  it("offers it on another user's project when you can manage it, as admins can", async () => {
+    listProjects.mockResolvedValue(reply([makeProject({ name: "Graces", owner: { id: "u2", displayName: "Grace" }, visibility: "private" })]));
+    renderPage();
+    expect(within(await menuFor("Graces")).getByRole("menuitem", { name: "Make Public" })).toBeInTheDocument();
+  });
+
+  it("asks before making a project public, then changes it", async () => {
+    listProjects.mockResolvedValue(reply([makeProject({ id: "v1", name: "Hidden", visibility: "private" })]));
+    vi.mocked(projectsApi.updateProject).mockResolvedValue(makeDetail({ id: "v1", visibility: "public" }));
+    renderPage();
+    await userEvent.click(within(await menuFor("Hidden")).getByRole("menuitem", { name: "Make Public" }));
+    const dialog = screen.getByRole("dialog", { name: "Make Project Public" });
+    expect(dialog).toHaveTextContent("Are you sure you want to make “Hidden” public?");
+    expect(projectsApi.updateProject).not.toHaveBeenCalled();
+    await userEvent.click(within(dialog).getByRole("button", { name: "Make Public" }));
+    expect(projectsApi.updateProject).toHaveBeenCalledWith("v1", { visibility: "public" });
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    // The toast stays on the page, not inside the dialog that just closed.
+    expect(screen.getByText("“Hidden” is now public.").closest("dialog")).toBeNull();
+  });
+
+  it("shows a toast after making a project private", async () => {
+    listProjects.mockResolvedValue(reply([makeProject({ id: "v4", name: "Open", visibility: "public" })]));
+    vi.mocked(projectsApi.updateProject).mockResolvedValue(makeDetail({ id: "v4", visibility: "private" }));
+    renderPage();
+    await userEvent.click(within(await menuFor("Open")).getByRole("menuitem", { name: "Make Private" }));
+    await userEvent.click(within(screen.getByRole("dialog", { name: "Make Project Private" })).getByRole("button", { name: "Make Private" }));
+    expect(projectsApi.updateProject).toHaveBeenCalledWith("v4", { visibility: "private" });
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(screen.getByText("“Open” is now private.").closest("dialog")).toBeNull();
+  });
+
+  it("asks before making a project private, and changes nothing on Cancel", async () => {
+    listProjects.mockResolvedValue(reply([makeProject({ id: "v2", name: "Open", visibility: "public" })]));
+    renderPage();
+    await userEvent.click(within(await menuFor("Open")).getByRole("menuitem", { name: "Make Private" }));
+    const dialog = screen.getByRole("dialog", { name: "Make Project Private" });
+    expect(dialog).toHaveTextContent("Are you sure you want to make “Open” private?");
+    await userEvent.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    await waitFor(() => expect(screen.queryByRole("dialog")).not.toBeInTheDocument());
+    expect(projectsApi.updateProject).not.toHaveBeenCalled();
+  });
+
+  it("keeps the dialog open and shows the error when the change fails", async () => {
+    listProjects.mockResolvedValue(reply([makeProject({ id: "v3", name: "Open", visibility: "public" })]));
+    vi.mocked(projectsApi.updateProject).mockRejectedValue(new ApiError("You can only manage projects you own."));
+    renderPage();
+    await userEvent.click(within(await menuFor("Open")).getByRole("menuitem", { name: "Make Private" }));
+    const dialog = screen.getByRole("dialog", { name: "Make Project Private" });
+    await userEvent.click(within(dialog).getByRole("button", { name: "Make Private" }));
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent("You can only manage projects you own.");
     expect(screen.getByRole("dialog")).toBeInTheDocument();
   });
 });

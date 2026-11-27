@@ -1,7 +1,7 @@
 // The signed-in home screen: every project the user can see, with filters (kept in the address, so Back works and links can be shared), create, edit, duplicate, archive and delete, plus a search that also finds icons across projects and can copy them into one of the user's projects.
 import { ArrowUpDown, ChevronDown, ChevronUp, Globe, Layers, Loader2, Lock, Plus, Search, Shapes, Type } from "lucide-react";
 import { useContext, useEffect, useState, type ChangeEvent } from "react";
-import { createPortal } from "react-dom";
+import { createPortal, flushSync } from "react-dom";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { searchIcons } from "../api/icons";
 import { deleteProject, duplicateProject, importProject, listProjects, updateProject } from "../api/projects";
@@ -60,6 +60,7 @@ export default function DashboardPage() {
   const [form, setForm] = useState<FormState>(null);
   const [deleting, setDeleting] = useState<ProjectSummary | null>(null);
   const [sharing, setSharing] = useState<ProjectSummary | null>(null);
+  const [changingVisibility, setChangingVisibility] = useState<ProjectSummary | null>(null);
   const [copying, setCopying] = useState<IconSearchResult | null>(null);
   const [expandedSections, setExpandedSections] = useState({ private: false, public: false });
   const [initialProjectsPerSection, setInitialProjectsPerSection] = useState(() => projectColumnsForWidth(window.innerWidth) * 2);
@@ -133,7 +134,7 @@ export default function DashboardPage() {
   const renderCards = (items: ProjectSummary[]) => (
     <ul className={cn("grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5", projects.loading && "opacity-60")}>
       {items.map((project) => (
-        <ProjectCard key={project.id} project={project} currentUserId={currentUser?.id ?? ""} highlight={projectSearch} onEdit={(p) => setForm({ mode: "edit", project: p })} onDuplicate={handleDuplicate} onShare={setSharing} onToggleArchive={handleToggleArchive} onDelete={setDeleting} />
+        <ProjectCard key={project.id} project={project} currentUserId={currentUser?.id ?? ""} highlight={projectSearch} onEdit={(p) => setForm({ mode: "edit", project: p })} onDuplicate={handleDuplicate} onShare={setSharing} onToggleArchive={handleToggleArchive} onToggleVisibility={setChangingVisibility} onDelete={setDeleting} />
       ))}
     </ul>
   );
@@ -451,6 +452,34 @@ export default function DashboardPage() {
           await deleteProject(deleting.id);
           projects.reload();
           showToast(`Deleted “${deleting.name}”.`, "success");
+        }}
+      />
+      <ConfirmDialog
+        open={changingVisibility !== null}
+        title={changingVisibility?.visibility === "public" ? "Make Project Private" : "Make Project Public"}
+        size="md"
+        message={
+          changingVisibility?.visibility === "public" ? (
+            <p>
+              Are you sure you want to make <span className="font-semibold">“{changingVisibility?.name}”</span> private? Only project owners and administrators will be able to view and access this project.
+            </p>
+          ) : (
+            <p>
+              Are you sure you want to make <span className="font-semibold">“{changingVisibility?.name}”</span> public? Anyone signed in to IconVault can view this project, open it, and copy its icons.
+            </p>
+          )
+        }
+        confirmLabel={changingVisibility?.visibility === "public" ? "Make Private" : "Make Public"}
+        onClose={() => setChangingVisibility(null)}
+        onConfirm={async () => {
+          if (!changingVisibility) return;
+          const { id, name } = changingVisibility;
+          const visibility = changingVisibility.visibility === "public" ? "private" : "public";
+          await updateProject(id, { visibility });
+          projects.reload();
+          // Close the dialog first: a toast raised while a dialog is open is placed inside it and disappears when the dialog closes.
+          flushSync(() => setChangingVisibility(null));
+          showToast(`“${name}” is now ${visibility}.`, "success");
         }}
       />
       <ShareProjectDialog open={sharing !== null} project={sharing} onClose={() => setSharing(null)} />
