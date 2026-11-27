@@ -57,7 +57,7 @@ export default function ShareProjectDialog({ open, project, onClose }: ShareProj
       }
     >
       <div>
-        <div className="text-sm font-medium mb-1.5 text-foreground">
+        <div className="text-md font-medium mb-1.5 text-foreground">
           Project Link
         </div>
         <div className="h-9 flex items-center rounded-lg border border-border px-3 text-sm bg-muted text-foreground">
@@ -67,7 +67,7 @@ export default function ShareProjectDialog({ open, project, onClose }: ShareProj
           </span>
         </div>
       </div>
-      <p className="mt-3 flex items-start gap-2 text-xs text-muted-foreground">
+      <p className="mt-2 flex items-start gap-2 text-xs text-muted-foreground">
         {project?.isArchived ? (
           <>
             <Lock aria-hidden="true" className="mt-px h-3.5 w-3.5 shrink-0" />

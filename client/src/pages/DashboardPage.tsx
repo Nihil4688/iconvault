@@ -461,11 +461,11 @@ export default function DashboardPage() {
         message={
           changingVisibility?.visibility === "public" ? (
             <p>
-              Are you sure you want to make <span className="font-semibold">“{changingVisibility?.name}”</span> private? Only its owner and admins will be able to see and open it.
+              Are you sure you want to make <span className="font-semibold">“{changingVisibility?.name}”</span> private? Only project owners and administrators will be able to view and access this project.
             </p>
           ) : (
             <p>
-              Are you sure you want to make <span className="font-semibold">“{changingVisibility?.name}”</span> public? Anyone signed in to IconVault will be able to see it, open it and copy its icons.
+              Are you sure you want to make <span className="font-semibold">“{changingVisibility?.name}”</span> public? Anyone signed in to IconVault can view this project, open it, and copy its icons.
             </p>
           )
         }
